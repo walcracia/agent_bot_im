@@ -38,4 +38,4 @@
 - 最终Python26项、桥接12项全部通过。锁定runtime依赖的Docker1.1构建通过，Compose配置通过；容器账号/会话/消息写入及重启持久通过。首次新容器验证未等待启动导致ResponseEnded，验证脚本增加先健康检查后认证，非应用运行错误。
 - 原版本上传因OAuth缺workflow scope被拒；将workflow改为可选模板并修正尚未上传的本代理提交，main与v0.1.0成功推送，没有扩大访问权限或force push。
 - DSH真实本地模型：官方SDK+既有qwen2.5:3b精确LOCAL_DSH_OK通过；独立临时IM→Harness→模型→回复传输通过，实际答复多@dsh前缀，exact-match断言失败。按预先停止条件总共两次调用，无重复调参、付费调用、模型下载或共享服务修改；临时数据已清理。详见bridge/LOCAL-MODEL-TEST.md。
-- 当前正式Windows便携包已生成ZIP与SHA256，准备v0.1.1源码/tag/Release附件上传。
+- 正式Windows便携包已生成ZIP与SHA256；v0.1.1源码已推送main（aa08ed5），随后按该迭代建立tag与Release附件。发布状态应以远端实际查询和environment/state.json为准。

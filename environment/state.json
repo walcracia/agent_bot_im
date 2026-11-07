@@ -1,27 +1,35 @@
 {
-  "version": "0.1.0",
-  "updated_at": "2026-11-07T22:05:56.0933760+08:00",
-  "pending": [
-    "UI simplification using Impeccable",
-    "Tencent remote deployment requires server details",
-    "real DSH model task requires provider credentials"
-  ],
-  "github": {
-    "design_pushed": true,
-    "implementation_pushed": false,
-    "repository": "https://github.com/walcracia/agent_bot_im",
-    "account": "walcracia"
-  },
-  "project": "agent-IM",
+  "version": "0.1.1",
   "verified": [
     "26 Python tests",
     "12 bridge tests",
-    "real two-user browser flow",
-    "official DSH SDK handshake and resume without model calls",
-    "Windows build and native login window",
-    "Docker health",
-    "backup and restore"
+    "real two-user browser text/media/reconnect/admin flow",
+    "official DSH SDK handshake and resume",
+    "real local Qwen SDK response",
+    "real IM-to-Harness-to-local-model-to-IM transport",
+    "Windows 0.1.1 build, asar allowlist and native login screenshot",
+    "Docker locked build, health, persistence restart and Compose config",
+    "backup and restore",
+    "Impeccable UI refinement and two bounded visual batches"
   ],
-  "local_url": "http://127.0.0.1:18200",
-  "stage": "v0.1.0-verified-v0.1.1-ui-requested"
+  "desktop": "outputs/TeamRelay-win32-x64/TeamRelay.exe",
+  "project": "agent-IM",
+  "github": {
+    "source_commit": "aa08ed5",
+    "repository": "https://github.com/walcracia/agent_bot_im",
+    "account": "walcracia",
+    "source_pushed": true,
+    "source_version": "0.1.1",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1"
+  },
+  "known_failures": [
+    "Local model IM exact-match response had extra @dsh prefix; no retry"
+  ],
+  "pending": [
+    "Tencent production deployment requires actual server/domain details",
+    "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
+  ],
+  "updated_at": "2026-11-07T22:27:20.2598801+08:00",
+  "stage": "local-verified-source-pushed",
+  "local_url": "http://127.0.0.1:18200"
 }
