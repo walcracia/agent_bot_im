@@ -39,3 +39,11 @@
 - 原版本上传因OAuth缺workflow scope被拒；将workflow改为可选模板并修正尚未上传的本代理提交，main与v0.1.0成功推送，没有扩大访问权限或force push。
 - DSH真实本地模型：官方SDK+既有qwen2.5:3b精确LOCAL_DSH_OK通过；独立临时IM→Harness→模型→回复传输通过，实际答复多@dsh前缀，exact-match断言失败。按预先停止条件总共两次调用，无重复调参、付费调用、模型下载或共享服务修改；临时数据已清理。详见bridge/LOCAL-MODEL-TEST.md。
 - 正式Windows便携包已生成ZIP与SHA256；v0.1.1源码已推送main（aa08ed5），随后按该迭代建立tag与Release附件。发布状态应以远端实际查询和environment/state.json为准。
+
+## 2026-11-07 · 发布回执与收尾
+
+- v0.1.1 annotated tag已推送，远端解引用commit=66756083b033db6490155c1aaebf52b395104e65，与本机一致。
+- Windows ZIP经代理上传速度较慢，读取约43MB后改用已验证可用的uploads.github.com直连；中止仅本次gh上传进程，未修改系统代理/安全设置。直连重新上传成功。
+- Release已公开（isDraft=false），ZIP 162,322,601字节，远端digest与本机SHA256一致：099760bae6e55877cb53b823d2057d818f9f06387645c3d76115ed7e322f5358；校验文件亦上传。链接：https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1 。
+- 临时Docker验证容器/匿名测试卷已清理，镜像留存。本机18200与新版客户端保留运行供用户体验。
+- 用户追加要求新起子代理说明DSH/IM/代码项目/团队如何协作；已派生独立说明代理，只写TEAM-WORKFLOW.md，不改代码或原项目。说明必须区分当前串行单cwd实现与推荐的分支/审查工作方式。

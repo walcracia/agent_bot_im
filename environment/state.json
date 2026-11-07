@@ -20,7 +20,9 @@
     "account": "walcracia",
     "source_pushed": true,
     "source_version": "0.1.1",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1"
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1",
+    "release_published": true,
+    "windows_zip_sha256": "099760bae6e55877cb53b823d2057d818f9f06387645c3d76115ed7e322f5358"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry"
@@ -29,7 +31,7 @@
     "Tencent production deployment requires actual server/domain details",
     "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
   ],
-  "updated_at": "2026-11-07T22:27:20.2598801+08:00",
-  "stage": "local-verified-source-pushed",
+  "updated_at": "2026-11-07T22:40:00.9174532+08:00",
+  "stage": "published-local-verified",
   "local_url": "http://127.0.0.1:18200"
 }
