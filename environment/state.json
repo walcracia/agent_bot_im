@@ -1,0 +1,10 @@
+{
+  "project": "agent-IM",
+  "updated_at": "2026-11-07T21:50:00+08:00",
+  "stage": "design-frozen",
+  "version": "0.1.0-design",
+  "local_url": "http://127.0.0.1:18200",
+  "github": {"account": "waternie", "status": "awaiting-empty-repository-or-cli-auth", "pushed": false},
+  "verified": [],
+  "pending": ["implementation", "tests", "DSH official protocol", "Windows build", "Tencent deployment credentials"]
+}
