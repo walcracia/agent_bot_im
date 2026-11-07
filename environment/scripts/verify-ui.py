@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import math
+import secrets
 from pathlib import Path
 import struct
 import subprocess
@@ -49,7 +50,7 @@ def login(page, account):
     page.locator('#password').fill(account['password'])
     page.locator('#login-submit').click()
     expect(page.locator('#app-view')).to_be_visible()
-    expect(page.locator('#connection-text')).to_have_text('已连接到团队', timeout=15000)
+    expect(page.locator('#connection-dot')).to_have_attribute('aria-label', '已连接', timeout=15000)
 
 
 def run():
@@ -65,22 +66,41 @@ def run():
         token = api.post('/api/login', json={k: accounts['admin'][k] for k in ['username', 'password']}).json()['token']
         api.headers['Authorization'] = f'Bearer {token}'
         browser = playwright.chromium.launch(channel='chrome', headless=True)
-        admin_context = browser.new_context(viewport={'width': 1440, 'height': 960}, timezone_id='Asia/Shanghai')
+        admin_context = browser.new_context(viewport={'width': 1280, 'height': 860}, timezone_id='Asia/Shanghai')
         alice_context = browser.new_context(viewport={'width': 1280, 'height': 860}, timezone_id='Asia/Shanghai')
         admin, alice = admin_context.new_page(), alice_context.new_page()
         for page in [admin, alice]:
             page.on('pageerror', lambda error: errors.append(str(error)))
         admin.goto(BASE)
         admin.screenshot(path=str(OUT / 'login.png'))
+        admin.set_viewport_size({'width': 960, 'height': 680})
+        admin.screenshot(path=str(OUT / 'login-compact.png'))
+        admin.set_viewport_size({'width': 1280, 'height': 860})
         login(admin, accounts['admin'])
         login(alice, accounts['alice'])
+        expect(admin.locator('#details-panel')).to_be_hidden()
+        admin.locator('#nav-settings').click()
+        admin.screenshot(path=str(OUT / 'settings.png'))
+        admin.get_by_role('button', name='添加成员', exact=True).click()
+        admin.locator('#new-user-bot').check()
+        admin.screenshot(path=str(OUT / 'add-member.png'))
+        helper_name = f'helper-{run_id}'
+        admin.locator('#new-user-username').fill(helper_name)
+        admin.locator('#new-user-name').fill('测试助手')
+        admin.locator('#new-user-password').fill(secrets.token_urlsafe(18))
+        admin.get_by_role('button', name='创建账号', exact=True).click()
+        expect(admin.locator('#modal h2')).to_have_text('成员')
+        assert next(u for u in api.get('/api/users').json() if u['username'] == helper_name)['is_bot']
+        admin.get_by_role('button', name='关闭', exact=True).click()
+        results['checks'].append('Icon controls have names; details initially hidden; real admin UI created an assistant account')
         admin.locator('#new-chat').click()
+        admin.screenshot(path=str(OUT / 'new-chat.png'))
         admin.get_by_role('button', name='群聊', exact=True).click()
         title = f'协作验证 · {run_id}'
         admin.locator('#new-conversation-title').fill(title)
         for who in ['alice', 'bob', 'dsh']:
             admin.locator(f'.user-option[data-user-id="{accounts[who]["user"]["id"]}"]').click()
-        admin.get_by_role('button', name='创建对话', exact=True).click()
+        admin.get_by_role('button', name='开始聊天', exact=True).click()
         expect(admin.locator('#chat-title')).to_have_text(title)
         group = alice.locator('#conversation-list button').filter(has_text=title)
         expect(group).to_be_visible(timeout=15000)
@@ -101,12 +121,12 @@ def run():
         # Controlled transport closure exercises reconnect and server-history catchup without test-only application hooks.
         alice_context.set_offline(True)
         alice.evaluate('S.socket.close()')
-        expect(alice.locator('#connection-text')).to_contain_text('断开')
+        expect(alice.locator('#connection-dot')).to_have_attribute('aria-label', '正在重连')
         missed = f'断线期间的消息，重连后应从历史恢复。{run_id}'
         admin.locator('#message-input').fill(missed)
         admin.locator('#send-message').click()
         alice_context.set_offline(False)
-        expect(alice.locator('#connection-text')).to_have_text('已连接到团队', timeout=20000)
+        expect(alice.locator('#connection-dot')).to_have_attribute('aria-label', '已连接', timeout=20000)
         expect(alice.locator('.message-text').filter(has_text=missed)).to_be_visible(timeout=15000)
         assert alice.locator('.message-text').filter(has_text=missed).count() == 1
         results['checks'].append('Offline plus controlled WS closure; reconnect recovered missed message exactly once')

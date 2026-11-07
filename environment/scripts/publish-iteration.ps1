@@ -23,6 +23,11 @@ try {
   if ($LASTEXITCODE -eq 1) { git commit -m $Message; if ($LASTEXITCODE) { throw '提交失败' } }
   git show-ref --verify --quiet "refs/tags/$Version"
   if ($LASTEXITCODE -ne 0) { git tag -a $Version -m $Message; if ($LASTEXITCODE) { throw '打标签失败' } }
+  else {
+    $tagCommit = git rev-parse "$Version^{commit}"
+    $headCommit = git rev-parse HEAD
+    if ($tagCommit -ne $headCommit) { throw '该版本已用于其他提交，请使用新的版本号；未移动已有标签。' }
+  }
   git remote get-url origin 2>$null | Out-Null
   if ($LASTEXITCODE) {
     & $gh repo view $Repository --json nameWithOwner 2>$null | Out-Null

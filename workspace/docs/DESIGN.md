@@ -52,3 +52,9 @@ flowchart LR
 1. v0.1.0-design：设计、协议与恢复文档。
 2. v0.1.0：基础实现、真实 API/WS/媒体/隔离测试、桌面构建。
 3. v0.1.1：根据测试修复并完成 DSH 真实联调与迭代上传。
+
+## 实施后的补充（v0.1.1）
+
+UI 最新规格以 [UI-v0.1.1.md](UI-v0.1.1.md) 为准：用户要求删除解释性技术文字，采用Impeccable精简，默认收起详情，多图标、必要操作文字与无障碍标签。
+
+DSH实际接缝为官方 `@deepseek-ai/dsh-sdk-client@0.2.2-rc.1` 的stdio JSON-RPC，使用官方签名Desktop内置CLI，不调用未公开的Desktop HTTP接口。按会话恢复session、双白名单、结果缓存与幂等回复；执行中断必须人工决定重试或跳过，不声称分布式exactly-once。真实本地模型文本实验及格式失败边界见 bridge/LOCAL-MODEL-TEST.md。部署运行时依赖也已完整锁定在requirements.lock.txt。

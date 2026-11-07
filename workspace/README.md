@@ -57,4 +57,4 @@ npm run build
 
 根目录脚本 `environment/scripts/publish-iteration.ps1 -Version v0.1.1 -Message '说明'` 先验证再 commit/tag/push。GitHub 默认仓库 `walcracia/agent_bot_im`，使用本机 `gh auth login` 授权，代码中没有令牌。
 
-限制：首版没有实时音视频通话、转码、集群或端到端加密。DSH 官方 SDK 初始化和会话恢复已验证；真实模型任务需要操作者配置自己的模型凭据。未取得腾讯地址/SSH/域名信息，尚未远程部署。
+限制：首版没有实时音视频通话、转码、集群或端到端加密。DSH 官方 SDK 初始化/恢复与既有本地 Qwen 文本推理已验证；真实IM→Harness→本地模型→回复传输通过，但模型多输出前缀，严格答复格式断言失败，未重试。工具/媒体理解/复杂任务及用户自己的DeepSeek付费模型未验证，见 bridge/LOCAL-MODEL-TEST.md。未取得腾讯地址/SSH/域名信息，尚未远程部署。

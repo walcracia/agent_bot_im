@@ -43,7 +43,7 @@ def main():
         if store.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]:
             parser.error("Refusing to seed a nonempty database")
     generated = []
-    for username, display_name, admin, bot in [("admin", "林一", True, False), ("alice", "陈夏", False, False), ("bob", "周牧", False, False), ("dsh", "DSH 工作助手", False, True)]:
+    for username, display_name, admin, bot in [("admin", "林一", True, False), ("alice", "陈夏", False, False), ("bob", "周牧", False, False), ("dsh", "小同", False, True)]:
         password = secrets.token_urlsafe(18)
         user = store.create_user(username, display_name, password, is_admin=admin, is_bot=bot)
         generated.append({"username": username, "password": password, "user": user})
@@ -52,8 +52,8 @@ def main():
     with store.transaction() as conn:
         conn.execute("INSERT INTO conversations VALUES(?,?,0,NULL,?,?)", (cid, "产品协作组", stamp, stamp))
         conn.executemany("INSERT INTO members(conversation_id,user_id) VALUES(?,?)", [(cid, item["user"]["id"]) for item in generated])
-        conn.execute("INSERT INTO messages(conversation_id,sender_id,text,client_id,created_at) VALUES(?,?,?,?,?)", (cid, generated[1]["user"]["id"], "欢迎来到同频。团队的讨论、文件和工作进展，都在这里汇合。", "demo-welcome", stamp))
-        conn.execute("INSERT INTO messages(conversation_id,sender_id,text,client_id,created_at) VALUES(?,?,?,?,?)", (cid, generated[2]["user"]["id"], "图片可以直接预览，音频与视频可以播放。每个文件需小于 100 MB。", "demo-media", stamp))
+        conn.execute("INSERT INTO messages(conversation_id,sender_id,text,client_id,created_at) VALUES(?,?,?,?,?)", (cid, generated[1]["user"]["id"], "早上好，今天的方案我们在这里一起讨论。", "demo-welcome", stamp))
+        conn.execute("INSERT INTO messages(conversation_id,sender_id,text,client_id,created_at) VALUES(?,?,?,?,?)", (cid, generated[2]["user"]["id"], "好，我整理一下刚才的想法，稍后发给大家。", "demo-media", stamp))
     output = Path(args.credentials_file).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps({"warning": "Local isolated demo credentials. Never commit.", "accounts": generated, "conversation_id": cid}, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -7,6 +7,7 @@ const paths = {
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M16 3a4 4 0 0 1 0 8"/><circle cx="9" cy="7" r="4"/>',
   user: '<path d="M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2"/><circle cx="12" cy="6" r="4"/>',
   settings: '<path d="m9 3-.7 2.3-2.4 1-2.1-1.1-2 3.4 1.8 1.7-.1 2.7-1.7 1.6 2 3.5 2.3-.5 2 1.2.9 2.2h4l.8-2.3 2.3-1.1 2.2.8 2-3.4-1.6-1.9v-2.5L22 9l-2-3.5-2.4.6-2.2-1.3L15 3z"/><circle cx="12" cy="12" r="3"/>',
+  refresh: '<path d="M20 7v5h-5M4 17v-5h5M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 18 17"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/>',
   search: '<circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -16,6 +17,7 @@ const paths = {
   play: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4z"/>',
   send: '<path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
+  check: '<path d="m5 12 4 4L19 6"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m-14-8 5-5 5 5m-5-5v13"/>',
   file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8m-8 4h5"/>',
@@ -38,15 +40,32 @@ function iconButton(name, title, action) { const n = button('', 'icon-button', a
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function readPreference(key) { try { return localStorage.getItem(key); } catch { return ''; } }
 function savePreference(key, value) { try { localStorage.setItem(key, value); } catch { /* Preferences are optional. */ } }
-const S = { base: '', token: null, me: null, conversations: [], users: [], selected: null, messages: [], pending: new Map(), uploads: new Map(), socket: null, reconnect: null, ping: null, refresh: null, retry: 0, epoch: 0, details: innerWidth >= 1190, hasMore: false, historyBusy: false, loadingConversation: null, historyRequest: 0, scrollIntent: 0, composing: false, requests: new Set() };
+const S = { base: '', token: null, me: null, conversations: [], users: [], selected: null, messages: [], pending: new Map(), uploads: new Map(), socket: null, reconnect: null, ping: null, refresh: null, retry: 0, epoch: 0, details: false, hasMore: false, historyBusy: false, loadingConversation: null, historyRequest: 0, scrollIntent: 0, composing: false, requests: new Set() };
 let toastTimer;
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4300); }
 function normalizeBase(value) {
-  const u = new URL(value);
-  if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.search || u.hash || (u.pathname && u.pathname !== '/')) throw new Error('请输入完整的 HTTP(S) 服务器根地址，不含路径或登录信息。');
+  let u; try { u = new URL(value); } catch { throw new Error('团队地址不正确，请检查后重试。'); }
+  if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.search || u.hash || (u.pathname && u.pathname !== '/')) throw new Error('请填写完整的团队地址，例如 https://im.example.com。');
   return u.origin;
 }
-function errorText(error) { return error?.message || '请求未完成，请稍后重试。'; }
+function friendlyDetail(detail, status) {
+  if (status === 413) return '文件太大，请选择小于 100 MB 的文件。';
+  if (status === 429) return '尝试次数过多，请一分钟后重试。';
+  if (status >= 500) return '暂时无法完成，请稍后重试或联系管理员。';
+  const copy = {
+    '用户名或密码错误': '账号或密码不正确，请重新输入。',
+    '用户名已存在': '这个账号已被使用，请换一个。',
+    'client_id 已用于不同消息': '这条消息未能发送，请重新发送。',
+    '长期令牌只用于机器人账号': '请选择一个助手账号。',
+    '没有此会话的访问权限': '你无法查看这个聊天，请联系管理员。',
+    '消息不属于此会话': '消息未找到，请重新打开聊天。',
+    '附件不属于此用户或会话': '文件未能发送，请重新选择。'
+  };
+  if (copy[detail]) return copy[detail];
+  if (typeof detail === 'string' && !/[A-Za-z_]{3,}|字节|令牌|机器人|multipart/.test(detail)) return detail;
+  return status === 401 ? '请重新登录。' : status === 403 ? '无法完成这个操作，请联系管理员。' : status === 404 ? '内容未找到，请刷新后重试。' : '未能完成，请检查后重试。';
+}
+function errorText(error) { if (error instanceof TypeError || /fetch|NetworkError|Failed to fetch/i.test(error?.message || '')) return '连接失败，请检查网络和团队地址。'; return error?.message || '未能完成，请稍后重试。'; }
 async function api(path, options = {}) {
   const token = S.token;
   const headers = { ...options.headers };
@@ -59,19 +78,19 @@ async function api(path, options = {}) {
     let data; try { data = await response.json(); } catch { data = null; }
     if (!response.ok) {
       if (response.status === 401 && token && S.token === token) { logoutLocal(); toast('登录已失效，请重新登录。'); }
-      const detail = typeof data?.detail === 'string' ? data.detail : response.status === 413 ? '文件必须小于 100 MB。' : response.status === 422 ? '输入不符合要求，请检查后重试。' : `请求失败（${response.status}）`;
-      throw new Error(detail);
+      throw new Error(friendlyDetail(data?.detail, response.status));
     }
     return data;
   } catch (error) { if (error.name === 'AbortError') throw new Error('请求超时或已取消，请检查连接后重试。'); throw error; }
   finally { clearTimeout(timer); S.requests.delete(controller); }
 }
 function post(path, value = {}) { return api(path, { method: 'POST', body: JSON.stringify(value) }); }
+function nameFor(user) { return user?.display_name || user?.username || ''; }
 function avatar(user, group = false) { const n = el('div', 'avatar'); if (group) { n.classList.add('avatar-group'); n.append(icon('users')); } else if (user?.is_bot) { n.classList.add('avatar-bot'); n.append(icon('spark')); } else { n.textContent = (user?.display_name || user?.username || '同').slice(0, 1); let sum = 0; for (const c of String(user?.id || '')) sum += c.charCodeAt(0); n.classList.add(`avatar-color-${sum % 5}`); } return n; }
 function current() { return S.conversations.find((c) => c.id === S.selected); }
 function peer(c) { return c.members.find((u) => u.id !== S.me.id) || S.me; }
-function titleFor(c) { return c.is_direct ? peer(c).display_name || peer(c).username : c.title; }
-function summary(m) { if (!m) return '开启第一段对话'; const content = m.text || (m.attachment ? `[${{ image: '图片', audio: '音频', video: '视频', file: '文件' }[m.attachment.kind] || '文件'}] ${m.attachment.name}` : ''); return `${m.sender.id === S.me.id ? '你' : m.sender.display_name}：${content}`; }
+function titleFor(c) { return c.is_direct ? nameFor(peer(c)) : c.title; }
+function summary(m) { if (!m) return '还没有消息'; const content = m.text || (m.attachment ? `[${{ image: '图片', audio: '音频', video: '视频', file: '文件' }[m.attachment.kind] || '文件'}] ${m.attachment.name}` : ''); return `${m.sender.id === S.me.id ? '你' : nameFor(m.sender)}：${content}`; }
 function timeShort(value) { const d = new Date(value); if (Number.isNaN(d.getTime())) return ''; const today = new Date(); return d.toDateString() === today.toDateString() ? d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) : `${d.getMonth() + 1}/${d.getDate()}`; }
 function dayLabel(value) { const d = new Date(value); if (Number.isNaN(d.getTime())) return ''; if (d.toDateString() === new Date().toDateString()) return '今天'; return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }); }
 function bytes(size) { if (size < 1000) return `${size} B`; if (size < 1000000) return `${(size / 1000).toFixed(1)} KB`; return `${(size / 1000000).toFixed(1)} MB`; }
@@ -88,14 +107,14 @@ function renderConversations() {
     top.append(el('span', 'conversation-name', titleFor(c)), el('span', 'conversation-time', timeShort(c.last_message?.created_at || c.updated_at)));
     sub.append(el('p', '', summary(c.last_message))); if (c.unread_count > 0) sub.append(el('span', 'unread', c.unread_count > 99 ? '99+' : c.unread_count)); copy.append(top, sub); n.append(copy); list.append(n);
   }
-  if (!list.children.length) list.append(el('p', 'list-empty', query ? '没有匹配的会话' : '还没有会话\n点击右上角 + 开始沟通'));
+  if (!list.children.length) list.append(el('p', 'list-empty', query ? '没有找到聊天' : '还没有聊天'));
 }
 async function refreshConversations() { const epoch = S.epoch; const cs = await api('/api/conversations'); if (S.epoch !== epoch) return; S.conversations = cs; renderConversations(); if (S.selected) renderChatHeading(); }
 function renderChatHeading() {
   const c = current(); if (!c) return;
-  $('chat-title').textContent = titleFor(c); $('chat-subtitle').textContent = c.is_direct ? `${peer(c).is_bot ? 'AI 工作伙伴' : '私聊'} · ${peer(c).username}` : `${c.members.length} 位成员 · 团队群聊`;
+  $('chat-title').textContent = titleFor(c); $('chat-subtitle').textContent = c.is_direct ? (peer(c).is_bot ? '' : peer(c).username) : `${c.members.length} 人`;
   $('chat-avatar').replaceWith(Object.assign(avatar(c.is_direct ? peer(c) : null, !c.is_direct), { id: 'chat-avatar' }));
-  $('bot-banner').hidden = !c.members.some((u) => u.is_bot); renderDetails();
+  $('mention-assistant').hidden = !c.members.some((u) => u.is_bot); renderDetails();
 }
 async function selectConversation(id) {
   S.selected = id; S.messages = []; S.hasMore = false; $('message-items').replaceChildren(); $('empty-chat').hidden = true; $('active-chat').hidden = false; $('message-input').value = ''; updateCounter(); renderConversations(); renderChatHeading(); renderUploads();
@@ -128,18 +147,18 @@ function renderMessages() {
     const key = String(m.id || m.client_id); let n = existing.get(key);
     if (!n || m.pending) n = renderMessage(m); n.dataset.key = key; fragment.append(n);
   }
-  if (!all.length) { const n = el('div', 'list-empty', '对话从一句问候开始。'); fragment.append(n); }
+  if (!all.length) { const n = el('div', 'list-empty', '还没有消息'); fragment.append(n); }
   box.replaceChildren(fragment); renderDetails();
 }
 function renderMessage(m) {
   const n = el('article', `message${m.sender.id === S.me.id ? ' own' : ''}${m.pending ? ' pending' : ''}`); n.dataset.messageId = m.id || ''; n.dataset.clientId = m.client_id;
   n.append(avatar(m.sender)); const content = el('div', 'message-content'), meta = el('div', 'message-meta');
-  meta.append(el('span', '', m.sender.id === S.me.id ? '我' : m.sender.display_name)); if (m.sender.is_bot) meta.append(el('span', 'bot-tag', 'DSH')); meta.append(el('time', 'message-time', timeShort(m.created_at))); content.append(meta);
+  meta.append(el('span', '', m.sender.id === S.me.id ? '我' : nameFor(m.sender))); meta.append(el('time', 'message-time', timeShort(m.created_at))); content.append(meta);
   const bubble = el('div', 'bubble'); if (m.text) bubble.append(el('div', 'message-text', m.text)); if (m.attachment) bubble.append(renderAttachment(m.attachment)); content.append(bubble);
   if (m.pending) { const status = el('div', 'message-error', m.error || '发送中…'); if (m.error) status.append(button('重试', '', () => sendPending(m))); content.append(status); }
   n.append(content); return n;
 }
-async function attachmentURL(a, download = false) { const data = await post(`/api/attachments/${encodeURIComponent(a.id)}/ticket`); const url = new URL(data.url, `${S.base}/`); if (url.origin !== new URL(S.base).origin || !url.pathname.startsWith('/api/attachments/')) throw new Error('服务器返回了无效的文件地址。'); if (download) url.searchParams.set('download', '1'); return url.href; }
+async function attachmentURL(a, download = false) { const data = await post(`/api/attachments/${encodeURIComponent(a.id)}/ticket`); const url = new URL(data.url, `${S.base}/`); if (url.origin !== new URL(S.base).origin || !url.pathname.startsWith('/api/attachments/')) throw new Error('文件暂时无法打开，请重试。'); if (download) url.searchParams.set('download', '1'); return url.href; }
 async function downloadAttachment(a) {
   try {
     const url = await attachmentURL(a, true); const response = await fetch(url, { credentials: 'omit', cache: 'no-store' }); if (!response.ok) throw new Error('文件下载失败，请重新登录或重试。');
@@ -147,7 +166,7 @@ async function downloadAttachment(a) {
   } catch (e) { toast(errorText(e)); }
 }
 function renderAttachment(a) {
-  if (!['image', 'audio', 'video'].includes(a.kind)) { const card = el('div', 'file-card'); const symbol = el('div', 'file-symbol'); symbol.append(icon('file')); const info = el('div', 'file-info'); info.append(el('span', 'file-name', a.name), el('span', 'file-size', `${bytes(a.size)} · 点击右侧保存`)); card.append(symbol, info, iconButton('download', `下载 ${a.name}`, () => downloadAttachment(a))); return card; }
+  if (!['image', 'audio', 'video'].includes(a.kind)) { const card = el('div', 'file-card'); const symbol = el('div', 'file-symbol'); symbol.append(icon('file')); const info = el('div', 'file-info'); info.append(el('span', 'file-name', a.name), el('span', 'file-size', bytes(a.size))); card.append(symbol, info, iconButton('download', `下载 ${a.name}`, () => downloadAttachment(a))); return card; }
   const conversation = S.selected, scrollIntent = S.scrollIntent;
   const pinAfterLoad = $('messages').scrollHeight - $('messages').scrollTop - $('messages').clientHeight < 150;
   const card = el('div', `media-card media-${a.kind}`), title = el('div', 'media-title'); title.append(el('span', 'media-name', a.name), iconButton('download', `下载 ${a.name}`, () => downloadAttachment(a))); card.append(title);
@@ -164,14 +183,12 @@ function renderAttachment(a) {
 }
 function renderDetails() {
   const panel = $('details-panel'), c = current(); panel.hidden = !S.details || !c; if (!c) return;
-  const heading = el('div', 'details-heading', '会话详情'); heading.append(iconButton('close', '收起详情', () => { S.details = false; renderDetails(); })); panel.replaceChildren(heading);
-  const group = el('div', 'details-group'), label = el('div', 'details-label', '会话成员'); label.append(el('span', '', `${c.members.length}`)); group.append(label);
-  for (const u of c.members) { const row = el('div', 'member-row'); row.append(avatar(u), el('span', 'member-row-name', u.display_name + (u.id === S.me.id ? '（我）' : '')), el('span', 'member-role', u.is_bot ? 'AI 伙伴' : u.is_admin ? '管理员' : '成员')); group.append(row); } panel.append(group);
-  const bots = c.members.filter((u) => u.is_bot); if (bots.length) { const wrap = el('div', 'details-group'), bot = el('div', 'details-bot'), title = el('div', 'details-bot-title'); title.append(icon('spark'), el('span', '', '你的 AI 工作伙伴')); bot.append(title, el('p', '', '机器人可监听本会话的聊天和附件。私聊或 @dsh 触发任务，执行结果会回到这里。')); wrap.append(bot); panel.append(wrap); }
+  const heading = el('div', 'details-heading', '聊天详情'); heading.append(iconButton('close', '收起详情', () => { S.details = false; renderDetails(); })); panel.replaceChildren(heading);
+  const group = el('div', 'details-group'), label = el('div', 'details-label', '成员'); label.append(el('span', '', `${c.members.length}`)); group.append(label);
+  for (const u of c.members) { const row = el('div', 'member-row'); row.append(avatar(u), el('span', 'member-row-name', nameFor(u) + (u.id === S.me.id ? '（我）' : '')), el('span', 'member-role', u.is_admin ? '管理员' : '')); group.append(row); } panel.append(group);
   const files = el('div', 'details-group'); files.append(el('div', 'details-label', '最近共享'));
   const attachments = [...S.messages].reverse().filter((m) => m.attachment).slice(0, 5);
   for (const m of attachments) { const a = m.attachment, b = button('', 'shared-file', () => downloadAttachment(a)), symbol = el('span', 'file-symbol'), info = el('span', 'file-info'); symbol.append(icon(a.kind === 'image' ? 'image' : a.kind === 'file' ? 'file' : 'play')); info.append(el('span', 'file-name', a.name), el('span', 'file-size', bytes(a.size))); b.append(symbol, info); files.append(b); } if (!attachments.length) files.append(el('p', 'details-empty', '共享的文件会出现在这里')); panel.append(files);
-  const tips = el('div', 'details-group'), tip = el('p', 'details-tip'); tip.append(icon('shield'), document.createTextNode('团队私有空间。每个附件小于 100 MB，支持图片、音频、视频和文件。')); tips.append(tip); panel.append(tips);
 }
 function updateCounter() { const count = $('message-input').value.length; $('composer-counter').textContent = count >= 8000 ? `${count} / 10000` : ''; }
 async function sendText() { const text = $('message-input').value.trim(); if (!text || !S.selected) return; const m = { client_id: uuid(), conversation_id: S.selected, sender: S.me, text, attachment: null, created_at: new Date().toISOString(), pending: true }; S.pending.set(m.client_id, m); $('message-input').value = ''; updateCounter(); renderMessages(); scrollBottom(); await sendPending(m); }
@@ -198,7 +215,7 @@ async function uploadItem(item) {
       const xhr = new XMLHttpRequest(); xhr.open('POST', `${S.base}/api/conversations/${encodeURIComponent(item.conversation)}/attachments`); xhr.setRequestHeader('Authorization', `Bearer ${S.token}`); xhr.timeout = 300000; item.xhr = xhr;
       xhr.upload.onprogress = (e) => { if (e.lengthComputable) { item.progress = Math.round(e.loaded / e.total * 100); renderUploads(); } };
       xhr.onerror = () => reject(new Error('上传失败，请检查网络后重试。')); xhr.ontimeout = () => reject(new Error('上传超时，请重试。')); xhr.onabort = () => reject(new Error('上传已取消。'));
-      xhr.onload = () => { let data; try { data = JSON.parse(xhr.responseText); } catch { reject(new Error('上传返回了无效结果。')); return; } if (xhr.status >= 200 && xhr.status < 300) resolve(data); else reject(new Error(typeof data.detail === 'string' ? data.detail : '上传失败，请重试。')); };
+      xhr.onload = () => { let data; try { data = JSON.parse(xhr.responseText); } catch { reject(new Error('上传未完成，请重新上传。')); return; } if (xhr.status >= 200 && xhr.status < 300) resolve(data); else reject(new Error(friendlyDetail(data.detail, xhr.status))); };
       const form = new FormData(); form.append('file', item.file); xhr.send(form);
     });
     if (S.epoch !== epoch) return;
@@ -207,7 +224,7 @@ async function uploadItem(item) {
   } catch (e) { if (S.epoch === epoch) { item.error = errorText(e); toast(`${item.file.name}：${item.error}`); } }
   finally { item.busy = false; item.xhr = null; renderUploads(); }
 }
-function connection(state) { $('connection-dot').classList.toggle('offline', state !== 'online'); $('connection-text').textContent = state === 'online' ? '已连接到团队' : state === 'offline' ? '连接已断开 · 正在重连' : '正在连接团队'; }
+function connection(state) { const label = state === 'online' ? '已连接' : state === 'offline' ? '正在重连' : '正在连接'; $('connection-dot').classList.toggle('offline', state !== 'online'); $('connection-dot').title = label; $('connection-dot').setAttribute('aria-label', label); $('connection-text').textContent = label; $('connection-text').hidden = state === 'online'; }
 async function connectSocket() {
   if (!S.token) return; clearTimeout(S.reconnect); const epoch = S.epoch;
   if (S.socket) { S.socket.onclose = null; S.socket.close(); S.socket = null; } clearInterval(S.ping); connection('connecting');
@@ -222,7 +239,7 @@ async function connectSocket() {
 }
 function scheduleReconnect() { clearInterval(S.ping); connection('offline'); clearTimeout(S.reconnect); const delay = Math.min(30000, 1000 * (2 ** S.retry++)); S.reconnect = setTimeout(connectSocket, delay); }
 function logoutLocal() {
-  S.epoch++; S.token = null; S.me = null; clearTimeout(S.reconnect); clearInterval(S.ping); clearInterval(S.refresh);
+  S.epoch++; S.token = null; S.me = null; S.details = false; clearTimeout(S.reconnect); clearInterval(S.ping); clearInterval(S.refresh);
   if (S.socket) { S.socket.onclose = null; S.socket.close(); S.socket = null; } S.requests.forEach((c) => c.abort()); S.uploads.forEach((i) => i.xhr?.abort()); S.conversations = []; S.users = []; S.messages = []; S.pending.clear(); S.uploads.clear(); S.selected = null; S.historyBusy = false;
   $('app-view').hidden = true; $('login-view').hidden = false; $('active-chat').hidden = true; $('empty-chat').hidden = false; $('details-panel').hidden = true; $('message-items').replaceChildren(); $('upload-list').replaceChildren(); $('password').value = ''; $('modal').close(); $('image-modal').close(); $('conversation-search').value = '';
 }
@@ -234,7 +251,7 @@ $('login-form').addEventListener('submit', async (e) => {
     [S.conversations, S.users] = await Promise.all([api('/api/conversations'), api('/api/users')]); $('my-avatar').textContent = (S.me.display_name || S.me.username).slice(0, 1); $('my-avatar').title = S.me.display_name;
     $('login-view').hidden = true; $('app-view').hidden = false; renderConversations(); connectSocket();
     S.refresh = setInterval(() => { if (S.token && !document.hidden) refreshConversations().catch(() => {}); }, 30000);
-  } catch (error) { if (S.token) logoutLocal(); $('login-error').textContent = errorText(error); $('login-error').hidden = false; }
+  } catch (error) { if (S.token) logoutLocal(); if (/地址/.test(errorText(error))) $('connection-settings').open = true; $('login-error').textContent = errorText(error); $('login-error').hidden = false; }
   finally { $('login-submit').disabled = false; }
 });
 
@@ -243,41 +260,41 @@ function modalError(body) { const error = el('div', 'form-error'); error.hidden 
 function field(body, label, type = 'text', id, placeholder = '') { const wrap = el('div', 'field'), text = el('label', '', label), input = el('input'); input.type = type; input.id = id; input.placeholder = placeholder; text.htmlFor = id; wrap.append(text, input); body.append(wrap); return input; }
 async function openNewConversation(preselected) {
   try { S.users = await api('/api/users'); } catch (e) { toast(errorText(e)); return; }
-  const { body, footer } = openModal('开启新对话'), tabs = el('div', 'choice-tabs'); let direct = true, selected = new Set(preselected ? [preselected] : []);
+  const { body, footer } = openModal('新聊天'), tabs = el('div', 'choice-tabs'); let direct = true, selected = new Set(preselected ? [preselected] : []);
   const directButton = button('私聊', 'selected', () => { direct = true; if (selected.size > 1) selected = new Set([...selected].slice(0, 1)); update(); }), groupButton = button('群聊', '', () => { direct = false; update(); }); tabs.append(directButton, groupButton); body.append(tabs);
   const title = field(body, '群聊名称', 'text', 'new-conversation-title', '例如：产品与研发'); title.maxLength = 80; const titleWrap = title.parentElement;
-  const label = el('p', 'modal-description', '选择你想沟通的团队伙伴'), options = el('div', 'user-options'); body.append(label, options);
-  const showError = modalError(body), submit = button('创建对话', 'primary', async () => {
+  const label = el('p', 'field-label', '选择成员'), options = el('div', 'user-options'); body.append(label, options);
+  const showError = modalError(body), submit = button('开始聊天', 'primary', async () => {
     if (!selected.size) { showError(new Error('请至少选择一位团队成员。')); return; } if (!direct && !title.value.trim()) { showError(new Error('请填写群聊名称。')); return; }
     submit.disabled = true;
     try { const c = await post('/api/conversations', { title: direct ? '' : title.value.trim(), member_ids: [...selected], is_direct: direct }); await refreshConversations(); $('modal').close(); selectConversation(c.id); } catch (e) { showError(e); } finally { submit.disabled = false; }
   }); footer.append(button('取消', 'secondary', () => $('modal').close()), submit);
   function update() { directButton.classList.toggle('selected', direct); groupButton.classList.toggle('selected', !direct); titleWrap.hidden = direct; options.replaceChildren();
-    for (const u of S.users.filter((u) => u.id !== S.me.id)) { const row = button('', `user-option${selected.has(u.id) ? ' selected' : ''}`, () => { if (selected.has(u.id)) selected.delete(u.id); else { if (direct) selected.clear(); selected.add(u.id); } update(); }); row.dataset.userId = u.id; const copy = el('span', 'user-option-copy', u.display_name); copy.append(el('small', '', `${u.username}${u.is_bot ? ' · AI 伙伴' : ''}`)); row.append(avatar(u), copy, el('span', 'selection-mark', selected.has(u.id) ? '✓' : '')); options.append(row); } if (!options.children.length) options.append(el('p', 'list-empty', '尚无其他成员，请管理员先添加账号。')); }
+    for (const u of S.users.filter((u) => u.id !== S.me.id)) { const row = button('', `user-option${selected.has(u.id) ? ' selected' : ''}`, () => { if (selected.has(u.id)) selected.delete(u.id); else { if (direct) selected.clear(); selected.add(u.id); } update(); }); row.dataset.userId = u.id; const copy = el('span', 'user-option-copy', nameFor(u)); copy.append(el('small', '', u.is_bot ? '助手' : u.username)); const mark = el('span', 'selection-mark'); if (selected.has(u.id)) mark.append(icon('check')); row.append(avatar(u), copy, mark); options.append(row); } if (!options.children.length) options.append(el('p', 'list-empty', '还没有其他成员，请联系管理员添加。')); }
   update();
 }
 async function openMembers() {
   try { S.users = await api('/api/users'); } catch (e) { toast(errorText(e)); return; }
-  const { body, footer } = openModal('团队成员'); body.append(el('p', 'modal-description', '找到你的伙伴，让对话自然发生。')); const list = el('div', 'member-directory');
-  for (const u of S.users) { const row = el('div', 'directory-item'), copy = el('div', 'directory-item-copy'); copy.append(el('strong', '', `${u.display_name}${u.id === S.me.id ? '（我）' : ''}`), el('small', '', `${u.username} · ${u.is_bot ? 'DSH 工作伙伴' : u.is_admin ? '管理员' : '团队成员'}`)); row.append(avatar(u), copy); if (u.id !== S.me.id) row.append(button('发起对话', 'secondary', () => openNewConversation(u.id))); list.append(row); } body.append(list); if (S.me.is_admin) footer.append(button('添加成员', 'primary', openCreateUser, 'plus')); else footer.append(button('关闭', 'secondary', () => $('modal').close()));
+  const { body, footer } = openModal('成员'); const list = el('div', 'member-directory');
+  for (const u of S.users) { const row = el('div', 'directory-item'), copy = el('div', 'directory-item-copy'); copy.append(el('strong', '', `${nameFor(u)}${u.id === S.me.id ? '（我）' : ''}`), el('small', '', u.is_bot ? '助手' : u.username)); row.append(avatar(u), copy); if (u.id !== S.me.id) row.append(iconButton('chat', `与${nameFor(u)}聊天`, () => openNewConversation(u.id))); list.append(row); } body.append(list); if (S.me.is_admin) footer.append(button('添加成员', 'primary', openCreateUser, 'plus')); else footer.append(button('关闭', 'secondary', () => $('modal').close()));
 }
 function openSettings() {
-  const { body, footer } = openModal('工作空间设置'); body.append(el('p', 'modal-description', '一个轻量、私有、属于团队的沟通空间。'));
-  for (const [label, value] of [['当前成员', S.me.display_name], ['服务器', S.base], ['版本', '同频 · Team Relay 0.1.0'], ['文件上限', '每个文件严格小于 100 MB'], ['登录状态', '仅本次会话保留，退出后清除']]) { const row = el('div', 'settings-row'); row.append(el('span', '', label), el('span', '', value)); body.append(row); }
-  const actions = el('div', 'settings-actions'); if (S.me.is_admin) { actions.append(button('创建成员或 AI 伙伴', 'secondary', openCreateUser), button('生成 DSH 连接令牌', 'secondary', openBotToken)); } actions.append(button('刷新会话与连接', 'secondary', () => { connectSocket(); $('modal').close(); toast('正在重新连接工作空间。'); })); body.append(actions); footer.append(button('完成', 'primary', () => $('modal').close()));
+  const { body, footer } = openModal('设置');
+  for (const [label, value] of [['账号', S.me.username], ['团队地址', S.base]]) { const row = el('div', 'settings-row'); row.append(el('span', '', label), el('span', '', value)); body.append(row); }
+  const actions = el('div', 'settings-actions'); if (S.me.is_admin) { actions.append(button('添加成员', 'settings-action', openCreateUser, 'users'), button('连接助手', 'settings-action', openBotToken, 'spark')); } actions.append(button('重新连接', 'settings-action', () => { connectSocket(); $('modal').close(); toast('正在重新连接。'); }, 'refresh')); body.append(actions); footer.append(button('完成', 'primary', () => $('modal').close()));
 }
-function openCreateUser() {
-  const { body, footer } = openModal('添加团队成员'); body.append(el('p', 'modal-description', '成员将使用独立账号登录。AI 伙伴可加入指定会话并通过令牌连接 DSH。'));
-  const username = field(body, '用户名', 'text', 'new-user-username', '英文、数字、下划线或短横线'), name = field(body, '显示名称', 'text', 'new-user-name', '在会话中展示的名称'), password = field(body, '初始密码', 'password', 'new-user-password', '10–200 个字符'); password.autocomplete = 'new-password'; password.minLength = 10; password.maxLength = 200;
-  const row = el('label', 'checkbox-row'), bot = el('input'); bot.type = 'checkbox'; bot.id = 'new-user-bot'; row.append(bot, document.createTextNode('这是一个 DSH / AI 工作伙伴账号')); body.append(row); const showError = modalError(body);
+function openCreateUser(asAssistant = false) {
+  const { body, footer } = openModal('添加成员');
+  const username = field(body, '账号', 'text', 'new-user-username', '英文、数字、下划线或短横线'), name = field(body, '昵称', 'text', 'new-user-name', '聊天中显示的名字'), password = field(body, '密码', 'password', 'new-user-password', '10–200 个字符'); password.autocomplete = 'new-password'; password.minLength = 10; password.maxLength = 200;
+  const row = el('label', 'checkbox-row'), bot = el('input'); bot.type = 'checkbox'; bot.id = 'new-user-bot'; bot.checked = asAssistant === true; row.append(bot, document.createTextNode('助手账号')); body.append(row); const showError = modalError(body);
   const submit = button('创建账号', 'primary', async () => { if (password.value.length < 10 || password.value.length > 200) { showError(new Error('密码长度需要为 10–200 个字符。')); return; } submit.disabled = true; try { const u = await post('/api/admin/users', { username: username.value.trim(), display_name: name.value.trim(), password: password.value, is_bot: bot.checked }); password.value = ''; S.users = await api('/api/users'); toast(`已创建 ${u.display_name}`); openMembers(); } catch (e) { showError(e); } finally { submit.disabled = false; } }); footer.append(button('取消', 'secondary', () => $('modal').close()), submit);
 }
 async function openBotToken() {
   try { S.users = await api('/api/users'); } catch (e) { toast(errorText(e)); return; }
-  const { body, footer } = openModal('DSH 连接令牌'); body.append(el('p', 'modal-description', '令牌授予机器人读取已加入会话与回复的权限。请保存在运行 DSH 的机器上，不要发送到聊天中。'));
-  const bots = S.users.filter((u) => u.is_bot); if (!bots.length) { body.append(el('p', 'modal-description', '请先创建一个 AI 伙伴账号。')); footer.append(button('创建 AI 伙伴', 'primary', openCreateUser)); return; }
-  const wrap = el('div', 'field'), label = el('label', '', '选择 AI 伙伴'), select = el('select'); select.id = 'bot-token-user'; label.htmlFor = select.id; bots.forEach((u) => { const option = el('option', '', `${u.display_name}（${u.username}）`); option.value = u.id; select.append(option); }); wrap.append(label, select); body.append(wrap); const showError = modalError(body);
-  const generate = button('生成连接令牌', 'primary', async () => { generate.disabled = true; try { const { token } = await post(`/api/admin/users/${encodeURIComponent(select.value)}/token`); body.replaceChildren(el('p', 'token-warning', '此令牌仅显示一次，有效期 90 天。关闭后本客户端不会保存，请复制到 DSH 的本地私有配置。')); const output = el('textarea', 'token-display'); output.value = token; output.readOnly = true; output.setAttribute('aria-label', 'DSH 连接令牌'); body.append(output); footer.replaceChildren(button('复制令牌', 'secondary', async () => { try { await navigator.clipboard.writeText(token); toast('已复制令牌，请妥善保存。'); } catch { output.focus(); output.select(); toast('请按 Ctrl+C 复制选中的令牌。'); } }), button('完成', 'primary', () => $('modal').close())); } catch (e) { showError(e); generate.disabled = false; } }); footer.append(button('取消', 'secondary', () => $('modal').close()), generate);
+  const { body, footer } = openModal('连接助手');
+  const bots = S.users.filter((u) => u.is_bot); if (!bots.length) { body.append(el('p', 'modal-description', '请先添加一个助手账号。')); footer.append(button('添加助手', 'primary', () => openCreateUser(true))); return; }
+  const wrap = el('div', 'field'), label = el('label', '', '选择助手'), select = el('select'); select.id = 'bot-token-user'; label.htmlFor = select.id; bots.forEach((u) => { const option = el('option', '', nameFor(u)); option.value = u.id; select.append(option); }); wrap.append(label, select); body.append(wrap, el('p', 'modal-description', '连接后，助手可查看所在聊天的消息和文件。')); const showError = modalError(body);
+  const generate = button('生成连接码', 'primary', async () => { generate.disabled = true; try { const { token } = await post(`/api/admin/users/${encodeURIComponent(select.value)}/token`); body.replaceChildren(el('p', 'token-warning', '连接码仅显示一次，90 天内有效。请妥善保存，不要分享。')); const output = el('textarea', 'token-display'); output.value = token; output.readOnly = true; output.setAttribute('aria-label', '连接码'); body.append(output); footer.replaceChildren(button('复制', 'secondary', async () => { try { await navigator.clipboard.writeText(token); toast('已复制。'); } catch { output.focus(); output.select(); toast('请按 Ctrl+C 复制。'); } }), button('完成', 'primary', () => $('modal').close())); } catch (e) { showError(e); generate.disabled = false; } }); footer.append(button('取消', 'secondary', () => $('modal').close()), generate);
 }
 
 $('new-chat').addEventListener('click', () => openNewConversation()); $('empty-new-chat').addEventListener('click', () => openNewConversation()); $('nav-members').addEventListener('click', openMembers); $('nav-settings').addEventListener('click', openSettings); $('nav-chats').addEventListener('click', () => $('modal').close());
@@ -285,6 +302,7 @@ $('nav-logout').addEventListener('click', async () => { try { await post('/api/l
 $('conversation-search').addEventListener('input', renderConversations); $('toggle-details').addEventListener('click', () => { S.details = !S.details; renderDetails(); }); $('load-history').addEventListener('click', () => loadMessages(true).catch((e) => toast(errorText(e))));
 for (const event of ['wheel', 'touchstart', 'pointerdown', 'keydown']) $('messages').addEventListener(event, () => { S.scrollIntent++; }, { passive: true });
 $('composer').addEventListener('submit', (e) => { e.preventDefault(); sendText(); }); $('message-input').addEventListener('input', updateCounter); $('message-input').addEventListener('compositionstart', () => { S.composing = true; }); $('message-input').addEventListener('compositionend', () => { S.composing = false; }); $('message-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !S.composing && e.keyCode !== 229) { e.preventDefault(); sendText(); } });
+$('mention-assistant').addEventListener('click', () => { const input = $('message-input'); const start = input.selectionStart, end = input.selectionEnd; input.setRangeText('@dsh ', start, end, 'end'); input.focus(); updateCounter(); });
 function pickFiles(accept = '') { if (!S.selected) return; $('file-input').accept = accept; $('file-input').value = ''; $('file-input').click(); }
 $('attach-file').addEventListener('click', () => pickFiles()); $('attach-image').addEventListener('click', () => pickFiles('image/*')); $('attach-media').addEventListener('click', () => pickFiles('audio/*,video/*')); $('file-input').addEventListener('change', (e) => queueFiles([...e.target.files]));
 let dragDepth = 0;
@@ -294,3 +312,4 @@ window.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('
 $('close-image').addEventListener('click', () => $('image-modal').close()); $('image-modal').addEventListener('click', (e) => { if (e.target === $('image-modal')) $('image-modal').close(); }); $('image-modal').addEventListener('close', () => $('preview-image').removeAttribute('src')); $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').close(); }); $('modal').addEventListener('close', () => { if (!$('modal').open) $('modal-content').replaceChildren(); });
 window.addEventListener('online', () => { if (S.token) connectSocket(); }); document.addEventListener('visibilitychange', () => { if (!document.hidden && S.token) { refreshConversations().catch(() => {}); if (S.socket?.readyState !== WebSocket.OPEN) connectSocket(); } });
 $('server-url').value = readPreference('teamrelay.server') || (['http:', 'https:'].includes(location.protocol) ? location.origin : 'http://127.0.0.1:18200'); $('username').value = readPreference('teamrelay.username');
+$('connection-settings').open = !readPreference('teamrelay.server');

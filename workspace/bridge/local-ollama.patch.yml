@@ -1,0 +1,35 @@
+# Isolated local-model smoke only. No paid route, no execution tools, no secrets.
+- id: llm-deepseek
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-working-directory
+  disabled: true
+- id: persistent-pwsh
+  disabled: true
+- id: persistent-bash
+  disabled: true
+- insert:
+    - id: local-ollama-llm
+      name: '@deepseek-ai/dsh-llm-pi-ai'
+      config:
+        providers:
+          local-ollama:
+            api: openai-completions
+            baseURL: http://127.0.0.1:11435/v1
+            headers:
+              Authorization: Bearer local-no-secret
+            timeoutMs: 110000
+            streamIdleTimeoutMs: 110000
+            retryPolicy:
+              mode: normal
+              maxRetries: 0
+            compat:
+              supportsDeveloperRole: false
+              maxTokensField: max_tokens
+            models:
+              - id: qwen2.5:3b
+                contextWindow: 32768
+                maxTokens: 128
+                input: [text]
+                reasoningEfforts: false
