@@ -1,0 +1,17 @@
+{
+  "baseUrl": "http://127.0.0.1:18200",
+  "tokenEnv": "TEAM_RELAY_BOT_TOKEN",
+  "botUsername": "dsh",
+  "conversationIds": [],
+  "senderIds": [],
+  "pollMilliseconds": 2000,
+  "statePath": "../../environment/data/bridge/state.json",
+  "harness": {
+    "profile": "sdk",
+    "dshHome": "../../environment/tools/dsh/home",
+    "cwd": "../../environment/tools/dsh/tasks",
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash",
+    "initializeTimeoutMs": 60000
+  }
+}

@@ -1,0 +1,11 @@
+{$IM_DOMAIN} {
+    request_body {
+        max_size 101MB
+    }
+    reverse_proxy im:18200
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        -Server
+    }
+}

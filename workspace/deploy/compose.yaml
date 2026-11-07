@@ -1,0 +1,35 @@
+name: team-relay
+services:
+  im:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      IM_DATA_DIR: /data
+    volumes:
+      - im-data:/data
+    expose:
+      - "18200"
+    security_opt:
+      - no-new-privileges:true
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      IM_DOMAIN: ${IM_DOMAIN:?Set IM_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      im:
+        condition: service_healthy
+volumes:
+  im-data:
+  caddy-data:
+  caddy-config:

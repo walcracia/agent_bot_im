@@ -1,0 +1,9 @@
+node_modules
+dist
+data
+tests
+docs
+bridge
+.env
+**/__pycache__
+.pytest_cache

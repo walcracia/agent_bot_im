@@ -1,0 +1,14 @@
+{
+  "name": "team-relay-dsh-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Authenticated IM event consumer using the official DeepSeek Harness SDK",
+  "scripts": {
+    "start": "node bridge.mjs",
+    "handshake": "node bridge.mjs --handshake",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=24.9.0" },
+  "dependencies": { "@deepseek-ai/dsh-sdk-client": "0.2.2-rc.1" }
+}

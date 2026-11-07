@@ -1,10 +1,27 @@
 {
+  "version": "0.1.0",
+  "updated_at": "2026-11-07T22:05:56.0933760+08:00",
+  "pending": [
+    "UI simplification using Impeccable",
+    "Tencent remote deployment requires server details",
+    "real DSH model task requires provider credentials"
+  ],
+  "github": {
+    "design_pushed": true,
+    "implementation_pushed": false,
+    "repository": "https://github.com/walcracia/agent_bot_im",
+    "account": "walcracia"
+  },
   "project": "agent-IM",
-  "updated_at": "2026-11-07T21:50:00+08:00",
-  "stage": "design-frozen",
-  "version": "0.1.0-design",
+  "verified": [
+    "26 Python tests",
+    "12 bridge tests",
+    "real two-user browser flow",
+    "official DSH SDK handshake and resume without model calls",
+    "Windows build and native login window",
+    "Docker health",
+    "backup and restore"
+  ],
   "local_url": "http://127.0.0.1:18200",
-  "github": {"account": "waternie", "status": "awaiting-empty-repository-or-cli-auth", "pushed": false},
-  "verified": [],
-  "pending": ["implementation", "tests", "DSH official protocol", "Windows build", "Tencent deployment credentials"]
+  "stage": "v0.1.0-verified-v0.1.1-ui-requested"
 }

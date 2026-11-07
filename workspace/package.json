@@ -1,0 +1,18 @@
+{
+  "name": "team-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "同频 · 小团队私有 IM Windows 客户端",
+  "main": "desktop/main.cjs",
+  "author": "walcracia",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "build": "node desktop/build.cjs",
+    "check": "node --check client/app.js && node --check desktop/main.cjs && node --check desktop/build.cjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.2.3"
+  }
+}
