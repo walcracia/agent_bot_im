@@ -12,7 +12,7 @@
 
 ## 目录和原则
 
-- 遵循父目录 `ENVIRONMENT-LAYOUT.txt`：源码 `workspace/`，资料 `references/`，交付 `outputs/`，本机环境 `environment/{config,scripts,logs,verification}`。
+- 遵循仓库内 `references/PROJECT-LAYOUT.md`：源码 `workspace/`，资料 `references/`，交付 `outputs/`，本机环境 `environment/{config,scripts,logs,verification}`。不再依赖旧电脑父目录的 `ENVIRONMENT-LAYOUT.txt`。
 - 在 `workspace/docs/` 维护 DESIGN、API、DECISIONS、PROCESS、TESTING、HANDOFF。每次阶段转换或实质变更同步记录。
 - 先写明设计和验收标准，再改源码。临时试验与正式验证区分，未执行/失败不可记作通过。
 - 密码、API key、聊天数据、附件、运行数据库、用户目录、原始日志不提交 GitHub。只提交示例配置和可复现的脱敏报告。
@@ -25,3 +25,10 @@
 
 v0.1：设计、IM 服务/客户端、访问隔离、媒体、DSH 适配与本机端到端验证、Windows 便携包、腾讯 Docker 部署资料。
 之后版本必须先记录新增范围和测试标准。
+
+## 多 agent 接续（2026-11-08）
+
+- 通用流程见 `.agents/skills/proj_multihandoff/SKILL.md`，用户要求的 skill 名称保留为 `proj_multihandoff`。首次提供 Git 地址；已有检出先检查工作树、远端和分支，再 `git pull --ff-only`。有本地修改时先保留，不自动 stash/reset。
+- 本仓库的开发变更需 commit、annotated tag、push，并查询远端确认；按明确文件清单暂存，不盲目提交其他人的改动。已发布 tag 不移动，不 force push。
+- `environment/state.json` 中历史验收与本次恢复状态分开；旧机器的账号、运行服务、工具、EXE 不因 clone 自动存在。
+- 本次安装 Hallmark 仅增加可用设计工具；后续用户明确要求使用时再读该 skill，已有 UI 约定仍见上文。

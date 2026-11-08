@@ -24,6 +24,8 @@ jobs:
         working-directory: workspace
       - run: node --test
         working-directory: workspace/bridge
+        env:
+          IM_TEST_PYTHON: python
   windows-client:
     runs-on: windows-latest
     steps:

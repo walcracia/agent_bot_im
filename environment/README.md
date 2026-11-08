@@ -1,5 +1,15 @@
 # 本机环境
 
+## 2026-11-08 干净检出恢复
+
+本目录下的 venv、工具、数据和私有配置不会随 Git 下载。以下历史记录不代表这台电脑已存在对应服务、账号、成品或授权。当前验收见 `state.json` 的 `current_checkout` 与 `../outputs/VERIFICATION-handoff-2026-11-08.md`。
+
+需要 PowerShell、Git、uv 和 Node。项目根执行 `environment/scripts/setup.ps1`，再执行 `environment/scripts/verify.ps1`。uv 不在 PATH 时通过 `-UvCommand` 指定；`-SkipDesktop` 跳过 Electron 依赖下载，仍可运行常规验收。新 venv 使用 uv managed Python 3.12，并将解释器保存在 `tools/python`，不依赖旧机器目录。常规验收使用临时数据、不会调用真实模型。
+
+首次使用需要自行创建管理员（见 `../workspace/README.md`）再启动。Git 不含演示密码或聊天数据；成品需要下载现有 Release 或运行 `npm run build`。真实 DSH 另按 `workspace/bridge/README.md` 准备，未因常规测试通过而自动恢复。
+
+## 2026-11-07 原开发机记录（历史）
+
 源码位于 `../workspace`；仅本项目的 venv、数据、日志和临时验证文件放在本目录。默认端口 `127.0.0.1:18200`，不修改同级服务。
 
 本机 Python 3.12.16 独立 venv；完整依赖锁为 config/requirements.lock.txt，服务器容器锁为workspace/requirements.lock.txt。Node22.14用于客户端开发/常规桥接测试，官方DSH Desktop路线使用其自带Node24。

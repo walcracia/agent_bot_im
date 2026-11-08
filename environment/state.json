@@ -1,28 +1,23 @@
 {
   "version": "0.1.1",
   "verified": [
-    "26 Python tests",
-    "12 bridge tests",
-    "real two-user browser text/media/reconnect/admin flow",
-    "official DSH SDK handshake and resume",
-    "real local Qwen SDK response",
-    "real IM-to-Harness-to-local-model-to-IM transport",
-    "Windows 0.1.1 build, asar allowlist and native login screenshot",
-    "Docker locked build, health, persistence restart and Compose config",
-    "backup and restore",
-    "Impeccable UI refinement and two bounded visual batches"
+    "26 Python tests on restored checkout",
+    "12 bridge reliability and isolated HTTP tests",
+    "Client and desktop JavaScript syntax checks",
+    "Locked Python and desktop dependency setup, repeated successfully",
+    "17 portable skill Git synchronization regression tests",
+    "Independent five-scenario skill behavior review",
+    "PowerShell script parsing",
+    "All three skill distributions match byte-for-byte"
   ],
-  "desktop": "outputs/TeamRelay-win32-x64/TeamRelay.exe",
-  "project": "agent-IM",
+  "desktop": "Not built or downloaded on this checkout; v0.1.1 binary is on GitHub Release",
+  "project": "agent-bot-im",
   "github": {
-    "source_commit": "aa08ed5",
+    "delivery_status": "Check remote main and peeled tag against git rev-parse HEAD; snapshot prepared before commit",
+    "restored_from": "3ff9870",
     "repository": "https://github.com/walcracia/agent_bot_im",
-    "account": "walcracia",
-    "source_pushed": true,
-    "source_version": "0.1.1",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1",
-    "release_published": true,
-    "windows_zip_sha256": "099760bae6e55877cb53b823d2057d818f9f06387645c3d76115ed7e322f5358"
+    "branch": "main",
+    "handoff_tag": "v0.1.1-handoff.1"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry"
@@ -31,7 +26,46 @@
     "Tencent production deployment requires actual server/domain details",
     "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
   ],
-  "updated_at": "2026-11-07T22:40:00.9174532+08:00",
-  "stage": "published-local-verified",
-  "local_url": "http://127.0.0.1:18200"
+  "updated_at": "2026-11-08T20:25:19.0228774+08:00",
+  "stage": "handoff-restored",
+  "local_url": "http://127.0.0.1:18200",
+  "historical_verification": {
+    "github": {
+      "source_commit": "aa08ed5",
+      "repository": "https://github.com/walcracia/agent_bot_im",
+      "account": "walcracia",
+      "source_pushed": true,
+      "source_version": "0.1.1",
+      "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1",
+      "release_published": true,
+      "windows_zip_sha256": "099760bae6e55877cb53b823d2057d818f9f06387645c3d76115ed7e322f5358"
+    },
+    "date": "2026-11-07",
+    "scope": "Original development machine; not evidence of this checkout",
+    "desktop": "outputs/TeamRelay-win32-x64/TeamRelay.exe",
+    "stage": "published-local-verified",
+    "verified": [
+      "26 Python tests",
+      "12 bridge tests",
+      "real two-user browser text/media/reconnect/admin flow",
+      "official DSH SDK handshake and resume",
+      "real local Qwen SDK response",
+      "real IM-to-Harness-to-local-model-to-IM transport",
+      "Windows 0.1.1 build, asar allowlist and native login screenshot",
+      "Docker locked build, health, persistence restart and Compose config",
+      "backup and restore",
+      "Impeccable UI refinement and two bounded visual batches"
+    ]
+  },
+  "current_checkout": {
+    "docker_or_production_revalidated": false,
+    "python": "3.12.15 (project uv-managed interpreter)",
+    "skill": ".agents/skills/proj_multihandoff/SKILL.md",
+    "private_demo_data_restored": false,
+    "verification_report": "outputs/VERIFICATION-handoff-2026-11-08.md",
+    "service_started": false,
+    "node": "24.19.0",
+    "date": "2026-11-08",
+    "dsh_installed_or_called": false
+  }
 }

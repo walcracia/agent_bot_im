@@ -1,5 +1,21 @@
 # 当前接续状态
 
+## 2026-11-08 · 新工作目录接续
+
+本节覆盖下方历史记录中与本机运行状态有关的描述。仓库入口是根 `RESTORE.md`，先检查 Git 并安全拉取，再读 AGENTS、state、设计与本文件；不用旧聊天作为恢复依赖。
+
+- 远端：`https://github.com/walcracia/agent_bot_im.git`，分支 `main`；本轮从 `3ff9870` 克隆到 `D:/Work/CodexProjects/agent-bot-im`。后续以 `git rev-parse HEAD` 和远端实际值为准。
+- 保留 `workspace/references/outputs/environment` 结构，将已缺失的父目录布局约定保存为 `references/PROJECT-LAYOUT.md`，移除恢复入口对旧盘符的依赖。
+- `setup.ps1` 支持 `-UvCommand`、`-SkipDesktop`；首次 venv 使用隔离 managed Python，避免 LibreOffice 内置解释器无法建环境的问题。依赖按已有锁安装；本轮结果见 `outputs/VERIFICATION-handoff-2026-11-08.md`。
+- 已安装 Hallmark，未改变现有 UI。来源、版本和安装入口见 `references/SKILL-SOURCES.md`。
+- 多 Agent 原则与同步工具随 Git 保存在 `.agents/skills/proj_multihandoff/`；本机安装和父目录独立副本见来源文档。后续修改先改 Git 内源包，同步其他副本并校验。
+- 本轮只恢复开发依赖和常规验收；没有复制旧演示账号/聊天数据，没有启动常驻 IM、下载旧 EXE、部署腾讯或调用真实 DSH 模型。历史 UI、Docker、真实模型结果保持历史属性。
+- 本次修改按新的 `v0.1.1-handoff.1` annotated tag 交付，不移动已发布 tag。报告中的“提交前”表示快照状态；最终是否上传需查询远端分支和 tag，不能从静态文件推定。
+
+下一步由用户确定产品开发范围；现有待办仍是腾讯部署所需实际信息，以及复杂 DSH 工具/媒体任务的独立设计和验收。不要擅自扩大为 UI 重设计或付费模型测试。
+
+## 2026-11-07 历史交接原文
+
 日期：2026-11-07，阶段：v0.1.1本机交付与验证完成，源码已上传。
 
 必读：根 AGENTS/RESTORE、environment/state.json，然后 DESIGN/API/DECISIONS/PROCESS/TESTING。

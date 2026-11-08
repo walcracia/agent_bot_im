@@ -47,3 +47,16 @@
 - Release已公开（isDraft=false），ZIP 162,322,601字节，远端digest与本机SHA256一致：099760bae6e55877cb53b823d2057d818f9f06387645c3d76115ed7e322f5358；校验文件亦上传。链接：https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.1 。
 - 临时Docker验证容器/匿名测试卷已清理，镜像留存。本机18200与新版客户端保留运行供用户体验。
 - 用户追加要求新起子代理说明DSH/IM/代码项目/团队如何协作；已派生独立说明代理，只写TEAM-WORKFLOW.md，不改代码或原项目。说明必须区分当前串行单cwd实现与推荐的分支/审查工作方式。
+
+## 2026-11-08 · Git 接续与技能分发
+
+- 用户范围：安装 nutlope/hallmark、克隆 walcracia/agent_bot_im、保持项目布局、将本轮修改上传 Git，并将开发/交接原则固化为 `proj_multihandoff`，另留父目录可独立托管的副本。
+- 先读安装/创建技能规范；并行只读检查相邻项目与干净 clone 的恢复条件。父目录缺少旧 ENVIRONMENT-LAYOUT.txt；保留本仓库已有四层结构，将规则纳入仓库，不搬动邻居项目。
+- 从 main 的 3ff9870 克隆。Git 直连超时，使用系统已配置代理的单次 Git 参数成功，不改全局配置。Hallmark 经 skill-installer 安装，上游自带引用/主题校验通过。
+- 恢复时首次 uv 误选 LibreOffice 嵌入式 Python，创建失败；第二次原脚本只检查 exe 存在，随后 pip 无法运行。保留本轮失败 venv 到忽略的 build 目录，改用项目 tools 内 managed Python，增加 uv 路径参数、Python 可运行检查与按需跳过桌面依赖；锁文件未升级。
+- 验收范围：原有服务器/备份/桥接与语法检查、安装脚本可重复执行、PowerShell 解析、同步脚本隔离 Git 回归、skill 三副本内容核对与远端 SHA 确认。产品 UI/模型/生产部署没有本轮改动，不重复调用对应外部服务。
+- 修正可选 Linux CI 模板的桥接测试 Python 路径。历史状态和本机恢复状态分开记录；未验证部分明确保留。
+- 独立 skill 包先在父目录 skill/proj_multihandoff 编写并测试，再集成到仓库 .agents/skills 与本机技能目录。用户指定下划线名称优先，标准 hyphen-case 校验对此命名例外需单独说明；其余结构和内容照常验证。
+- 最终实测及限制见 outputs/VERIFICATION-handoff-2026-11-08.md；本轮只推送当前项目仓库。独立副本无新远端地址，由用户另行托管。
+- 集成后发现 skill 测试将临时仓库建在技能目录内，落入真实项目 Git 时被嵌套仓库保护正确拒绝。测试夹具改用系统临时目录，项目 cwd 下完整17项复验通过；未放宽同步脚本的仓库保护。失败产物保留在忽略的 verification 目录。
+- 发布脚本改为必须传入明确 Files 列表、拒绝已有暂存内容、只推指定 tag，并去除修改全局 Git 凭证的命令，使脚本与交接原则一致。独立临时仓库实测通过；另实际复现旧脚本在 topic 提交打标签却只推旧 main 的问题，增加 main 前置限制后，topic/detached 拒绝且保留全部状态的复验通过。

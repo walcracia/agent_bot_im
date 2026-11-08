@@ -13,7 +13,7 @@
 
 浏览器访问 `http://127.0.0.1:18200`，或打开 `outputs/TeamRelay-win32-x64/TeamRelay.exe`。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。
 
-本机已显式生成隔离演示数据，随机账号保存在 `environment/config/demo-accounts.json`，其中 admin 为管理员、alice/bob 为普通用户、dsh 为助手。该文件不进仓库，切勿用演示数据直接上线。
+2026-11-07 原开发机曾显式生成隔离演示数据，随机账号放在 `environment/config/demo-accounts.json`。该文件不进仓库，干净 clone 不含演示账号或运行数据库。首次使用请按下方创建管理员；切勿用演示数据直接上线。
 
 首次正式管理员设置（运行在 workspace 目录；密码从当前进程环境获取，不放命令参数）：
 
@@ -55,6 +55,6 @@ npm run build
 
 ## 版本发布
 
-根目录脚本 `environment/scripts/publish-iteration.ps1 -Version v0.1.1 -Message '说明'` 先验证再 commit/tag/push。GitHub 默认仓库 `walcracia/agent_bot_im`，使用本机 `gh auth login` 授权，代码中没有令牌。
+根目录脚本 `environment/scripts/publish-iteration.ps1 -Version <新标签> -Message <说明> -Files <本轮文件列表>` 可先验证再 commit/tag/push；执行前审查其暂存范围及工作树。脚本拒绝混入已有暂存内容，只推送本次指定标签，不改全局凭证配置；本机 Git 凭证管理需事先可用。必须选择未使用的新 tag，已有 v0.1.1 不可重用。GitHub 默认仓库 `walcracia/agent_bot_im`，代码中没有令牌。通用接续要求见根 AGENTS 和 `proj_multihandoff`。
 
 限制：首版没有实时音视频通话、转码、集群或端到端加密。DSH 官方 SDK 初始化/恢复与既有本地 Qwen 文本推理已验证；真实IM→Harness→本地模型→回复传输通过，但模型多输出前缀，严格答复格式断言失败，未重试。工具/媒体理解/复杂任务及用户自己的DeepSeek付费模型未验证，见 bridge/LOCAL-MODEL-TEST.md。未取得腾讯地址/SSH/域名信息，尚未远程部署。
