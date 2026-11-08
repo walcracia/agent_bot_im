@@ -26,6 +26,8 @@
 v0.1：设计、IM 服务/客户端、访问隔离、媒体、DSH 适配与本机端到端验证、Windows 便携包、腾讯 Docker 部署资料。
 之后版本必须先记录新增范围和测试标准。
 
+v0.2.0 自动编码规格：`workspace/docs/DSH-AUTO-v0.2.0.md`。用户已选当前项目、普通讨论识别；仅授权群和成员、只读分类、本机CLI worker与独立Git副本。auto模式即使@/私聊也判断取消/已解决，mention模式兼容旧行为；首次auto跳过旧消息，失败不自动重做，同一工作目录的worker跨实例互斥。真实模型验收必须显式运行并限定会话数量，不把默认单测当真实改代码证据。
+
 ## 多 agent 接续（2026-11-08）
 
 - 通用流程见 `.agents/skills/proj_multihandoff/SKILL.md`，用户要求的 skill 名称保留为 `proj_multihandoff`。首次提供 Git 地址；已有检出先检查工作树、远端和分支，再 `git pull --ff-only`。有本地修改时先保留，不自动 stash/reset。

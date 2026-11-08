@@ -28,3 +28,5 @@ uv 未加入 PATH 时用 `setup.ps1 -UvCommand 'uv.exe的实际路径'`；仅恢
 当前 UI 为 v0.1.2，规格见 `workspace/docs/UI-v0.1.2.md`。完整浏览器验收可在项目根运行 `environment/venv/Scripts/python.exe environment/scripts/verify-ui-v0.1.2.py`，自动管理临时数据/服务，无需旧演示账号；源码内预览见 `outputs/design-preview-v0.1.2/index.html`。
 
 通用接续流程及独立安装方法见 [.agents/skills/proj_multihandoff/SKILL.md](.agents/skills/proj_multihandoff/SKILL.md)。
+
+服务/桥接当前为v0.2.0，桌面界面仍为v0.1.2。接续自动编码先读 `workspace/docs/DSH-AUTO-v0.2.0.md`、`workspace/bridge/README.md` 与本轮验收报告。真实团队的连接码/群绑定不在Git中；不要从测试日志推断正式监听已启动，也不要自动重做uncertain或routing_failed事件。

@@ -2,6 +2,8 @@
 
 小团队文字与文件沟通工具，Windows 客户端，Linux 私有服务器，支持图片、音频、视频和普通文件（每个文件严格小于 100 MB），可连接 DeepSeek Harness 工作助手。
 
+v0.2.0 可在授权项目群中识别普通讨论里的代码任务，由本机已安装 DSH 在独立工作副本中修改、测试并回传。首次绑定见 [本机自动编码接入](workspace/bridge/README.md)；现有 v0.1.2 Windows 客户端继续兼容。
+
 - [使用与开发入口](workspace/README.md)
 - [设计和接口](workspace/docs/DESIGN.md)
 - [腾讯服务器部署](workspace/deploy/README.md)

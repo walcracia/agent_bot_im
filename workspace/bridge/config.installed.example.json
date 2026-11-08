@@ -1,0 +1,23 @@
+{
+  "executor": "installed-headless",
+  "triggerMode": "auto",
+  "baseUrl": "http://127.0.0.1:18200",
+  "tokenEnv": "TEAM_RELAY_BOT_TOKEN",
+  "botUsername": "dsh",
+  "conversationIds": [],
+  "senderIds": [],
+  "pollMilliseconds": 2000,
+  "statePath": "../../environment/data/bridge-installed/state.json",
+  "contextMessages": 20,
+  "contextCharacters": 12000,
+  "harness": {
+    "cwd": "../../environment/tools/dsh/worktrees/agent-bot-im",
+    "cliPath": "D:/Work/ai/deepseek-harness/resources/runtime/cli/bin/dsh.cmd",
+    "runsPath": "../../environment/logs/dsh-installed",
+    "sessionMapPath": "../../environment/data/bridge-installed/sessions.json",
+    "auth": "stored",
+    "permissionMode": "danger-full-access",
+    "powershellPath": "pwsh",
+    "runTimeoutMs": 300000
+  }
+}

@@ -2,7 +2,48 @@
 
 先读根 `AGENTS.md`、`RESTORE.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`。详细设计见本目录 `DESIGN.md`，一手来源和文章摘要见 `references/DSH-SOURCES.md`。
 
-## Windows 官方 Desktop 路线
+## v0.2.0：本机已安装 DSH，普通讨论自动触发
+
+用户确认的当前路线。它复用本机 Desktop 自带 headless CLI 及其存储认证，创建独立原生会话，不操纵桌面上已经打开的聊天。无需下载本项目旧版隔离 Desktop 或 npm SDK 依赖；系统 Node>=24.9、PowerShell7 和已可用的 DSH 是前置条件。
+
+1. 先运行同频服务并用管理员创建助手账号，生成助手连接码，将它加入项目群。没有部署服务时先读 `workspace/README.md` 完成首次管理员设置。连接码不要发到聊天中。
+2. 在项目根准备一个新的独立 Git 工作副本。先用 `git worktree list` 检查已有副本；下面路径/分支都未使用时执行：
+
+   ```powershell
+   git worktree add -b dsh/agent-bot-im environment/tools/dsh/worktrees/agent-bot-im HEAD
+   .\workspace\bridge\connect-installed.ps1 -Workspace .\environment\tools\dsh\worktrees\agent-bot-im
+   ```
+
+   默认同频地址是 `http://127.0.0.1:18200`；远端用 `-BaseUrl https://实际同频域名`。DSH路径不同时用 `-CliPath`。连接脚本在本机安全输入连接码，按编号选择助手已加入的聊天与其中可派任务的成员，不用手抄ID。新绑定要求干净副本，不会清空/还原已有修改。
+3. 脚本保存无密钥的本机配置到忽略目录 `environment/config/bridge-installed.local.json` 并前台监听。原有桌面客户端v0.1.2可继续使用，团队不必换聊天操作方式。
+
+普通消息如“这个统计总少一个，需要修复并补上测试”会结合同群近期上下文交给只读分类器；确认是代码任务后，worker在绑定副本中工作并回群。闲聊、感谢、取消、已解决、未授权成员/群不启动worker。自动模式下私聊/明确@也必须经过判断；旧 `mention` 模式仍保留原行为。
+
+首次自动接入默认从当前消息位置开始，不执行旧群聊；20条/12000字符的同群近期历史可用作新消息背景。分类失败立即停止，不无限花费模型调用重试。当前一实例单项目，代码worker对同一规范化工作目录互斥；同频仍持续收发消息，本实例的识别/执行按事件排队，不将新讨论实时注入执行中的worker，也不声称完整的并行Super-agent。
+
+配置及后续重启：
+
+```powershell
+# 已绑定的副本即使有DSH留下的待审查修改，也无需重新配置或清空
+.\workspace\bridge\run-installed.ps1
+# 分类失败或执行中断后，先核对本机记录，再明确重试或跳过相应事件
+.\workspace\bridge\run-installed.ps1 -RetryEvent 123 -Once
+.\workspace\bridge\run-installed.ps1 -SkipEvent 123 -Once
+```
+
+不要同时给RetryEvent和SkipEvent。配置不同实例可用 `-ConfigPath`；即便状态不同，也不能让两个worker同时改同一个工作副本。异常锁不自动清理，按错误里给出的确切锁路径检查拥有者和相关子进程后再处理，保留任务状态与会话映射。执行中的任务不支持通过普通聊天即时接管/取消；后续取消消息经过分类不再新建代码任务。退出/中断后须按上述状态规则核对是否已经产生修改。
+
+示例为 `config.installed.example.json`。目录、CLI、派任务成员和权限只能由本机配置指定；默认worker沿用本机DSH技能的danger-full-access偏好，分类器强制read-only。该权限模式以当前OS用户权限为上限，独立worktree是变更隔离，不能当作OS级沙箱。模型在既有DSH认证下运行，连接码只用于IM，发给模型子进程前移除。原始JSONL与映射留本机，不推Git。
+
+真实验收见 `outputs/VERIFICATION-v0.2.0.md`。显式有成本的复验入口（不会加入默认测试）：
+
+```powershell
+environment/venv/Scripts/python.exe environment/scripts/verify-dsh-code-flow.py --live --worktree <新的干净独立Git副本>
+```
+
+它在当前项目副本中创建明确标注的微型错误夹具；只允许一次分类会话和一次编码worker，另核对文件/不变测试/独立pytest和幂等回复。夹具不是生产缺陷，生产代码不会因此自动合并。
+
+## 旧配置：项目隔离 Desktop / SDK 路线
 
 在项目根 PowerShell 执行：
 

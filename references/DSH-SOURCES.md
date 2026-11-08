@@ -2,6 +2,8 @@
 
 核验日期：2026-11-07（Asia/Shanghai）。微信文章用 PowerShell `Invoke-WebRequest` 读到 `activity-name` 与 `js_content`；网页检索工具打开该链接失败，不等同文章不可访问。下列为自行归纳，无整篇转载。
 
+2026-11-08再次核验：网页工具仍打不开微信链接，改用本机HTTP读取并提取完整js_content正文（原文只保留忽略目录）。同时核对官方prototype与SDK README。用户随后确认当前项目、普通讨论自动识别；v0.2.0据此完成单项目编码闭环，不宣称移植整套研究原型。实现及实际证据分别见DSH-AUTO-v0.2.0与VERIFICATION-v0.2.0。
+
 ## 文章对本项目的启发
 
 来源：[Super-agent 设计探索：迈向更自主的 Agent 系统](https://mp.weixin.qq.com/s/zoS7GlReWPhfCjENGxXCdg)，作者署名 DeepSeek Harness 团队。文章明确是工程架构探索，不能视作现成产品功能清单。

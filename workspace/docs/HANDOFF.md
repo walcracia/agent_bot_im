@@ -1,5 +1,16 @@
 # 当前接续状态
 
+## 2026-11-08 · v0.2.0 讨论自动编码
+
+用户确认当前agent-bot-im作为首个项目，普通讨论也自动识别任务。新增auto路由、同群有限上下文、本机installed-headless executor与交互绑定/重启入口。原SDK与mention配置保留，桌面界面无需升级，仍用v0.1.2。
+
+- 首次正式绑定：准备干净独立Git worktree，管理员在同频创建/加入助手并生成连接码，运行 `workspace/bridge/connect-installed.ps1 -Workspace <副本>`；在本机选群和派任务成员，不把码发聊天。后续用 `run-installed.ps1` 复用配置，已有代码改动不会被清空。
+- 本机CLI已验证 `D:/Work/ai/deepseek-harness/resources/runtime/cli/bin/dsh.cmd`，0.2.2-rc.1。新模式复用其存储认证和原生持久会话，不需第二套Desktop；逻辑session→原生ID映射在本地，与工作目录绑定。
+- 真实无@消息→只读分类→本机worker修改隔离代码夹具→指定测试→IM最终回复已通过；独立pytest通过、测试文件未变；丢回复确认后新executor/重载状态只重发结果，不再次调用识别/编码。夹具在本仓库的隔离worktree中，不是生产缺陷修复，也没有合并进主代码。
+- 记录见 `outputs/VERIFICATION-v0.2.0.md`，显式复验脚本 `environment/scripts/verify-dsh-code-flow.py --live --worktree <新的干净副本>`。普通检查不会调用模型。验收目录保留原始本机证据，不进Git。
+- 分类失败保存routing_failed并停止；执行中断保持uncertain并在群里给简短提示；需人工核对后RetryEvent/SkipEvent。新auto不执行历史积压，当前任务串行，未实现文章全套并行调度/语义Watchdog/实时接管/自动PR合并。
+- 正式同频服务、真实成员/群绑定尚由操作者在本机配置，本轮只启动并关闭了隔离验收服务，没有声称已经常驻监听真实团队聊天。跨实例cwd锁和状态锁均不自动删旧锁。
+
 ## 2026-11-08 · v0.1.2 界面减负
 
 当前 UI 规格为 `UI-v0.1.2.md`，覆盖下方历史界面说明：紧凑单列登录、一个附件入口与自增长输入框、减少常驻信息、连续消息分组且每条时间可键盘查看、成员直接私聊。品牌与全部通讯/管理/助手功能保留，真实 `@dsh ` 触发未变。
