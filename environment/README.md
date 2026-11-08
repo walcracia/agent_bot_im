@@ -6,6 +6,8 @@
 
 需要 PowerShell、Git、uv 和 Node。项目根执行 `environment/scripts/setup.ps1`，再执行 `environment/scripts/verify.ps1`。uv 不在 PATH 时通过 `-UvCommand` 指定；`-SkipDesktop` 跳过 Electron 依赖下载，仍可运行常规验收。新 venv 使用 uv managed Python 3.12，并将解释器保存在 `tools/python`，不依赖旧机器目录。常规验收使用临时数据、不会调用真实模型。
 
+v0.1.2 的完整界面验收入口是 `environment/venv/Scripts/python.exe environment/scripts/verify-ui-v0.1.2.py`，需要系统 Chrome。它自动创建随机测试账号、临时数据库与端口，在当前 Python 进程内管理测试服务，退出时关闭并清理；报告/截图在 `environment/verification/ui-v0.1.2/`。可用 `--fixture-only` 单独检查服务生命周期，不依赖旧演示账号或常驻服务。
+
 首次使用需要自行创建管理员（见 `../workspace/README.md`）再启动。Git 不含演示密码或聊天数据；成品需要下载现有 Release 或运行 `npm run build`。真实 DSH 另按 `workspace/bridge/README.md` 准备，未因常规测试通过而自动恢复。
 
 ## 2026-11-07 原开发机记录（历史）

@@ -1,23 +1,26 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "verified": [
-    "26 Python tests on restored checkout",
-    "12 bridge reliability and isolated HTTP tests",
-    "Client and desktop JavaScript syntax checks",
-    "Locked Python and desktop dependency setup, repeated successfully",
-    "17 portable skill Git synchronization regression tests",
-    "Independent five-scenario skill behavior review",
-    "PowerShell script parsing",
-    "All three skill distributions match byte-for-byte"
+    "26 Python tests",
+    "12 bridge tests",
+    "Desktop and client JavaScript syntax checks",
+    "13 real isolated browser acceptance checks; zero page errors",
+    "Hallmark app render and kept: zero FAIL, REFLEX and WARN",
+    "Independent fresh-context finish review: ship, zero findings",
+    "Windows v0.1.2 build and packaged client byte equality",
+    "Interactive preview gallery and screenshot provenance"
   ],
-  "desktop": "Not built or downloaded on this checkout; v0.1.1 binary is on GitHub Release",
+  "desktop": "outputs/TeamRelay-win32-x64/TeamRelay.exe (local build; binaries are not in Git)",
   "project": "agent-bot-im",
   "github": {
-    "delivery_status": "Check remote main and peeled tag against git rev-parse HEAD; snapshot prepared before commit",
+    "delivery_status": "Pre-commit snapshot; verify remote main, peeled v0.1.2 tag and Release assets against Git and SHA256SUMS-v0.1.2.txt",
     "restored_from": "3ff9870",
     "repository": "https://github.com/walcracia/agent_bot_im",
     "branch": "main",
-    "handoff_tag": "v0.1.1-handoff.1"
+    "handoff_tag": "v0.1.1-handoff.1",
+    "source_version": "0.1.2",
+    "release_tag": "v0.1.2",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.1.2"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry"
@@ -26,8 +29,8 @@
     "Tencent production deployment requires actual server/domain details",
     "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
   ],
-  "updated_at": "2026-11-08T20:25:19.0228774+08:00",
-  "stage": "handoff-restored",
+  "updated_at": "2026-11-08T21:06:52.9767636+08:00",
+  "stage": "ui-verified-release-candidate",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -62,10 +65,14 @@
     "python": "3.12.15 (project uv-managed interpreter)",
     "skill": ".agents/skills/proj_multihandoff/SKILL.md",
     "private_demo_data_restored": false,
-    "verification_report": "outputs/VERIFICATION-handoff-2026-11-08.md",
+    "verification_report": "outputs/VERIFICATION-v0.1.2.md",
     "service_started": false,
     "node": "24.19.0",
     "date": "2026-11-08",
-    "dsh_installed_or_called": false
+    "dsh_installed_or_called": false,
+    "isolated_ui_verified": true,
+    "desktop_built": true,
+    "native_desktop_window_verified": false,
+    "preview": "outputs/design-preview-v0.1.2/index.html"
   }
 }

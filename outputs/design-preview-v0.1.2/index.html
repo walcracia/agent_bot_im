@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="同频 v0.1.2 真实界面截图预览。">
+  <title>同频界面预览</title>
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <header>
+    <div><h1>同频界面预览</h1><p>v0.1.2 新版界面。当前代码的真实浏览器截图，消息与账号均为合成演示数据。</p></div>
+    <span class="status">真实浏览器验收截图</span>
+  </header>
+  <nav aria-label="选择界面">
+    <button type="button" data-page="login" aria-pressed="true">登录</button>
+    <button type="button" data-page="chat" aria-pressed="false">聊天</button>
+    <button type="button" data-page="attachments" aria-pressed="false">附件菜单</button>
+    <button type="button" data-page="members" aria-pressed="false">成员</button>
+    <button type="button" data-page="settings" aria-pressed="false">设置</button>
+  </nav>
+  <main>
+    <section class="summary" aria-labelledby="page-title">
+      <div><h2 id="page-title">紧凑登录</h2><p id="page-note">移除半屏标语，品牌与登录表单集中呈现。</p></div>
+      <div class="controls">
+        <label for="size">截图尺寸</label>
+        <select id="size"><option value="1280">1280 × 860</option><option value="960">960 × 680</option><option value="375">375 × 812</option></select>
+        <label class="compare-control"><input id="compare" type="checkbox">对照旧登录页</label>
+      </div>
+    </section>
+    <div id="screens" class="screens">
+      <figure id="before-figure" hidden><figcaption>原登录页 1280 × 800</figcaption><a href="images/login-before-1280.png" target="_blank" rel="noopener"><img src="images/login-before-1280.png" alt="原登录页，左半屏为绿色标语区，右侧为登录表单" width="1280" height="800"></a></figure>
+      <figure><figcaption id="screen-caption">新版登录 1280 × 860</figcaption><a id="screen-link" href="images/login-1280.png" target="_blank" rel="noopener"><img id="screen" src="images/login-1280.png" alt="新版同频登录页，居中的品牌和登录表单" width="1280" height="860"></a></figure>
+    </div>
+    <p class="footnote">点击截图可打开原尺寸图。登录地址是隔离测试服务的临时本机地址，不是生产部署地址。只有登录页提供真实前后对照，聊天页没有伪造旧版截图。</p>
+  </main>
+</body>
+</html>

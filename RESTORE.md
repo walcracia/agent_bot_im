@@ -23,6 +23,8 @@
 
 uv 未加入 PATH 时用 `setup.ps1 -UvCommand 'uv.exe的实际路径'`；仅恢复服务与常规测试可加 `-SkipDesktop`。首次使用 managed Python 3.12，解释器下载到忽略目录 `environment/tools/python`。不借用办公软件内置解释器。
 
-常规验收不需要演示账号或模型密钥。首次启动/建管理员见 `workspace/README.md`；真实模型与腾讯部署另有前提。Git 不含账号/聊天/附件/venv/DSH/桌面二进制；Windows 成品从现有 v0.1.1 Release 获取或按锁文件构建。历史通过项不能当作本机复验通过。
+常规验收不需要演示账号或模型密钥。首次启动/建管理员见 `workspace/README.md`；真实模型与腾讯部署另有前提。Git 不含账号/聊天/附件/venv/DSH/桌面二进制；Windows 成品从对应版本 Release 获取或按锁文件构建。历史通过项不能当作本机复验通过。
+
+当前 UI 为 v0.1.2，规格见 `workspace/docs/UI-v0.1.2.md`。完整浏览器验收可在项目根运行 `environment/venv/Scripts/python.exe environment/scripts/verify-ui-v0.1.2.py`，自动管理临时数据/服务，无需旧演示账号；源码内预览见 `outputs/design-preview-v0.1.2/index.html`。
 
 通用接续流程及独立安装方法见 [.agents/skills/proj_multihandoff/SKILL.md](.agents/skills/proj_multihandoff/SKILL.md)。

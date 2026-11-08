@@ -9,5 +9,6 @@
 - [恢复与接续](RESTORE.md)
 - [多 agent 接续 skill](.agents/skills/proj_multihandoff/SKILL.md)（首次传 Git 地址，后续检查并 pull）
 - [自包含目录约定](references/PROJECT-LAYOUT.md)
+- [v0.1.2 新版界面预览](outputs/design-preview-v0.1.2/index.html)（真实验收截图，可切换页面与尺寸）
 
 源码在 workspace，交付在 outputs，本机配置与数据在 environment（敏感内容不进 Git）。每个已验证迭代均提交和打 tag，见本仓库 Releases/Tags。

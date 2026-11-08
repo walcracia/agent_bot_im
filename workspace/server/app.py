@@ -27,7 +27,7 @@ from .db import Store, now, password_hash, password_matches, public_user, token_
 
 MAX_FILE_BYTES = 100_000_000
 MAX_UPLOAD_BODY = MAX_FILE_BYTES + 65_536
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 bearer = HTTPBearer(auto_error=False)
 
 
