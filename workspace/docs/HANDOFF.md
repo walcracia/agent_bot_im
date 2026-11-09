@@ -1,10 +1,14 @@
 # 当前接续状态
 
-## 2026-11-09 · v0.3.0 Super-agent 已验证候选
+## 2026-11-09 · v0.3.0 最终实际交付
 
-用户要求补齐Super-agent所有缺口，并明确继续本机。先读SUPERAGENT-v0.3.0及各SUPER模块设计/操作。新控制器、每任务并发worktree/session、原生next-step及消费回执、Thread订阅/引用图召回、独立语义Watchdog、remote-tools环境分离、GitHub与发布流水线已实现。完整验收26 Python/最终208 Node/16编排；真实模型3个worker会话+原A额外1turn、Router/监督各1只读会话，详见outputs/VERIFICATION-v0.3.0.md，首轮失败与追加预算保留。
+PR #1已由可信测试策略自动合并：b8cc74166072b0f4c559426d758dd21838838860。最终冷副本26 Python/256 Node/语法通过，源码与索引未变；16项Windows编排另行通过。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.0 已发布，annotated tag及两个资产的远端digest确认。Windows ZIP 74文件、162325663字节，SHA256 58f7e07e06ad47065e645ea89a959dd8a3b742ed9df3ea6f81894282e7614012；CRC/每文件hash、ASAR9条目和6源码字节比较通过，PE/manifest为0.3.0。
 
-当前处于本机启用/远端交付前快照。旧服务/监听最后仍为v0.2.2，新0.3.0 Windows包位于outputs/desktop-v0.3.0，不能从此处推断新模式已上线。启用要先正常stop、enable-super保留旧账本并继承确定游标、再start；HEAD必须已包含新代码供任务worktree使用。实际运行、tag和Release状态待本轮后续记录，不自动清空任何任务/锁。
+一次冷副本255/256因回执清理竞态被拦截，修正dispose等待后256/256通过；其后的旧代理端口连接失败发生在本地可信提交后、远端push前，未合并。读取当前Windows代理并仅更新本项目配置后复验/交付成功。所有失败证据保留，未增加模型调用。
+
+本机已重新启动0.3.0 IM、已绑定DSH和独立Watchdog，状态listening/ready；重复start复用通过。默认2任务并行、单项2小时，已启用静默主动核查、可信测试自动合并、顺序版本和合并后构建发布。未重新人工登录新EXE；腾讯未部署，按用户选择继续本机。
+
+先读SUPERAGENT及SUPER-OPERATIONS。已合并任务发送新修正会创建父引用后续任务，关闭未合并PR明确继续沿原副本/会话，恢复授权确认交付后消费。父目录skill/proj_multihandoff及本机技能副本已同步；新机器先setup并恢复自己的绑定/可信GitHub配置。以下均为历史记录，不代表当前运行。
 
 ## 2026-11-09 · v0.2.3 新Windows App
 

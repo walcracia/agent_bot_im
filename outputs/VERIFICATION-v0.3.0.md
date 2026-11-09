@@ -4,7 +4,7 @@
 
 ## 本轮结果
 
-- `environment/scripts/verify.ps1`及其后的最终桥接回归：26 Python、208 Node、16 Windows编排及客户端/桌面JS语法通过。旧Starlette/httpx弃用警告保留。
+- `environment/scripts/verify.ps1`及其后的最终桥接回归：26 Python、最终冷副本256 Node、16 Windows编排及客户端/桌面JS语法通过。旧Starlette/httpx弃用警告保留。
 - 新模式真实入口：Node控制器、独立Watchdog、隔离HTTP IM、PowerShell假DSH和临时Git，验证两任务并发、执行中状态/停止、一项取消不影响另一项、nonce正常停机、旧账本不覆盖。它是实际进程/传输测试，不是模型编码证据。
 - 冷工作副本独立验证：无副本venv/node_modules，显式可信解释器运行26 Python与当时快照200 Node；源码/测试/索引指纹不变。最终主检出已另外通过207 Node。具体脚本 `verify-task.ps1`。
 - 真实只读模型：Router一个会话正确判定明确新任务与“已解决不要修改”；独立语义Watchdog一个会话对明确标注的合成停滞事实给出steer。没有宣称监测到生产故障。
@@ -42,3 +42,11 @@
 独立审查补充终态提问不启动编码、一次关闭PR恢复授权在确认交付后消费、远程执行端共享串行交付器/可信最新base与版本配置、离线投机任务保持静默。最终协调器25项通过。随后实际冷副本gate为256项中的255通过、1项清理失败：原生inbox功能断言通过，但插件dispose未等待正在写入的回执，删除临时receipts目录遇ENOTEMPTY。失败原始诊断留本机，合并被拦截；修正与复验结果另行追加，不能把这轮记作通过。
 
 本机详细证据在忽略目录 `environment/verification/super-agent-v0.3.0`、`super-live`、`super-model`、`desktop-v0.3.0`。可复现入口与操作见 `workspace/docs/SUPER-OPERATIONS-v0.3.0.md`。
+
+## 2026-11-09 · v0.3.0 最终实际交付
+
+PR #1已由可信测试策略自动合并：b8cc74166072b0f4c559426d758dd21838838860。最终冷副本26 Python/256 Node/语法通过，源码与索引未变；16项Windows编排另行通过。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.0 已发布，annotated tag及两个资产的远端digest确认。Windows ZIP 74文件、162325663字节，SHA256 58f7e07e06ad47065e645ea89a959dd8a3b742ed9df3ea6f81894282e7614012；CRC/每文件hash、ASAR9条目和6源码字节比较通过，PE/manifest为0.3.0。
+
+一次冷副本255/256因回执清理竞态被拦截，修正dispose等待后256/256通过；其后的旧代理端口连接失败发生在本地可信提交后、远端push前，未合并。读取当前Windows代理并仅更新本项目配置后复验/交付成功。所有失败证据保留，未增加模型调用。
+
+本机已重新启动0.3.0 IM、已绑定DSH和独立Watchdog，状态listening/ready；重复start复用通过。默认2任务并行、单项2小时，已启用静默主动核查、可信测试自动合并、顺序版本和合并后构建发布。未重新人工登录新EXE；腾讯未部署，按用户选择继续本机。
