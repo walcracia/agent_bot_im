@@ -298,6 +298,7 @@ export class SuperCoordinator {
             current.updatedAt = this.now(); this.taskNode(data, current); return;
           }
           const current = data.tasks[id]; current.delivery = delivered; current.status = delivered.merged ? 'merged' : 'ready';
+          delete current.resumeClosedPr; current.prClosed = Boolean(delivered.merged); current.prMerged = Boolean(delivered.merged);
           delete current.noChanges;
           const thread = reference('thread', delivered.threadId);
           putNode(data.graph, { id: thread, kind: 'thread', projectId: current.projectId, conversations: [current.conversationId], text: delivered.url, links: [current.reference] });
@@ -437,6 +438,7 @@ export class SuperCoordinator {
       const current = data.tasks[id];
       if (current.status !== 'ready' || current.stopRequested) return;
       current.delivery = delivered;
+      if (!delivered.skipped) { delete current.resumeClosedPr; current.prClosed = Boolean(delivered.merged); current.prMerged = Boolean(delivered.merged); }
       if (delivered.merged) { current.status = 'merged'; this.enqueue(data, current.event, `#${id} 检查与评审满足策略，PR 已合并。`, `auto-merged-${id}-${delivered.head}`); }
       this.taskNode(data, current);
     });
