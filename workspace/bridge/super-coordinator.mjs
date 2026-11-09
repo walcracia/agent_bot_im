@@ -177,7 +177,7 @@ export class SuperCoordinator {
         const list = task ? [task] : Object.values(data.tasks).filter(item => item.conversationId === event.conversation_id).slice(-12);
         this.enqueue(data, event, list.length ? list.map(item => `#${item.id} ${labels[item.status] ?? item.status} · ${item.summary}${item.error ? `\n${item.error}` : ''}${item.watchdog?.reason ? `\n监督：${item.watchdog.reason}` : ''}${item.delivery?.url ? `\n${item.delivery.url}` : ''}`).join('\n') : '当前没有任务。', `status-${key}`);
       } else if (decision.action === 'details' && task) {
-        this.enqueue(data, event, `#${task.id} ${labels[task.status]}\n${task.error ?? task.result ?? '任务仍在处理。'}${task.assessment?.reason ? `\n监督记录：${task.assessment.reason}` : ''}${task.watchdog?.reason ? `\n暂停原因：${task.watchdog.reason}` : ''}${task.delivery?.url ? `\n${task.delivery.url}` : ''}${task.releaseError ? `\n发布：${task.releaseError}` : ''}`, `details-${key}`);
+        this.enqueue(data, event, `#${task.id} ${labels[task.status]}\n${task.error ?? task.result ?? '任务仍在处理。'}${task.assessment?.reason ? `\n监督记录：${task.assessment.reason}` : ''}${task.watchdog?.reason ? `\n暂停原因：${task.watchdog.reason}` : ''}${task.delivery?.url ? `\n${task.delivery.url}` : ''}${task.releaseError ? `\n发布：${task.releaseError}` : ''}${task.diagnosticPath || task.releaseDiagnosticPath ? `\n本机运行记录：${task.diagnosticPath ?? task.releaseDiagnosticPath}` : ''}`, `details-${key}`);
       } else if (decision.action === 'ambiguous') {
         this.enqueue(data, event, '请带上任务编号，例如“取消任务 #T000001”或“继续修正 #T000001”。发送“任务列表”可查看编号。', `ambiguous-${key}`);
       }
@@ -298,6 +298,7 @@ export class SuperCoordinator {
       const task = data.tasks[id]; if (!task) return;
       task.stopRequested = true; task.pauseRequested = true;
       task.status = 'paused'; task.error = String(error.message ?? error).slice(0, 1200); task.uncertain = error.processTreeStopped !== true;
+      if (error.diagnosticPath) task.diagnosticPath = error.diagnosticPath;
       task.updatedAt = this.now(); this.taskNode(data, task);
       this.enqueue(data, task.event, `#${id} 已暂停，已有修改和会话保留。${task.uncertain ? '需核对执行端是否已停止。' : ''}发送“继续修正 #${id}”接续，或“取消任务 #${id}”结束。`, `paused-${id}-${task.attempt}`);
     });
@@ -428,6 +429,7 @@ export class SuperCoordinator {
         });
       } catch (error) {
         await this.transaction(data => { const task = data.tasks[id]; task.releaseStatus = 'needs_attention'; task.releaseError = String(error.message).slice(0, 1200);
+          if (error.diagnosticPath) task.releaseDiagnosticPath = error.diagnosticPath;
           this.enqueue(data, task.event, `#${id} 代码已合并，发布需要检查：${task.releaseError}`, `release-error-${id}`); });
       }
     })();

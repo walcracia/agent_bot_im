@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { lstat, mkdtemp, readFile, readlink, realpath, rm, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { lstat, mkdir, mkdtemp, readFile, readlink, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -11,31 +11,71 @@ const TASK = /^[A-Za-z0-9_-]{1,80}$/;
 const SHA = /^[a-f0-9]{40,64}$/i;
 const login = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/.test(value);
 
+function commandEnvironment(file, source, extra = []) {
+  const env = { ...source }, github = /(?:^|[\\/])(?:git|gh)(?:\.exe)?$/i.test(file);
+  const denied = new Set(['TEAM_RELAY_BOT_TOKEN', 'SUPER_AGENT_CONTROL_TOKEN', 'SUPER_AGENT_DAEMON_TOKEN',
+    'SUPER_AGENT_CONTEXT_TOKEN', 'SUPER_AGENT_ENVIRONMENT_TOKEN', 'SUPER_AGENT_RESTART_TOKEN_BUNDLE', ...extra].map(name => name.toUpperCase()));
+  for (const key of Object.keys(env)) {
+    const upper = key.toUpperCase();
+    if (denied.has(upper) || (!github && (['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN'].includes(upper)
+      || /API[_-]?KEY|^(?:OPENAI|DEEPSEEK|ANTHROPIC|GEMINI|GOOGLE|AZURE|GROQ|MISTRAL|COHERE|FIREWORKS|TOGETHER|DSH)_.*(?:KEY|TOKEN)$/i.test(key)))) delete env[key];
+  }
+  return env;
+}
+
 export async function githubCommand(file, args, options = {}) {
   return executeFile(file, args, { cwd: options.cwd, windowsHide: true, shell: false,
     timeout: options.timeoutMs ?? 60000, maxBuffer: 16 * 1024 * 1024,
-    env: { ...process.env, ...options.env, GH_PROMPT_DISABLED: '1', GIT_TERMINAL_PROMPT: '0' } });
+    env: { ...commandEnvironment(file, options.env ?? process.env, options.secretEnvNames), GH_PROMPT_DISABLED: '1', GIT_TERMINAL_PROMPT: '0' } });
 }
 
 /** A trusted deployment proxy belongs to this Git call, never global Git or process settings. */
 export function configuredGithubCommand(options = {}) {
   const command = options.command ?? githubCommand;
+  const secrets = options.secretEnvNames ?? [];
+  if (!Array.isArray(secrets) || secrets.some(name => typeof name !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))) throw new Error('Invalid extra command secret environment names.');
+  const diagnostics = options.diagnosticsPath;
+  if (diagnostics !== undefined && (typeof diagnostics !== 'string' || !isAbsolute(diagnostics) || /[\0\r\n]/.test(diagnostics))) throw new Error('Command diagnosticsPath must be a trusted absolute directory.');
   let configured = options.gitProxy;
   if (options.proxyEnv !== undefined) {
     if (typeof options.proxyEnv !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(options.proxyEnv)) throw new Error('Invalid Git proxy environment name.');
     if (configured === undefined) configured = process.env[options.proxyEnv];
     if (configured === undefined) throw new Error('Configured Git proxy environment variable is missing.');
   }
-  if (configured === undefined) return command;
-  let url;
-  try { url = new URL(configured); } catch { throw new Error('Git proxy must be an HTTP(S) origin without credentials.'); }
-  if (typeof configured !== 'string' || !/^https?:\/\/[^/?#\\]+\/?$/i.test(configured) || /\s|[\0\r\n]/.test(configured) || !['http:', 'https:'].includes(url.protocol)
-      || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Git proxy must be an HTTP(S) origin without credentials.');
-  const proxy = url.origin;
-  return (file, args, call = {}) => {
-    if (!/(?:^|[\\/])git(?:\.exe)?$/i.test(file)) return command(file, args, call);
-    return command(file, ['-c', 'http.proxy=' + proxy, ...args], { ...call,
-      env: { ...call.env, HTTP_PROXY: proxy, HTTPS_PROXY: proxy, http_proxy: proxy, https_proxy: proxy } });
+  let proxy;
+  if (configured !== undefined) {
+    let url;
+    try { url = new URL(configured); } catch { throw new Error('Git proxy must be an HTTP(S) origin without credentials.'); }
+    if (typeof configured !== 'string' || !/^https?:\/\/[^/?#\\]+\/?$/i.test(configured) || /\s|[\0\r\n]/.test(configured) || !['http:', 'https:'].includes(url.protocol)
+        || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Git proxy must be an HTTP(S) origin without credentials.');
+    proxy = url.origin;
+  }
+  return async (file, args, call = {}) => {
+    let argv = args;
+    const env = commandEnvironment(file, call.env ?? process.env, secrets);
+    if (proxy && /(?:^|[\\/])git(?:\.exe)?$/i.test(file)) {
+      argv = ['-c', 'http.proxy=' + proxy, ...args];
+      Object.assign(env, { HTTP_PROXY: proxy, HTTPS_PROXY: proxy, http_proxy: proxy, https_proxy: proxy });
+    }
+    try {
+      const result = await command(file, argv, { ...call, env });
+      if (result && typeof result === 'object' && result.exitCode !== undefined && result.exitCode !== 0)
+        throw Object.assign(new Error('Subprocess exited unsuccessfully.'), { code: result.exitCode, stdout: result.stdout, stderr: result.stderr });
+      return result;
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      if (diagnostics) {
+        try {
+          await mkdir(diagnostics, { recursive: true, mode: 0o700 });
+          const path = join(diagnostics, `command-failure-${randomUUID()}.json`);
+          await writeFile(path, JSON.stringify({ at: new Date().toISOString(), executable: file, argv, cwd: call.cwd,
+            code: error.code ?? null, signal: error.signal ?? null, killed: Boolean(error.killed),
+            message: error.message, stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? '') }, null, 2), { flag: 'wx', mode: 0o600 });
+          error.diagnosticPath = path;
+        } catch { error.diagnosticUnavailable = true; }
+      }
+      throw error;
+    }
   };
 }
 
@@ -54,7 +94,11 @@ function actor(user) {
 async function output(command, file, args, options) {
   let result;
   try { result = await command(file, args, options); }
-  catch { throw new Error('GitHub, Git or verification command failed; inspect the local task environment.'); }
+  catch (cause) {
+    const error = new Error('GitHub, Git or verification command failed; inspect the local task environment.', { cause });
+    if (cause.diagnosticPath) error.diagnosticPath = cause.diagnosticPath;
+    throw error;
+  }
   if (result && typeof result === 'object' && result.exitCode !== undefined && result.exitCode !== 0) throw new Error(`${file} exited unsuccessfully.`);
   const text = typeof result === 'string' ? result : result?.stdout;
   if (typeof text !== 'string') throw new Error(`${file} returned no text output.`);

@@ -47,7 +47,11 @@ export class ReleasePipeline {
   async output(file, args, options = {}) {
     let result;
     try { result = await this.command(file, args, options); }
-    catch { throw new Error('Release command failed; inspect the local release environment.'); }
+    catch (cause) {
+      const error = new Error('Release command failed; inspect the local release environment.', { cause });
+      if (cause.diagnosticPath) error.diagnosticPath = cause.diagnosticPath;
+      throw error;
+    }
     if (typeof result === 'string') return result;
     if (typeof result?.stdout !== 'string' || (result.exitCode !== undefined && result.exitCode !== 0)) throw new Error('Release command did not succeed.');
     return result.stdout;
@@ -56,7 +60,11 @@ export class ReleasePipeline {
     let data;
     try { data = JSON.parse(await this.output('gh', ['api', '--method', 'GET', endpoint,
       ...(pages ? ['--paginate', '--slurp'] : []), '-H', 'Accept: application/vnd.github+json'])); }
-    catch { throw new Error('Release GitHub state could not be verified.'); }
+    catch (cause) {
+      const error = new Error('Release GitHub state could not be verified.', { cause });
+      if (cause.diagnosticPath) error.diagnosticPath = cause.diagnosticPath;
+      throw error;
+    }
     if (pages) {
       if (!Array.isArray(data) || data.some(page => !Array.isArray(page))) throw new Error('Invalid release pagination.');
       return data.flat();

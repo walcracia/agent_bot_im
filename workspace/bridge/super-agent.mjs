@@ -92,7 +92,7 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
   await validateManagedBinding(api, bot, config);
   const store = new SuperStore(config.statePath);
   let coordinator, control, classifier, watchdog, watchdogOwnerPath, launchWatchdog, watchdogIdentity, runtime, runtimeStarted = false, stopping = false, failed = false, heartbeatTimer, routingJob, githubJob, inspectJob, inputJob;
-  let watchdogRestarts = 0, nextWatchdogCheck = 0, managedRecovered = false;
+  let watchdogRestarts = 0, nextWatchdogCheck = 0, managedRecovered = false, watchdogPid = null;
   const secret = await controlSecret(join(dirname(config.statePath), 'controller.secret'), process.env.SUPER_AGENT_CONTROL_TOKEN);
   const taskTokenFor = id => typeof id === 'string' && /^T\d{6,}$/u.test(id) ? createHmac('sha256', secret).update(id).digest('hex') : '';
   const stop = () => { stopping = true; if (coordinator) coordinator.stopping = true; };
@@ -121,9 +121,11 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
     } else if (options.executionMode === 'remote-tools') pool = new workers.CloudTaskWorkerPool(poolOptions);
     else pool = new workers.TaskWorkerPool(poolOptions);
     const { GitDelivery, GitHubSource } = await import('./super-github.mjs');
-    const github = options.github?.enabled ? new GitHubSource(options.github) : null;
-    const delivery = options.github?.enabled ? (options.executionMode === 'remote-tools' || options.executionMode === 'remote-native' ? { deliver: task => pool.deliver(task), sync: task => pool.deliver(task) } : new GitDelivery(options.github)) : null;
-    const release = options.release?.enabled ? new (await import('./super-release.mjs')).ReleasePipeline(options.release) : null;
+    const githubOptions = { ...options.github, diagnosticsPath: join(options.runsPath, 'github-commands'), secretEnvNames: privateNames };
+    const github = options.github?.enabled ? new GitHubSource(githubOptions) : null;
+    const delivery = options.github?.enabled ? (options.executionMode === 'remote-tools' || options.executionMode === 'remote-native' ? { deliver: task => pool.deliver(task), sync: task => pool.deliver(task) } : new GitDelivery(githubOptions)) : null;
+    const release = options.release?.enabled ? new (await import('./super-release.mjs')).ReleasePipeline({ ...options.release,
+      diagnosticsPath: join(options.runsPath, 'release-commands'), secretEnvNames: privateNames }) : null;
     coordinator = new SuperCoordinator({ state, store, config: { ...config, ...options }, api, bot,
       router: new SuperRouter({ projectId: options.projectId, classify: prompt => classifier.classify(prompt) }), pool, delivery, release });
     if (!state.superAgent && options.initialCursor !== undefined) state.cursor = Math.max(state.cursor, options.initialCursor);
@@ -147,13 +149,15 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
           credentialEnvNames: [config.tokenEnv ?? 'TEAM_RELAY_BOT_TOKEN', ...(options.daemon ? [options.daemon.tokenEnv ?? 'SUPER_AGENT_DAEMON_TOKEN'] : [])] };
       }
       const reusable = await reusableWatchdog(watchdogOwnerPath, { token: secret, controllerUrl: watchdogConfig.controllerUrl, statePath: watchdogConfig.statePath });
+      watchdogPid = reusable?.pid ?? null;
       watchdogIdentity = { token: secret, controllerUrl: watchdogConfig.controllerUrl, statePath: watchdogConfig.statePath };
       await writeFile(path, JSON.stringify(watchdogConfig, null, 2), { mode: 0o600 });
       launchWatchdog = () => {
         const restartCredentials = { [config.tokenEnv ?? 'TEAM_RELAY_BOT_TOKEN']: token };
         if (options.daemon) restartCredentials[options.daemon.tokenEnv ?? 'SUPER_AGENT_DAEMON_TOKEN'] = poolOptions.daemon.token;
         const child = spawn(process.execPath, [fileURLToPath(new URL('./super-watchdog.mjs', import.meta.url)), '--config', path],
-          { windowsHide: true, stdio: ['ignore', 'ignore', 'inherit', 'ipc'], env: { ...scrubbed, SUPER_AGENT_CONTROL_TOKEN: secret, SUPER_AGENT_RESTART_TOKEN_BUNDLE: JSON.stringify(restartCredentials) } });
+          { windowsHide: true, detached: true, stdio: ['ignore', 'ignore', 'inherit', 'ipc'], env: { ...scrubbed, SUPER_AGENT_CONTROL_TOKEN: secret, SUPER_AGENT_RESTART_TOKEN_BUNDLE: JSON.stringify(restartCredentials) } });
+        watchdogPid = child.pid ?? null;
         child.on('error', error => coordinator.heartbeat('watchdog', 'error', error.message).catch(() => {}));
         child.on('exit', (code, signal) => { if (!stopping) coordinator.heartbeat('watchdog', 'error', `Watchdog exited ${code ?? signal}`).catch(() => {}); });
         return child;
@@ -173,7 +177,7 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
     }
     const publish = () => runtime?.publish('listening', { mode: 'super-agent', taskStatus: coordinator.active.size ? 'running' : 'ready',
       activeTasks: coordinator.active.size, pendingTasks: Object.values(coordinator.data.tasks).filter(task => task.status === 'queued').length,
-      controlPort: options.controlPort, watchdogPid: watchdog?.pid ?? null, generation: coordinator.generation });
+      controlPort: options.controlPort, watchdogPid, generation: coordinator.generation });
     await publish(); console.log(JSON.stringify({ status: 'listening', mode: 'super-agent', maxWorkers: options.maxWorkers, controlPort: options.controlPort }));
     if (managedRecovered && config.startup?.enabled && process.platform === 'win32') {
       await promisify(execFile)(config.harness.powershellPath ?? 'pwsh', ['-NoProfile', '-NonInteractive', '-File',

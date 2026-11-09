@@ -32,9 +32,40 @@ test('trusted Git proxy is command-local, keeps gh direct and never changes glob
   assert.equal(await readFile(globalFile, 'utf8'), original);
   assert.deepEqual({ HTTP_PROXY: process.env.HTTP_PROXY, HTTPS_PROXY: process.env.HTTPS_PROXY }, before);
   await run('gh', ['api', 'repos/owner/project']);
-  assert.deepEqual(calls.at(-1).args, ['api', 'repos/owner/project']); assert.equal(calls.at(-1).options.env, undefined);
+  assert.deepEqual(calls.at(-1).args, ['api', 'repos/owner/project']); assert.equal(calls.at(-1).options.env.HTTP_PROXY, process.env.HTTP_PROXY);
   for (const gitProxy of ['http://user:password@proxy.invalid', 'http://proxy.invalid/path', 'http://proxy.invalid/a/../', 'http://proxy.invalid/?q=1', 'socks5://proxy.invalid', 'http://proxy.invalid/#fragment'])
     assert.throws(() => configuredGithubCommand({ gitProxy }), /proxy/);
+});
+
+test('failed GitHub commands keep private diagnostics locally while outward errors stay concise with a retained cause', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'relay-private-diagnostics-')); t.after(() => rm(root, { recursive: true, force: true }));
+  const diagnosticsPath = join(root, 'private-command-evidence');
+  const source = new GitHubSource({ repository: repo, allowedActors: ['alice'], diagnosticsPath, command: async () => {
+    throw Object.assign(new Error('PRIVATE synthetic stderr must stay local'), { code: 17, stdout: 'PRIVATE synthetic stdout', stderr: 'PRIVATE synthetic stderr' });
+  } });
+  let failure;
+  try { await source.poll([{ taskId: 'T1', number: 7 }]); } catch (cause) { failure = cause; }
+  assert.ok(failure); assert.ok(!failure.message.includes('PRIVATE'));
+  assert.ok(failure.cause); assert.ok(failure.diagnosticPath.startsWith(diagnosticsPath));
+  const evidence = JSON.parse(await readFile(failure.diagnosticPath, 'utf8'));
+  assert.equal(evidence.code, 17); assert.equal(evidence.stdout, 'PRIVATE synthetic stdout'); assert.equal(evidence.stderr, 'PRIVATE synthetic stderr');
+  assert.ok(evidence.argv.includes('repos/owner/project/pulls/7'));
+  assert.throws(() => configuredGithubCommand({ diagnosticsPath: 'relative/path' }), /absolute/);
+});
+
+test('verification subprocess cannot inherit IM, controller, provider or GitHub tokens, while git keeps necessary auth', async () => {
+  const run = configuredGithubCommand({ secretEnvNames: ['CUSTOM_TEST_CONNECTION'] });
+  const names = ['TEAM_RELAY_BOT_TOKEN', 'SUPER_AGENT_CONTROL_TOKEN', 'SUPER_AGENT_DAEMON_TOKEN', 'SUPER_AGENT_CONTEXT_TOKEN',
+    'SUPER_AGENT_ENVIRONMENT_TOKEN', 'SUPER_AGENT_RESTART_TOKEN_BUNDLE', 'DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'GH_TOKEN', 'GITHUB_TOKEN', 'CUSTOM_TEST_CONNECTION'];
+  const env = { ...process.env, ...Object.fromEntries(names.map(name => [name, 'synthetic-private-test-value'])) };
+  const script = `process.stdout.write(JSON.stringify(Object.fromEntries(${JSON.stringify(names)}.map(name=>[name,process.env[name]??null]))))`;
+  const result = await run(process.execPath, ['-e', script], { env });
+  assert.deepEqual(JSON.parse(result.stdout), Object.fromEntries(names.map(name => [name, null])));
+  assert.equal(env.TEAM_RELAY_BOT_TOKEN, 'synthetic-private-test-value');
+  let inherited;
+  const git = configuredGithubCommand({ secretEnvNames: ['CUSTOM_TEST_CONNECTION'], command: async (file, args, options) => { inherited = options.env; return { stdout: '' }; } });
+  await git('git', ['rev-parse', 'HEAD'], { env });
+  assert.equal(inherited.GH_TOKEN, 'synthetic-private-test-value'); assert.equal(inherited.TEAM_RELAY_BOT_TOKEN, undefined); assert.equal(inherited.CUSTOM_TEST_CONNECTION, undefined);
 });
 
 function sourceFixture() {

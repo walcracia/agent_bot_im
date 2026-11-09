@@ -14,6 +14,7 @@ const RUNNING = new Set(['running', 'starting', 'working']);
 const ID = /^[A-Za-z0-9_.:-]{1,160}$/;
 const DEFAULTS = { intervalMs: 60000, staleHeartbeatMs: 90000, taskAgeMs: 120000, cooldownMs: 300000,
   maxAssessmentsPerTick: 4, maxConsecutiveModelFailures: 3, requestTimeoutMs: 15000, maxSnapshotBytes: 1048576 };
+const OWNER_SHARING_BACKOFF = [25, 50, 100, 200, 400, 800, 1000, 1500, 2000, 2000];
 
 function settings(config = {}) {
   const value = { ...DEFAULTS, ...config };
@@ -381,7 +382,7 @@ export async function restartRegisteredController(config, state, { now = Date.no
       const values = JSON.parse(bundle);
       for (const name of config.credentialEnvNames) if (typeof name === 'string' && typeof values[name] === 'string') childEnv[name] = values[name];
     }
-    const child = launch(executablePath, args, { cwd, windowsHide: true, detached: process.platform !== 'win32', stdio: 'ignore', shell: false, env: childEnv });
+    const child = launch(executablePath, args, { cwd, windowsHide: true, detached: true, stdio: 'ignore', shell: false, env: childEnv });
     await new Promise((resolveLaunch, reject) => { child.once('spawn', resolveLaunch); child.once('error', reject); });
     child.unref(); reservation.pid = child.pid; reservation.status = 'started';
     await save(state);
@@ -417,7 +418,7 @@ export async function startWatchdog(config, dependencies = {}) {
       await mkdir(dirname(ownerPath), { recursive: true });
       const temporary = `${ownerPath}.${owner.nonce}.tmp`;
       await writeFile(temporary, JSON.stringify(owner), { flag: 'wx', mode: 0o600, flush: true });
-      try { await replaceOwnedFile(temporary, ownerPath, () => store.validateOwner?.()); }
+      try { await replaceOwnedFile(temporary, ownerPath, () => store.validateOwner?.(), { backoffMilliseconds: OWNER_SHARING_BACKOFF }); }
       finally { await unlink(temporary).catch(() => {}); }
     });
     return ownerWrites;
@@ -475,8 +476,11 @@ export async function startWatchdog(config, dependencies = {}) {
       stop ??= (async () => { stopped = true; abort.abort(); await executor?.close(); await completion; })();
       return stop;
     } };
+    let periodicPublication;
     ownerTimer = setInterval(() => {
-      publishOwner(owner.status).catch(error => { ownerFailure = error; service.stop().catch(() => {}); });
+      if (periodicPublication) return; // One real publication may be waiting on a Windows reader.
+      periodicPublication = publishOwner(owner.status).catch(error => { ownerFailure = error; service.stop().catch(() => {}); })
+        .finally(() => { periodicPublication = undefined; });
     }, Math.min(5000, Math.max(250, options.intervalMs)));
     let checkingStop;
     const checkStop = async () => {
