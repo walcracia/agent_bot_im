@@ -1,5 +1,15 @@
 # 当前接续状态
 
+## 2026-11-09 · v0.2.1 服务与DSH同步启动
+
+用户要求监听随服务启动绑定，已实现并实际接通本机测试群。默认`environment/scripts/start.ps1`同时启动或复用已核验的IM与DSH，只有两者就绪才成功；`stop.ps1`先等监听当前事件完成、回传并释放锁，再关服务器。忙时超时保留两者，不杀worker、不删旧锁。规格`STARTUP-v0.2.1.md`，验收`outputs/VERIFICATION-v0.2.1.md`。
+
+- 当前观察：服务127.0.0.1:18200、v0.2.1健康；本机已装DSH0.2.2-rc.1的监听为listening/auto，绑定合成“产品协作组”及admin/alice/bob三个测试账号。独立代码副本`environment/tools/dsh/worktrees/agent-bot-im`、分支codex/dsh-agent-bot-im，不在活跃主检出里编码。桌面仍用v0.1.2。
+- 当前绑定配置`environment/config/bridge-installed.local.json`含startup.enabled；助手码为同目录中的Windows当前用户DPAPI密文。真实HTTP绑定/重复start/两次stop-start均验证，不需重输码。进程身份在server-process.json和dsh-process.json，实例状态在environment/data/startup。重启或接续时重新核验，不凭本记录认定进程仍在。
+- 最终26项Python、80项桥接/凭据/managed进程、16项编排测试通过。真实绑定修正了Invoke-RestMethod数组管道枚举问题，并补真实HTTP回归。首轮另有一次启动夹具等待超时未复现、根因未确证，原失败与增强诊断见验收报告，不能省略或称已确认修复。
+- 本次只进行零模型版本探测，未重复真实编码实验；用户现在可直接在测试群进行普通讨论触发测试。监听代码任务会在独立副本改代码，结果待人工审查；当前没有自动合并/上线。腾讯及真实团队未部署。
+- 未配置的新机器先ServerOnly建立IM与账号，再运行`connect-installed.ps1 -Workspace <干净独立副本> -EnableStartup -PassThru`保存绑定，后续统一start；密文不可按Git复制给另一Windows用户使用。
+
 ## 2026-11-09 · 本机人工测试就绪
 
 用户要求启动服务并提供Windows EXE进行人工测试。本机已用`environment/scripts/start.ps1`启动单进程服务，健康接口返回v0.2.0，地址为`http://127.0.0.1:18200`。这是本机回环测试服务，不是腾讯部署；进程身份在忽略文件`environment/config/server-process.json`，后续先查健康和进程再决定是否启动，停止使用原stop脚本。
