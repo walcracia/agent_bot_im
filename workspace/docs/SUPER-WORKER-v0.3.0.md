@@ -57,3 +57,4 @@
 - 以上真实worker总预算与实际使用均为3个native session，另有原A一次明确追加turn；不含主协调另做的只读模型验证。复现入口`environment/scripts/verify-super-live.mjs`默认零调用，`--live`为双任务，`--live --resume-from <旧验收目录>`为显式原A补验收，`--remote-tools-live`为单个MCP端侧任务。原始日志和账号不提交。
 - 远端工具命令增加持久prepared/running/termination-failed账本，异常重启后不凭缺少内存进程记录而重新执行或声称已停止。测试发现成功HTTP响应早于finished账本写入的窗口，已将响应移到提交后并复验。远端媒体附件运输/模型理解未在本轮真实MCP验收中覆盖；本机默认路径继续传入既有校验后的附件metadata。
 - 自动合并后续任务基线补验收：当前worker模块11项全部通过。真实临时bare origin先为A，task1固定A；另一检出推送B，本地主HEAD仍A且有未提交文件，task2确认并基于origin/main=B创建，原HEAD与脏文件未变；既有task1仍A。随后使origin不可用，新task明确失败且无分支/账本，不退回旧tracking ref。Git代理仅存在于fetch/ls-remote调用参数和子进程环境，父进程代理未变。此次仅本机临时Git、零模型/零真实GitHub写入。
+- 最终冷副本gate曾出现255/256：native inbox全部功能断言通过后，夹具清理receipts目录遇到ENOTEMPTY。原因是dispose只停timer、不等待已开始的poll，且fixture的删除钩子先于插件停止钩子。修正方案为显式disposed门禁和跟踪当前poll，异步dispose等待该poll结束；夹具在finally先await两个插件的dispose，再交给已有临时根删除。保持原消费、去重、恢复全部断言，不用sleep或无界重试掩盖竞态。原始失败诊断保留。修正后targeted worker 11项、语法及diff空白检查全部通过。
