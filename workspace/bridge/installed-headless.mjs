@@ -26,7 +26,7 @@ function absolute(value, label) {
 
 function scrubEnvironment(source) {
   const env = { ...source };
-  for (const key of Object.keys(env)) if (key.toUpperCase() === 'TEAM_RELAY_BOT_TOKEN') delete env[key];
+  for (const key of Object.keys(env)) if (['TEAM_RELAY_BOT_TOKEN', 'SUPER_AGENT_CONTROL_TOKEN', 'SUPER_AGENT_DAEMON_TOKEN', 'SUPER_AGENT_ENVIRONMENT_TOKEN'].includes(key.toUpperCase())) delete env[key];
   return env;
 }
 
@@ -260,6 +260,7 @@ export class InstalledHeadlessExecutor {
     else {
       args.push('-TaskFile', taskFile, '-Auth', this.auth, '-PermissionMode', permissionMode);
       if (nativeSessionId) args.push('-SessionId', nativeSessionId);
+      if (this.options.extraPatches?.length) args.push('-ExtraPatchesJson', JSON.stringify(this.options.extraPatches.map(patch => absolute(patch, 'extraPatch'))));
     }
     const env = scrubEnvironment(this.options.env ?? process.env);
     if (this.closed) throw new Error('Installed DSH executor was closed before process launch.');
@@ -287,7 +288,7 @@ export class InstalledHeadlessExecutor {
       }
       return stopping;
     };
-    const active = { stop: async () => { cancelled = true; await stop(); }, closed, workerLease };
+    const active = { stop: async () => { cancelled = true; await stop(); }, closed, workerLease, runDirectory, pid: child.pid };
     this.active.add(active);
     closed.then(() => this.active.delete(active));
     const captureOpening = async () => {
@@ -307,8 +308,27 @@ export class InstalledHeadlessExecutor {
         if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) mappingError = error;
       } finally { await handle?.close(); }
     };
-    let capture = Promise.resolve();
-    const interval = setInterval(() => { capture = capture.then(captureOpening); }, 100);
+    let capture = Promise.resolve(), observedBytes = 0;
+    const observeProgress = async () => {
+      await captureOpening();
+      if (typeof this.options.onProgress !== 'function') return;
+      let handle;
+      try {
+        handle = await open(join(runDirectory, 'events.jsonl'), 'r');
+        const details = await handle.stat();
+        if (details.size <= observedBytes) return;
+        const buffer = Buffer.alloc(Math.min(16384, details.size - observedBytes));
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, Math.max(observedBytes, details.size - buffer.length));
+        observedBytes = details.size;
+        const events = buffer.subarray(0, bytesRead).toString('utf8').split('\n').flatMap(line => {
+          try { const entry = JSON.parse(line); return [{ type: String(entry.type).slice(0, 80), text: String(entry.text ?? entry.name ?? entry.toolName ?? '').slice(0, 800) }]; }
+          catch { return []; }
+        }).slice(-8);
+        await this.options.onProgress({ at: new Date().toISOString(), bytes: observedBytes, events, runDirectory });
+      } catch { /* Progress is advisory; the durable completion result remains authoritative. */ }
+      finally { await handle?.close(); }
+    };
+    const interval = setInterval(() => { capture = capture.then(observeProgress); }, 100);
     let stopFailed;
     const terminationFailure = new Promise((_, reject) => { stopFailed = reject; });
     const timeout = setTimeout(() => { timedOut = true; stop().catch(stopFailed); }, timeoutMs);
@@ -316,7 +336,7 @@ export class InstalledHeadlessExecutor {
       const result = await Promise.race([closed, terminationFailure]);
       if (stopping) await stopping;
       clearInterval(interval); clearTimeout(timeout);
-      await capture; await captureOpening(); await this.saveQueue;
+      await capture; await observeProgress(); await this.saveQueue;
       if (spawnError) throw new Error(`Unable to run installed DSH launcher (${spawnError.code ?? 'process error'}).`);
       if (timedOut || cancelled) throw new DshInvocationError(`DSH invocation ${timedOut ? 'timed out' : 'was cancelled'}; owned process tree stopped. Inspect ${runDirectory}.`, {
         kind: timedOut ? 'timeout' : 'cancelled', processTreeStopped, timeoutMs, runDirectory,

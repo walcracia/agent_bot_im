@@ -1,11 +1,25 @@
 'use strict';
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const { createRequire } = require('node:module');
+const { pathToFileURL } = require('node:url');
 
 (async () => {
-  const { packager } = await import('@electron/packager');
   const root = path.resolve(__dirname, '..');
-  const destination = path.resolve(root, '..', 'outputs');
+  const sourcePackage = require('../package.json');
+  const dependencyRequire = process.env.TEAM_RELAY_BUILD_TOOLCHAIN
+    ? createRequire(path.resolve(process.env.TEAM_RELAY_BUILD_TOOLCHAIN, 'package.json')) : require;
+  if (process.env.TEAM_RELAY_BUILD_TOOLCHAIN) {
+    const sourceLock = require('../package-lock.json').packages;
+    const toolLock = dependencyRequire('./package-lock.json').packages;
+    const keys = [...new Set([...Object.keys(sourceLock), ...Object.keys(toolLock)])].filter(key => key !== '');
+    if (keys.some(key => JSON.stringify(sourceLock[key]) !== JSON.stringify(toolLock[key]))) throw new Error('Build toolchain does not match this source lockfile.');
+  }
+  const { packager } = await import(pathToFileURL(dependencyRequire.resolve('@electron/packager')).href);
+  if (!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(sourcePackage.version)) throw new Error('Invalid desktop version.');
+  const destination = process.env.TEAM_RELAY_BUILD_VERSIONED === '1'
+    ? path.resolve(root, '..', 'outputs', 'desktop-v' + sourcePackage.version)
+    : path.resolve(root, '..', 'outputs');
   // Package an explicit allowlist. Server data, bridge SDKs and tools never enter
   // the desktop archive even if future workspace directories are added.
   const buildRoot = path.resolve(root, '..', 'environment', 'build');
@@ -14,7 +28,6 @@ const fs = require('node:fs/promises');
   await fs.cp(path.join(root, 'client'), path.join(stage, 'client'), { recursive: true });
   await fs.mkdir(path.join(stage, 'desktop'));
   await fs.copyFile(path.join(root, 'desktop', 'main.cjs'), path.join(stage, 'desktop', 'main.cjs'));
-  const sourcePackage = require('../package.json');
   await fs.writeFile(path.join(stage, 'package.json'), JSON.stringify({
     name: sourcePackage.name, version: sourcePackage.version,
     description: sourcePackage.description, main: sourcePackage.main,
@@ -23,10 +36,10 @@ const fs = require('node:fs/promises');
   const results = await packager({
     dir: stage, out: destination, name: 'TeamRelay', executableName: 'TeamRelay',
     platform: 'win32', arch: 'x64', overwrite: true, asar: true,
-    electronVersion: require('electron/package.json').version,
+    electronVersion: dependencyRequire('electron/package.json').version,
     download: {
       cacheRoot: process.env.electron_config_cache,
-      checksums: require('electron/checksums.json')
+      checksums: dependencyRequire('electron/checksums.json')
     },
     appCopyright: 'Copyright © 2026 walcracia',
     appVersion: sourcePackage.version,

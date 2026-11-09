@@ -1,5 +1,19 @@
 # v0.1 接口合同
 
+## v0.3.0 独立协调接口
+
+原IM API与成员鉴权不变。控制器默认`127.0.0.1:18202`，不是对普通客户端公开的新IM接口：
+
+| 接口 | 权限与用途 |
+| --- | --- |
+| GET `/api/supervisor/snapshot` | 控制码；有限任务目标/进度/证据、来源健康、generation/heartbeat，不返回完整聊天 |
+| POST `/api/supervisor/actions` | 控制码；稳定id、generation、taskId、observe/steer/pause/notify等严格动作，持久去重；模型不能执行任意shell或重启活控制器 |
+| POST `/api/context/read` | 特定任务召回码；taskId/reference/offset/limit/linkOffset；按项目与原群权限重新验证，返回下一页/引用，不允许跨群 |
+
+任务码由控制器主码与taskId派生，不能用于监督接口；主码和IM码不会传入编码模型环境。完整信息引用稳定，截断同时返回续读入口。独立执行daemon默认18203，仅固定项目与可信命令；任务派生码只允许该任务的工具调用，控制码才允许启动/停止/交付。部署到异机需TLS或受控反向代理。协议和配置见SUPER-WORKER/SUPER-OPERATIONS。
+
+群内无需暴露技术接口：普通讨论自动识别；`任务列表`、`任务详情 #T000001`、`取消任务 #T000001`、`继续修正 #T000001`操作已授权任务；`#T000001 补充要求`直接关联。多任务无明确归属时要求编号，不随意作用于另一项任务。
+
 JSON 接口 `/api`，时间为 UTC ISO-8601（UI 按用户本地时区）；ID 字符串，message.id 为递增整数。错误 `{detail: string}`，HTTP 401/403/404/409/413/422/429。除 login/health/静态客户端，使用 Authorization: Bearer TOKEN。所有响应禁止缓存。
 
 ## 身份

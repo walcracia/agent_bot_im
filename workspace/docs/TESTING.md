@@ -1,5 +1,16 @@
 # 验收计划
 
+## v0.3.0 新增验收
+
+- 最终补充：真实临时Git覆盖fresh base不移动主检出、空任务不交付、同步base复测、版本顺序、精确head自动合并与关闭PR明确恢复；协调器覆盖已合并后续任务/继续提示/关闭PR保留身份。`verify-super-proactive.mjs --live`是单独显式的一次只读分类验收，默认零模型。实际PR→合并→Windows构建→资产digest核验结果见最终交付报告。
+
+- `environment/scripts/verify-super-agent.ps1`：零模型新模块与Windows配置转换；`verify.ps1`仍为全量回归。
+- `environment/scripts/verify-task.ps1 -Python <可信解释器绝对路径>`：独立任务副本不依赖自己的venv/node_modules，不修改源码/索引，运行真实Python与全部桥接测试。
+- `verify-super-live.mjs --live`：显式且有预算的本机真实并行编码；remote-tools实证必须显式使用其专用flag。原生输入以inbox spliced target=next-step、user/message序号与持久回执匹配，不仅看模型回答。
+- `verify-super-model.mjs --live`：最多两个真实只读会话；停滞监督使用明确标注的合成事实，不能称为真实生产故障。
+- 真实入口测试独立启动Node/Watchdog、HTTP IM与PowerShell假CLI；GitHub/Release测试使用临时真实Git/构建与模拟gh，实际远端发布另行记录。
+- 每项验证按本轮报告给出实际结果；失败保留。腾讯部署未执行，本轮不因接口存在而宣称所有平台/模型/任意复杂任务均已验收。
+
 设计先于实现冻结。每项实际结果写测试报告；下列为计划，不代表已通过。
 
 1. 身份：正确/错误密码、退出失效、非管理员不能建用户，未知令牌不能访问。

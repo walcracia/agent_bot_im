@@ -4,6 +4,8 @@ environment/tools/
 environment/data/
 environment/config/*.json
 environment/config/*.env
+environment/config/super-agent/
+environment/config/backups/
 environment/logs/*
 environment/verification/*
 !environment/logs/.gitkeep
@@ -12,6 +14,7 @@ environment/verification/*
 outputs/*.zip
 outputs/*.exe
 outputs/*-win32-x64/
+outputs/desktop-v*/
 workspace/node_modules/
 workspace/dist/
 workspace/.venv/
@@ -23,5 +26,6 @@ workspace/data/
 *.sqlite*
 *.db*
 .env
+.team-relay-incoming-*/
 *.log
 references/vendor/
