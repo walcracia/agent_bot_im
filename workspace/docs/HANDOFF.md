@@ -1,5 +1,14 @@
 # 当前接续状态
 
+## 2026-11-09 · v0.1.3 蓝色主题（中断接续完成）
+
+用户要求把当前界面改为蓝色主色调，更新主色/强调色，统一登录页与主界面并清除旧主色；布局、文案和功能不变，检查对比度。中断前已完成源码修改，本轮沿用现有多文件改动继续验证和记录，没有 reset 或重做已完成的步骤。
+
+- `client/tokens.css` 用 `--primary/--primary-deep/--primary-hover/--primary-pressed/--accent` 取代旧绿色令牌，页面/会话/自身气泡/文件媒体表面改为蓝调中性色；`client/styles.css` 只替换颜色引用和强调色落点；`client/logo.svg` 保留图形改为蓝底白气泡。
+- 完整浏览器回归使用既有 `environment/scripts/verify-ui-v0.1.2.py`，13项检查、8张截图、0页面异常；新增 `environment/scripts/verify-ui-theme.py` 检查蓝色角色、旧色残留、可见绿色和15组对比度，7张截图全部通过。实际对比度：登录按钮5.17、未读白字4.91、正文14.09、次要文字5.68、输入边界3.91、焦点环6.53。
+- 26项Python测试通过（1条Starlette弃用警告），三个客户端/桌面JS文件 `node --check` 通过。截图在忽略目录 `environment/verification/ui-blue-theme/`，可共享报告为 `outputs/VERIFICATION-ui-v0.1.3.md`。
+- 未完成：Windows 0.1.2安装包与 `outputs/design-preview-v0.1.2` 仍是旧绿色快照，未重建；没有声称它们已包含新主题。未部署生产、未调用真实DSH模型。工作树原有v0.2.2接续提交保留，本主题按独立文件清单提交。
+
 ## 2026-11-09 · v0.2.1 服务与DSH同步启动
 
 用户要求监听随服务启动绑定，已实现并实际接通本机测试群。默认`environment/scripts/start.ps1`同时启动或复用已核验的IM与DSH，只有两者就绪才成功；`stop.ps1`先等监听当前事件完成、回传并释放锁，再关服务器。忙时超时保留两者，不杀worker、不删旧锁。规格`STARTUP-v0.2.1.md`，验收`outputs/VERIFICATION-v0.2.1.md`。
