@@ -39,4 +39,6 @@
 
 静默主动核查、fresh-base、已合并任务后续修正及关闭PR明确接续已集成。额外一次只读真实分类正确返回普通缺陷speculate、明确请求new，零worker、零重试；因此本轮只读Router共两会话、Watchdog一会话，worker仍3会话/4次invocation。最新模块回归GitHub30项、版本与Worker22项、协调器22项通过；全量回归/实际合并发布在最终交付记录追加，不覆盖前述历史失败。新增startup夹具裸rename遇共享EPERM，改为现有有限共享重试后11项通过，原stale-stop断言保持。
 
+独立审查补充终态提问不启动编码、一次关闭PR恢复授权在确认交付后消费、远程执行端共享串行交付器/可信最新base与版本配置、离线投机任务保持静默。最终协调器25项通过。随后实际冷副本gate为256项中的255通过、1项清理失败：原生inbox功能断言通过，但插件dispose未等待正在写入的回执，删除临时receipts目录遇ENOTEMPTY。失败原始诊断留本机，合并被拦截；修正与复验结果另行追加，不能把这轮记作通过。
+
 本机详细证据在忽略目录 `environment/verification/super-agent-v0.3.0`、`super-live`、`super-model`、`desktop-v0.3.0`。可复现入口与操作见 `workspace/docs/SUPER-OPERATIONS-v0.3.0.md`。

@@ -117,16 +117,22 @@ test('native inbox sends same-task input once and confirms actual session consum
   const agent = { id: 'session-native-fixture', session, steer(message) {
     messages.push(message); const event = { type: 'user/message', seq: events.length, data: message }; events.push(event); callbacks['session/event'](session, event);
   } };
-  inboxPlugin(ctx, { inboxPath: record.inboxPath }); t.after(() => callbacks.dispose());
+  inboxPlugin(ctx, { inboxPath: record.inboxPath });
+  let restored;
+  try {
   callbacks['agent/created']({ agent });
   await eventually(async () => (await pool.inspect('T000003')).inputs.length === 1);
   assert.equal(messages.length, 1); assert.match(messages[0].content[0].text, /use blue/);
   assert.equal((await pool.input('T000003', { id: 'message-4', text: 'use blue' })).delivered, true);
   assert.equal((await pool.inspect('T000003')).inputs[0].nativeSequence, 0);
   await sleep(220); assert.equal(messages.length, 1);
-  callbacks.dispose();
-  const restored = {}; inboxPlugin({ on(name, cb) { restored[name] = cb; } }, { inboxPath: record.inboxPath }); t.after(() => restored.dispose());
+  await callbacks.dispose();
+  restored = {}; inboxPlugin({ on(name, cb) { restored[name] = cb; } }, { inboxPath: record.inboxPath });
   restored['agent/created']({ agent }); await sleep(180); assert.equal(messages.length, 1);
+  } finally {
+    await callbacks.dispose();
+    await restored?.dispose?.();
+  }
 });
 
 test('unconfirmed task termination never returns a successful cancellation proof', async t => {
