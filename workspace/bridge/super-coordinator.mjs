@@ -1,13 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { inlineContext, putNode, readNode, reference } from './super-context.mjs';
 import { taskControl } from './super-router.mjs';
-import { attachmentInput } from './core.mjs';
+import { attachmentInput, explicitlyAddressed } from './core.mjs';
 
 const RUNNING = new Set(['preparing', 'running', 'interrupting', 'delivering']);
 const TERMINAL = new Set(['completed', 'cancelled', 'closed', 'merged']);
 const labels = { queued: '排队中', preparing: '准备中', running: '处理中', interrupting: '正在停止', paused: '已暂停',
-  delivering: '正在交付', ready: '等待评审', completed: '已完成', cancelled: '已停止', closed: '已关闭', merged: '已合并' };
+  delivering: '正在交付', ready: '待合并', completed: '已完成', cancelled: '已停止', closed: '已关闭', merged: '已合并' };
 const stamp = () => new Date().toISOString();
+const explicitRequest = event => Boolean(event.addressed || /(?:^|\s)#T\d{6,}|请|麻烦|帮我|需要你|修复一下|改成|改为|\b(?:please|fix|implement|change)\b/iu.test(event.text ?? ''));
+const terminalWorkRequest = event => /^(?:(?:请帮我|请你|请|麻烦|帮我)\s*)?(?:继续(?:修正|任务)?|恢复任务|修复|修改|补充|增加|实现|纠正|修正|改成|改为|添加|支持|(?:please\s+)?(?:fix|implement|change|add|resume|continue)\b)/iu.test(String(event.text ?? '').replace(/@[A-Za-z0-9_.-]+|#?T\d{6,}/giu, '').trim());
 
 export class SuperCoordinator {
   constructor({ state, store, config, api, bot, router, pool, delivery, release, now = stamp }) {
@@ -58,8 +60,8 @@ export class SuperCoordinator {
   }
   taskNode(data, task) {
     putNode(data.graph, { id: task.reference, kind: 'task', projectId: task.projectId, conversations: [task.conversationId],
-      text: JSON.stringify({ id: task.id, summary: task.summary, instructions: task.instructions, status: task.status, progress: task.progress, delivery: task.delivery }),
-      links: [task.threadReference, ...(task.prThreadReference ? [task.prThreadReference] : []), ...(task.relatedTaskIds ?? []).map(id => data.tasks[id]?.reference).filter(Boolean), ...task.inputs.map(input => input.reference), ...(task.resultReference ? [task.resultReference] : [])], at: task.updatedAt });
+      text: JSON.stringify({ id: task.id, summary: task.summary, instructions: task.instructions, status: task.status, speculative: task.speculative, progress: task.progress, delivery: task.delivery }),
+      links: [task.threadReference, ...(task.prThreadReference ? [task.prThreadReference] : []), ...(task.parentTaskId && data.tasks[task.parentTaskId] ? [data.tasks[task.parentTaskId].reference] : []), ...(task.relatedTaskIds ?? []).map(id => data.tasks[id]?.reference).filter(Boolean), ...task.inputs.map(input => input.reference), ...(task.resultReference ? [task.resultReference] : [])], at: task.updatedAt });
   }
   async ingestIm(events, conversations) {
     this.conversations = structuredClone(conversations);
@@ -70,12 +72,13 @@ export class SuperCoordinator {
         if (this.authorized(event, conversations)) {
           const key = `im:${event.id}`;
           if (!data.inbox[key]) {
+            const intake = { ...event, addressed: explicitlyAddressed(event, conversations.find(item => item.id === event.conversation_id), { ...this.config, botUsername: this.config.botUsername ?? this.bot.username }) };
             const ref = reference('trigger', key), thread = reference('thread', `im:${event.conversation_id}`);
-            putNode(data.graph, { id: ref, kind: 'trigger', projectId: this.config.projectId, conversations: [event.conversation_id], text: JSON.stringify(event), links: [thread], meta: { eventId: event.id } });
+            putNode(data.graph, { id: ref, kind: 'trigger', projectId: this.config.projectId, conversations: [event.conversation_id], text: JSON.stringify(intake), links: [thread], meta: { eventId: event.id } });
             const prior = data.graph[thread];
             putNode(data.graph, { id: thread, kind: 'thread', projectId: this.config.projectId, conversations: [event.conversation_id],
               text: `IM conversation ${event.conversation_id}`, links: [...(prior?.links ?? []), ref] });
-            data.inbox[key] = { key, event, reference: ref, threadReference: thread, status: 'pending', attempts: 0 };
+            data.inbox[key] = { key, event: intake, reference: ref, threadReference: thread, status: 'pending', attempts: 0 };
             const own = Object.values(data.tasks).filter(task => task.conversationId === event.conversation_id);
             const control = taskControl(event.text, own);
             const explicit = /(?:^|\s)#(T\d{6,})(?=\s|[，,:：]|$)/iu.exec(event.text);
@@ -113,7 +116,7 @@ export class SuperCoordinator {
           for (const item of batch) {
             const entry = data.inbox[item.key]; if (entry.status !== 'routing') continue;
             entry.status = 'failed'; entry.error = String(error.message).slice(0, 500); entry.attempts++;
-            this.enqueue(data, item.event, '这条任务暂时未能识别，尚未开始改代码。可以补充明确需求后重发；其他任务继续处理。', `route-failed-${item.key}`);
+            if (!this.config.proactive?.enabled || explicitRequest(item.event)) this.enqueue(data, item.event, '这条任务暂时未能识别，尚未开始改代码。可以补充明确需求后重发；其他任务继续处理。', `route-failed-${item.key}`);
           }
         }); return;
       }
@@ -127,9 +130,21 @@ export class SuperCoordinator {
       if (!entry || entry.status === 'routed') return;
       const event = entry.event;
       let task = decision.taskId ? data.tasks[decision.taskId] : null;
+      if (decision.action === 'speculate' && (!this.config.proactive?.enabled || !this.delivery)) {
+        entry.status = 'routed'; entry.decision = { action: 'ignore', reason: 'proactive_not_authorized_or_verified' }; return;
+      }
       if (decision.taskId && (!task || task.conversationId !== event.conversation_id)) {
         this.enqueue(data, event, '当前聊天中找不到该任务。发送“任务列表”查看可操作的编号。', `unknown-${key}`);
         entry.status = 'routed'; entry.decision = { action: 'unavailable' }; return;
+      }
+      if (decision.action === 'followup' && ['closed', 'merged'].includes(task?.status) && !terminalWorkRequest(event)) {
+        this.enqueue(data, event, `#${task.id} ${labels[task.status]}。如需继续改代码，请明确发送“继续修正 #${task.id}”或“#${task.id} 请修复……”。${task.delivery?.url ? `\n${task.delivery.url}` : ''}`, `terminal-question-${key}`);
+        entry.status = 'routed'; entry.decision = { action: 'status', taskId: task.id }; return;
+      }
+      if (decision.action === 'followup' && task?.status === 'merged') {
+        decision = { ...decision, action: 'new', taskId: null, parentTaskId: task.id, summary: `${task.summary}（后续修正）`.slice(0, 240),
+          instructions: `${decision.instructions || event.text}\n这是已合并任务${task.id}的后续修正。原任务保留为已合并；从最新可信基线处理，通过父任务引用读取此前上下文。` };
+        task = null;
       }
       if (decision.action === 'attach' && task) {
         const other = data.tasks[decision.relatedTaskId];
@@ -142,37 +157,41 @@ export class SuperCoordinator {
           this.taskNode(data, other);
           this.enqueue(data, event, `已关联 #${task.id} 和 #${other.id}，后续相关反馈将共享为上下文。`, `attach-${key}`);
         }
-      } else if (decision.action === 'new') {
+      } else if (['new', 'speculate'].includes(decision.action)) {
         const id = 'T' + String(data.nextTask++).padStart(6, '0');
         task = { id, projectId: this.config.projectId, conversationId: event.conversation_id, event,
-          summary: decision.summary, instructions: decision.instructions, status: 'queued', attempt: 0, inputs: [],
+          summary: decision.summary, instructions: decision.instructions, status: 'queued', attempt: 0, inputs: [], speculative: decision.action === 'speculate' && !event.addressed,
           reference: reference('task', id), threadReference: entry.threadReference, createdAt: this.now(), updatedAt: this.now() };
+        if (decision.parentTaskId) task.parentTaskId = decision.parentTaskId;
         data.tasks[id] = task; data.subscriptions[entry.reference] = [id];
         input = { id: key, source: 'im', text: event.text, at: event.created_at, reference: entry.reference };
         task.inputs.push(input);
-        this.enqueue(data, event, `已接到任务 #${id}：${task.summary}。`, `accepted-${id}`);
+        if (!task.speculative) this.enqueue(data, event, `已接到任务 #${id}：${task.summary}。`, `accepted-${id}`);
       } else if (decision.action === 'followup' && task) {
         input = { id: key, source: 'im', text: decision.instructions || event.text, at: event.created_at, reference: entry.reference };
         if (!task.inputs.some(item => item.id === input.id)) task.inputs.push(input);
         task.updatedAt = this.now(); target = task.id;
+        if (explicitRequest(event)) task.speculative = false;
         task.autoRepairs = 0;
-        if (['completed', 'ready', 'paused'].includes(task.status)) { task.status = 'queued'; task.uncertain = false; }
-        if (['closed', 'merged', 'cancelled'].includes(task.status)) {
+        if (task.status === 'closed') { task.resumeClosedPr = true; task.stopRequested = false; task.pauseRequested = false; }
+        if (['completed', 'ready', 'paused', 'closed'].includes(task.status)) { task.status = 'queued'; task.uncertain = false; }
+        if (['cancelled'].includes(task.status)) {
           task.status = 'paused'; task.error = '任务已结束。明确继续后再执行新补充。';
         }
         data.subscriptions[entry.reference] = [...new Set([...(data.subscriptions[entry.reference] ?? []), task.id])];
-        this.enqueue(data, event, `补充已加入 #${task.id}。`, `input-${key}`);
+        if (!task.speculative) this.enqueue(data, event, `补充已加入 #${task.id}。`, `input-${key}`);
       } else if (decision.action === 'stop' && task) {
-        target = task.id; control = 'stop'; task.stopRequested = true; task.pauseRequested = false; task.updatedAt = this.now();
+        target = task.id; control = 'stop'; task.stopRequested = true; task.pauseRequested = false; task.speculative = false; task.updatedAt = this.now();
         task.status = this.active.has(task.id) ? 'interrupting' : 'cancelled';
         this.enqueue(data, event, `正在停止 #${task.id}，已有代码和记录会保留。`, `stop-${key}`);
       } else if (decision.action === 'resume' && task) {
         if (this.active.has(task.id)) this.enqueue(data, event, `#${task.id} 正在处理，无需重复继续。`, `resume-active-${key}`);
-        else if (['paused', 'ready', 'cancelled', 'completed'].includes(task.status)) {
-          task.status = 'queued'; task.stopRequested = false; task.pauseRequested = false; task.uncertain = false; task.updatedAt = this.now();
+        else if (['paused', 'ready', 'cancelled', 'completed', 'closed'].includes(task.status)) {
+          if (task.status === 'closed' || (task.prClosed && !task.prMerged)) task.resumeClosedPr = true;
+          task.status = 'queued'; task.stopRequested = false; task.pauseRequested = false; task.uncertain = false; task.speculative = false; task.updatedAt = this.now();
           task.inputs.push({ id: key, source: 'im', text: '继续原任务，先核对已有改动和完成步骤，保留文件，不重复执行已完成操作。', reference: entry.reference, at: event.created_at });
           this.enqueue(data, event, `正在接续 #${task.id}。`, `resume-${key}`);
-        }
+        } else if (task.status === 'merged') this.enqueue(data, event, `#${task.id} 已合并。请描述新的修正需求，例如“#${task.id} 需要补充……”，会建立关联的后续任务。`, `resume-merged-${key}`);
       } else if (decision.action === 'status') {
         const list = task ? [task] : Object.values(data.tasks).filter(item => item.conversationId === event.conversation_id).slice(-12);
         this.enqueue(data, event, list.length ? list.map(item => `#${item.id} ${labels[item.status] ?? item.status} · ${item.summary}${item.error ? `\n${item.error}` : ''}${item.watchdog?.reason ? `\n监督：${item.watchdog.reason}` : ''}${item.delivery?.url ? `\n${item.delivery.url}` : ''}`).join('\n') : '当前没有任务。', `status-${key}`);
@@ -222,7 +241,7 @@ export class SuperCoordinator {
           const current = data.tasks[id]; current.status = current.stopRequested ? 'cancelled' : 'queued'; current.deviceStatus = 'offline';
           current.offlineAttempts = (current.offlineAttempts ?? 0) + 1;
           current.retryAt = new Date(Date.parse(this.now()) + Math.min(60000, (this.config.offlineRetryMs ?? 5000) * 2 ** Math.min(current.offlineAttempts - 1, 4))).toISOString();
-          this.enqueue(data, current.event, `#${id} 的执行设备暂时离线，任务已保留，连接恢复后继续。`, `device-offline-${id}`);
+          if (!current.speculative || current.delivery?.number) this.enqueue(data, current.event, `#${id} 的执行设备暂时离线，任务已保留，连接恢复后继续。`, `device-offline-${id}`);
         }); return;
       }
       throw error;
@@ -274,15 +293,21 @@ export class SuperCoordinator {
         } });
         if (this.data.tasks[id].stopRequested) { await this.finishStopped(id); return; }
         await this.transaction(data => {
+          if (delivered.skipped) {
+            const current = data.tasks[id]; current.status = 'completed'; current.noChanges = true; current.deliverySkippedReason = delivered.reason;
+            current.updatedAt = this.now(); this.taskNode(data, current); return;
+          }
           const current = data.tasks[id]; current.delivery = delivered; current.status = delivered.merged ? 'merged' : 'ready';
+          delete current.noChanges;
           const thread = reference('thread', delivered.threadId);
           putNode(data.graph, { id: thread, kind: 'thread', projectId: current.projectId, conversations: [current.conversationId], text: delivered.url, links: [current.reference] });
           data.subscriptions[delivered.threadId] = [...new Set([...(data.subscriptions[delivered.threadId] ?? []), id, ...(current.relatedTaskIds ?? [])])];
           current.prThreadReference = thread; current.updatedAt = this.now(); this.taskNode(data, current);
         });
       }
-      await this.transaction(data => { const current = data.tasks[id]; this.enqueue(data, current.event,
-        `#${id} ${labels[current.status]}\n${current.result.slice(0, 1000)}${current.result.length > 1000 ? `\n发送“任务详情 #${id}”查看完整结果。` : ''}${current.delivery?.url ? `\n${current.delivery.url}` : ''}`, `result-${id}-${current.attempt}`); });
+      await this.transaction(data => { const current = data.tasks[id];
+        if (!current.speculative || current.delivery?.number) this.enqueue(data, current.event,
+          `#${id} ${labels[current.status]}\n${current.result.slice(0, 1000)}${current.result.length > 1000 ? `\n发送“任务详情 #${id}”查看完整结果。` : ''}${current.delivery?.url ? `\n${current.delivery.url}` : ''}`, `result-${id}-${current.attempt}`); });
       if (this.data.tasks[id].status === 'merged') this.queueRelease(id);
     } catch (error) {
       if (this.data.tasks[id].stopRequested && error.processTreeStopped === true) { await this.finishStopped(id); return; }
@@ -300,7 +325,7 @@ export class SuperCoordinator {
       task.status = 'paused'; task.error = String(error.message ?? error).slice(0, 1200); task.uncertain = error.processTreeStopped !== true;
       if (error.diagnosticPath) task.diagnosticPath = error.diagnosticPath;
       task.updatedAt = this.now(); this.taskNode(data, task);
-      this.enqueue(data, task.event, `#${id} 已暂停，已有修改和会话保留。${task.uncertain ? '需核对执行端是否已停止。' : ''}发送“继续修正 #${id}”接续，或“取消任务 #${id}”结束。`, `paused-${id}-${task.attempt}`);
+      if (!task.speculative || task.delivery?.number) this.enqueue(data, task.event, `#${id} 已暂停，已有修改和会话保留。${task.uncertain ? '需核对执行端是否已停止。' : ''}发送“继续修正 #${id}”接续，或“取消任务 #${id}”结束。`, `paused-${id}-${task.attempt}`);
     });
     if (this.active.get(id)?.started) this.pool.cancel(id, 'Pause after task failure').catch(cause => {
       this.transaction(data => { if (data.tasks[id]) { data.tasks[id].uncertain = true; data.tasks[id].error = String(cause.message).slice(0, 1200); } }).catch(() => {});
@@ -310,7 +335,7 @@ export class SuperCoordinator {
     await this.transaction(data => { const task = data.tasks[id];
       if (!['closed', 'merged'].includes(task.status)) task.status = task.pauseRequested ? 'paused' : 'cancelled';
       task.uncertain = false; task.updatedAt = this.now(); this.taskNode(data, task);
-      this.enqueue(data, task.event, `#${id} ${labels[task.status]}，已有修改和记录保留。`, `stopped-${id}-${task.attempt}`); });
+      if (!task.speculative || task.delivery?.number) this.enqueue(data, task.event, `#${id} ${labels[task.status]}，已有修改和记录保留。`, `stopped-${id}-${task.attempt}`); });
   }
   async stopTask(id, reason = 'Human requested stop') {
     if (!this.active.get(id)?.started) return;
@@ -380,7 +405,7 @@ export class SuperCoordinator {
           }
           task.lastRelatedEvent = { reference: ref, at: event.at, kind: event.kind };
         } else if (event.kind === 'closed') {
-          task.status = event.meta?.merged ? 'merged' : 'closed'; task.stopRequested = true;
+          task.status = event.meta?.merged ? 'merged' : 'closed'; task.stopRequested = true; task.prClosed = true; task.prMerged = Boolean(event.meta?.merged);
           this.enqueue(data, task.event, `#${task.id} 的 PR 已${event.meta?.merged ? '合并' : '关闭'}。`, `pr-end-${event.id}`);
           inputs.push({ taskId: task.id, stop: true });
         } else if (!approved && (event.kind !== 'ci' || failedCheck)) {
@@ -474,7 +499,7 @@ export class SuperCoordinator {
         task.stopRequested = true; task.pauseRequested = true; task.watchdog = { action: 'pause', reason: action.reason, at: this.now() }; task.status = this.active.has(task.id) ? 'interrupting' : 'paused';
       }
       if (task && action.action === 'observe') task.assessment = { reason: action.reason, at: this.now() };
-      if (task && ['pause', 'notify'].includes(action.action)) this.enqueue(data, task.event, `#${task.id} 需要关注：${action.reason}`, `watchdog-${action.id}`);
+      if (task && ['pause', 'notify'].includes(action.action) && (!task.speculative || task.delivery?.number)) this.enqueue(data, task.event, `#${task.id} 需要关注：${action.reason}`, `watchdog-${action.id}`);
       if (!task && action.action === 'notify') {
         for (const conversation_id of this.config.conversationIds) this.enqueue(data, { id: `watchdog-${action.id}`, conversation_id }, `助手需要检查：${action.reason}`, `watchdog-${action.id}-${conversation_id}`);
       }

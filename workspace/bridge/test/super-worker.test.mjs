@@ -10,6 +10,7 @@ import { TaskWorkerPool, CloudTaskWorkerPool, git } from '../super-worker.mjs';
 import { apply as inboxPlugin, inputKey } from '../super-inbox-plugin.mjs';
 import { createTaskDaemon, RemoteTaskWorkerPool, taskToolToken } from '../super-daemon.mjs';
 import { createMcpHandler } from '../super-mcp.mjs';
+import { githubCommand } from '../super-github.mjs';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function eventually(check) { for (let count = 0; count < 100; count++) { if (await check()) return; await sleep(30); } throw new Error('Condition not reached.'); }
@@ -50,6 +51,57 @@ test('workers return before completion and use two independent real Git worktree
   assert.equal((await pool.inspect('T000002')).running, true);
   pool.records.get('T000002').executor.release(); await second.completion;
   await assert.rejects(pool.prepare({ id: '../escape' }), /Invalid task/);
+});
+
+test('task origin commit survives repository advancement and recovery and rejects a substituted base', async t => {
+  const { pool, repositoryPath, options } = await fixture(t);
+  const origin = await git(repositoryPath, ['rev-parse', 'HEAD']);
+  const first = await pool.prepare({ id: 'T000014', speculative: true });
+  assert.equal(first.baseCommit, origin);
+  await writeFile(join(repositoryPath, 'source.txt'), 'new upstream source');
+  await git(repositoryPath, ['add', 'source.txt']); await git(repositoryPath, ['commit', '-m', 'upstream advanced']);
+  const later = await git(repositoryPath, ['rev-parse', 'HEAD']); assert.notEqual(later, origin);
+  const restored = new TaskWorkerPool(options); t.after(() => restored.close());
+  assert.equal((await restored.prepare({ id: 'T000014', speculative: true, baseCommit: origin })).baseCommit, origin);
+  await assert.rejects(restored.prepare({ id: 'T000014', baseCommit: later }), /recorded origin/);
+  const recordPath = join(options.runsPath, 'tasks', 'T000014', 'task.json');
+  const metadata = JSON.parse(await readFile(recordPath, 'utf8')); delete metadata.baseCommit;
+  await writeFile(recordPath, JSON.stringify(metadata));
+  const legacy = new TaskWorkerPool(options); t.after(() => legacy.close());
+  await assert.rejects(legacy.prepare({ id: 'T000014', speculative: true }), /base commit is unavailable/);
+});
+
+test('new production tasks fetch the confirmed origin base while the dirty developer checkout stays untouched', async t => {
+  const calls = [], originalProxy = process.env.HTTPS_PROXY;
+  const { pool, root, repositoryPath } = await fixture(t, { refreshBase: true, baseBranch: 'main', github: {
+    gitProxy: 'http://127.0.0.1:9', command: async (file, args, options) => { calls.push({ file, args }); return githubCommand(file, args, options); },
+  } });
+  const remote = join(root, 'origin.git');
+  await git(root, ['init', '--bare', remote]);
+  await git(repositoryPath, ['remote', 'add', 'origin', remote]); await git(repositoryPath, ['push', 'origin', 'main']);
+  const firstHead = await git(repositoryPath, ['rev-parse', 'HEAD']);
+  const first = await pool.prepare({ id: 'T000015' }); assert.equal(first.baseCommit, firstHead);
+  const publisher = join(root, 'publisher');
+  await git(root, ['clone', '--branch', 'main', remote, publisher]);
+  await git(publisher, ['config', 'user.name', 'Synthetic Publisher']); await git(publisher, ['config', 'user.email', 'publisher@example.invalid']);
+  await writeFile(join(publisher, 'source.txt'), 'merged upstream fix');
+  await git(publisher, ['add', 'source.txt']); await git(publisher, ['commit', '-m', 'second merged fixture']); await git(publisher, ['push', 'origin', 'main']);
+  const secondHead = await git(publisher, ['rev-parse', 'HEAD']); assert.notEqual(secondHead, firstHead);
+  await writeFile(join(repositoryPath, 'source.txt'), 'developer uncommitted work');
+  const second = await pool.prepare({ id: 'T000016' });
+  assert.equal(second.baseCommit, secondHead); assert.equal(await readFile(join(second.workspace, 'source.txt'), 'utf8'), 'merged upstream fix');
+  assert.equal(await git(repositoryPath, ['rev-parse', 'HEAD']), firstHead);
+  assert.equal(await readFile(join(repositoryPath, 'source.txt'), 'utf8'), 'developer uncommitted work');
+  assert.equal((await pool.prepare({ id: 'T000015' })).baseCommit, firstHead, 'An existing task must keep its original pinned base.');
+  assert.equal(process.env.HTTPS_PROXY, originalProxy);
+  assert.equal(calls.filter(call => call.args.includes('fetch')).length, 2);
+  assert.ok(calls.every(call => call.file === 'git' && call.args.includes('http.proxy=http://127.0.0.1:9')));
+  await git(repositoryPath, ['remote', 'set-url', 'origin', join(root, 'missing-origin.git')]);
+  await assert.rejects(pool.prepare({ id: 'T000017' }), /Cannot confirm the latest origin base/);
+  await assert.rejects(readFile(join(root, 'runs/tasks/T000017/task.json')), { code: 'ENOENT' });
+  await assert.rejects(git(repositoryPath, ['show-ref', '--verify', 'refs/heads/codex/super/T000017']));
+  assert.equal(await git(repositoryPath, ['rev-parse', 'HEAD']), firstHead);
+  assert.equal(await readFile(join(repositoryPath, 'source.txt'), 'utf8'), 'developer uncommitted work');
 });
 
 test('native inbox sends same-task input once and confirms actual session consumption', async t => {

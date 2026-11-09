@@ -12,6 +12,8 @@
 
 从旧模式转换时继承已确认的读取游标，避免切换期间的新消息被当作旧历史跳过；仍不复制旧会话冒充新任务。运行中可发送`任务列表`、`任务详情 #T000001`、`#T000001 补充要求`、`取消任务 #T000001`、`继续修正 #T000001`。需要共享相关反馈时用`关联任务 #T000001 #T000002`；关联仅限同一聊天，相关PR关闭不会终止另一项任务。
 
+配置GitHub可信验证时，enable入口也启用`proactive.enabled`。普通缺陷讨论先静默核查，没有真实变更或未通过验证不在群里打扰；直接交办、私聊/@仍给正常任务反馈。静默核查不等于允许更改项目/权限；原baseCommit、actual diff和独立验收门禁见SUPER-PROACTIVE。模板默认关闭，只有配置可信交付后才可主动核查。
+
 未启动任务遇执行设备离线时保留排队并退避重连；已可能产生副作用的未知原生调用保持暂停，不盲目重做。自动发布需配置ReleasePipeline、固定可信buildCommands及artifacts；Windows可用`environment/scripts/build-portable.ps1 -ToolchainWorkspace <已按相同锁文件安装的workspace>`在已合并commit的独立副本构建，产物为`outputs/TeamRelay-portable.zip`及校验文件。当前安装工具链与源锁不同会拒绝构建。
 
 ```powershell
@@ -90,6 +92,10 @@ node .\workspace\bridge\super-daemon.mjs .\environment\config\super-daemon.local
 控制器本机绑定配置将 `superAgent.executionMode` 设为 `remote-tools`，`superAgent.daemon` 设为 `{ "url":"http://127.0.0.1:18203", "tokenEnv":"SUPER_AGENT_DAEMON_TOKEN" }`，控制器进程设置同一环境变量。DSH计算和会话留控制侧，受限工具读写原地环境。跨机器必须使用HTTPS；离线保留排队和原任务，不能自动换目录或重建环境冒充接续。此文给出可复现操作，不代表已部署远程云端。
 
 ## 验证
+
+本轮用户已选择`github.autoMerge=true`、`mergePolicy="verified-tests"`。这与默认review策略分开：固定可信testCommands不能为空，显式配置的requiredChecks仍需成功；不要求另建评审账号。交付按最新base串行复验，`github.versioning.enabled=true`时按SUPER-VERSION固定清单统一递增。配置示例默认关闭自动合并、发布和版本维护，新机器须恢复自己的可信路径/绑定，不复制旧机器凭据。
+
+原群发送`任务列表`查看编号；`继续修正 #T000001`接续暂停或关闭未合并任务，`取消任务 #T000001`保留文件并停止。已合并任务直接继续会提示描述新需求，发送`#T000001 请补充……`会从最新基线创建有父引用的后续任务。消息接收、模型消费、可信验证、PR合并和发布分别记账，单纯回复“收到”不是代码已经发布。
 
 `environment/scripts/verify-super-agent.ps1` 默认只运行新模块语法、Node隔离测试和PowerShell配置转换测试，零模型、零实际GitHub写入，不启动正式IM/监听。全项目验证继续用verify.ps1。真实模型与远程环境验收必须显式运行并记录数量、实际文件差异和独立测试证据。
 

@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { TaskWorkerPool, validTaskId } from './super-worker.mjs';
 import { replaceOwnedFile } from './file-replace.mjs';
+import { GitDelivery } from './super-github.mjs';
 
 const exec = promisify(execFile);
 const equal = (a, b) => { const aa = Buffer.from(String(a)), bb = Buffer.from(String(b)); return aa.length === bb.length && timingSafeEqual(aa, bb); };
@@ -37,7 +38,9 @@ async function containedFile(workspace, name, writing = false) {
 export function createTaskDaemon(options) {
   const secret = options.token ?? process.env[options.tokenEnv ?? 'SUPER_AGENT_DAEMON_TOKEN'];
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Daemon token must contain at least 32 characters.');
-  const pool = options.pool ?? new TaskWorkerPool(options);
+  const pool = options.pool ?? new TaskWorkerPool({ ...options, refreshBase: options.refreshBase ?? Boolean(options.github?.enabled),
+    baseBranch: options.github?.base ?? 'main', versioning: options.github?.versioning });
+  const delivery = options.github?.enabled ? new GitDelivery(options.github) : null;
   const jobs = new Map();
   const toolQueue = new Map();
   const counts = new Map();
@@ -100,7 +103,7 @@ export function createTaskDaemon(options) {
       if (!control && (!address.pathname.startsWith('/tools/') || !equal(token, taskToolToken(secret, taskId)))) throw error('Unauthorized.', 401);
       if (address.pathname === '/prepare' || address.pathname === '/tools/prepare') {
         if (!control) throw error('Control credential required.', 403);
-        const metadata = await pool.prepare({ id: taskId });
+        const metadata = await pool.prepare({ id: taskId, speculative: data.speculative === true });
         return send(200, { ...metadata, toolToken: taskToolToken(secret, taskId) });
       }
       if (address.pathname === '/activate') {
@@ -119,7 +122,7 @@ export function createTaskDaemon(options) {
       if (address.pathname === '/start') {
         if (!control) throw error('Control credential required.', 403);
         const task = { id: taskId, summary: data.task.summary, instructions: data.task.instructions, inputs: data.task.inputs,
-          context: data.task.context, attempt: data.task.attempt, event: data.task.event, reference: data.task.reference };
+          context: data.task.context, attempt: data.task.attempt, event: data.task.event, reference: data.task.reference, speculative: data.task.speculative === true };
         if (!Number.isSafeInteger(task.attempt ?? 0) || (task.attempt ?? 0) < 0) throw error('Invalid attempt.');
         // Authenticated duplicate requests never launch another turn, even after a lost response.
         const key = taskId + ':' + String(task.attempt ?? 0);
@@ -151,9 +154,8 @@ export function createTaskDaemon(options) {
         if (!control || !options.github) throw error('Git delivery is not configured.', 403);
         const metadata = await pool.inspect(taskId);
         if (!metadata || metadata.running) throw error('Task is missing or still running.', 409);
-        const { GitDelivery } = await import('./super-github.mjs');
-        const delivery = new GitDelivery(options.github);
         return send(200, await delivery.deliver({ id: taskId, workspace: metadata.workspace, branch: metadata.branch,
+            speculative: data.task?.speculative === true, resumeClosedPr: data.task?.resumeClosedPr === true, baseCommit: metadata.baseCommit,
           summary: data.task?.summary, instructions: data.task?.instructions, result: data.task?.result,
           assertActive: async () => { if (stoppedTasks.has(taskId) || pool.records.get(taskId)?.status === 'cancelled') throw error('Task was stopped.', 409); } }));
       }
@@ -251,7 +253,7 @@ export class RemoteTaskWorkerPool {
     if (!response.ok) throw new Error('Remote worker HTTP ' + response.status);
     return response.json();
   }
-  async prepare(task) { return this.call('/prepare', { taskId: task.id }); }
+  async prepare(task) { return this.call('/prepare', { taskId: task.id, speculative: task.speculative === true }); }
   async start(task, { onProgress } = {}) {
     try { await this.call('/start', { task }); }
     catch (error) { if (!error.offline) throw error; } // Query this durable attempt, never blindly start a replacement.
@@ -276,7 +278,7 @@ export class RemoteTaskWorkerPool {
   input(taskId, input) { return this.call('/input', { taskId, input }); }
   cancel(taskId, reason) { return this.call('/cancel', { taskId, reason }); }
   async inspect(taskId) { const result = await this.call('/inspect', { taskId }); return { ...result.worker, job: result.job, worker: result.worker }; }
-  async deliver(task) { return this.call('/delivery', { taskId: task.id, task: { id: task.id, summary: task.summary, instructions: task.instructions, result: task.result, attempt: task.attempt } }); }
+  async deliver(task) { return this.call('/delivery', { taskId: task.id, task: { id: task.id, summary: task.summary, instructions: task.instructions, result: task.result, attempt: task.attempt, speculative: task.speculative === true, resumeClosedPr: task.resumeClosedPr === true } }); }
   async close() {
     const pending = [...this.jobs.values()];
     const stops = await Promise.allSettled([...this.jobs.keys()].map(id => this.cancel(id, 'controller-shutdown')));

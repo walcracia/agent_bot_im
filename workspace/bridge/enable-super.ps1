@@ -12,6 +12,7 @@ param(
   [string]$BaseBranch = 'main',
   [string[]]$RequiredChecks = @(),
   [string[]]$TrustedReviewers = @(),
+  [ValidateSet('review','verified-tests')][string]$MergePolicy = 'review',
   [switch]$AutoMerge,
   [switch]$PassThru
 )
@@ -103,7 +104,7 @@ try {
     }
     foreach ($name in @($AllowedGitHubActors + $TrustedReviewers)) { if ($name -notmatch '^[A-Za-z0-9][A-Za-z0-9-]{0,99}$') { throw 'GitHub人员必须是明确的login。' } }
     if ($BaseBranch -notmatch '^[A-Za-z0-9][A-Za-z0-9._/-]*$' -or $BaseBranch.Contains('..')) { throw 'BaseBranch无效。' }
-    if ($AutoMerge -and (!$RequiredChecks.Count -or !$TrustedReviewers.Count)) { throw '自动合并必须指定RequiredChecks和TrustedReviewers。' }
+    if ($AutoMerge -and $MergePolicy -eq 'review' -and (!$RequiredChecks.Count -or !$TrustedReviewers.Count)) { throw 'review自动合并必须指定RequiredChecks和TrustedReviewers。' }
     if (@($TestArguments | Where-Object { $_ -match '[\r\n\x00]' }).Count) { throw '测试参数不能含控制字符。' }
     $executable = Get-Command $TestExecutable -CommandType Application -ErrorAction Stop | Select-Object -First 1
     if ([IO.Path]::GetExtension($executable.Source) -in @('.cmd','.bat')) { throw '测试命令使用直接可执行文件，如node/pwsh/python；不要把批处理隐式交给shell。' }
@@ -114,7 +115,7 @@ try {
     $testArgv = @($executable.Source) + $TestArguments
     $super.github = [ordered]@{ enabled=$true; repository=$GitHubRepo; base=$BaseBranch; remote='origin';
       allowedActors=@($AllowedGitHubActors | Select-Object -Unique); testCommands=@(,$testArgv);
-      requiredChecks=@($RequiredChecks); reviewers=@($TrustedReviewers); autoMerge=[bool]$AutoMerge; pollMilliseconds=15000 }
+      requiredChecks=@($RequiredChecks); reviewers=@($TrustedReviewers); autoMerge=[bool]$AutoMerge; mergePolicy=$MergePolicy; pollMilliseconds=15000 }
   } elseif ($AutoMerge -or $TestExecutable -or $AllowedGitHubActors.Count -or $RequiredChecks.Count -or $TrustedReviewers.Count) {
     throw 'GitHub设置必须与GitHubRepo一起明确提供。'
   } elseif (!$super.github) { $super.github = [ordered]@{ enabled=$false } }
@@ -131,6 +132,7 @@ try {
   }
   $super.controlHost = '127.0.0.1'; $super.controlPort = $ControlPort
   $super.maxAutoRepairs = 2; $super.contextCharacters = 12000; $super.routerBatchSize = 8
+  if (!$super.proactive) { $super.proactive = [ordered]@{enabled=[bool]$super.github.enabled} }
   $super.watchdog = [ordered]@{ enabled=$true; intervalMs=60000; staleHeartbeatMs=90000; taskAgeMs=120000; cooldownMs=300000; maxAssessmentsPerTick=4; maxConsecutiveModelFailures=3 }
   $settings.superAgent = $super
   Assert-NoInlineSecrets $settings
