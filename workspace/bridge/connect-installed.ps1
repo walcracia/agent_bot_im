@@ -45,7 +45,12 @@ if (!$configPathFull.StartsWith($configDirectory + [IO.Path]::DirectorySeparator
 $configPathFull = Resolve-ImStartupConfigFile -Path $configPathFull
 
 function Get-ImJson([string]$Route, [hashtable]$Headers) {
-  try { return Invoke-RestMethod -Uri ($base + $Route) -Headers $Headers -Method Get -TimeoutSec 20 }
+  try {
+    $response = Invoke-RestMethod -Uri ($base + $Route) -Headers $Headers -Method Get -TimeoutSec 20
+    # Invoke-RestMethod emits JSON arrays as one pipeline object. Returning the
+    # assigned value enumerates them before Where-Object / Select-ImItems.
+    return $response
+  }
   catch {
     $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network' }
     # Do not echo an HTTP body, headers, or the connection code into diagnostics.

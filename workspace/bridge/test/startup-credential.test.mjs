@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { createServer } from 'node:http';
 import { promisify } from 'node:util';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -30,13 +32,13 @@ test('Windows startup credentials use real current-user DPAPI and isolated bindi
       }));
     `);
     await writeFile(join(root, 'credential-test.ps1'), String.raw`
-param([string]$Scenario)
+param([string]$Scenario, [string]$BaseUrl)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $fixture = $PSScriptRoot
 $bridge = Join-Path $fixture 'workspace/bridge'
 . (Join-Path $bridge 'startup-credential.ps1')
-$code = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
+$code = if ($Scenario -eq 'real-http-connect') { $env:CREDENTIAL_TEST_CODE } else { [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24)) }
 $secure = ConvertTo-SecureString -String $code -AsPlainText -Force
 $configPath = Join-Path $fixture ('environment/config/' + $Scenario + '.json')
 $credentialPath = Join-Path $fixture ('environment/config/' + $Scenario + '.credential.json')
@@ -146,6 +148,16 @@ try {
       if ($null -ne $bound.startup) { throw 'Opt-out binding unexpectedly persisted a credential.' }
       if ([IO.File]::ReadAllText($configPath).Contains($code)) { throw 'Ephemeral binding leaked token.' }
     }
+    'real-http-connect' {
+      function Read-Host { throw 'Unexpected connection-code prompt.' }
+      $env:TEAM_RELAY_BOT_TOKEN = $code
+      $bound = & (Join-Path $bridge 'connect-installed.ps1') -Workspace (Join-Path $fixture 'worker') -CliPath (Join-Path $fixture 'cli.cmd') -BaseUrl $BaseUrl -ConfigPath $configPath -ConversationIds group -SenderIds @('admin','alice','bob') -EnableStartup -PassThru -InformationAction SilentlyContinue
+      if (!$bound.startup.enabled -or $bound.baseUrl -ne $BaseUrl -or $bound.conversationIds.Count -ne 1 -or $bound.conversationIds[0] -ne 'group') { throw 'Wrong real HTTP group binding.' }
+      if ($bound.senderIds.Count -ne 3 -or @($bound.senderIds | Sort-Object) -join ',' -ne 'admin,alice,bob') { throw 'Real HTTP JSON users were not individually enumerated.' }
+      if ($env:TEAM_RELAY_BOT_TOKEN -cne $code) { throw 'Parent environment was not restored.' }
+      $recovered = Get-ImStartupToken -ConfigPath $configPath
+      if ($recovered -cne $code -or [IO.File]::ReadAllText($configPath).Contains($code)) { throw 'Real HTTP credential mismatch or plaintext leak.' }
+    }
     'restart' {
       Save-ImStartupToken -ConfigPath $configPath -CredentialPath $credentialPath -Token $secure
       Write-Settings
@@ -185,6 +197,48 @@ try {
         assert.deepEqual(JSON.parse(line), { scenario, passed: true });
       });
     }
+    await t.test('real-http-connect enumerates JSON arrays for one group and three authorized members', async () => {
+      const code = randomBytes(24).toString('hex');
+      const users = [
+        { id: 'admin', username: 'admin', display_name: 'Admin', is_bot: false },
+        { id: 'alice', username: 'alice', display_name: 'Alice', is_bot: false },
+        { id: 'bob', username: 'bob', display_name: 'Bob', is_bot: false },
+        { id: 'bot', username: 'dsh', display_name: 'Assistant', is_bot: true },
+      ];
+      const routes = [];
+      const server = createServer((request, response) => {
+        if (request.headers.authorization !== `Bearer ${code}`) {
+          response.writeHead(401).end();
+          return;
+        }
+        routes.push(request.url);
+        const payload = request.url === '/api/me' ? users.at(-1)
+          : request.url === '/api/users' ? users
+          : request.url === '/api/conversations' ? [{ id: 'group', title: 'Test group', members: users }]
+          : null;
+        response.writeHead(payload ? 200 : 404, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify(payload));
+      });
+      await new Promise((resolveReady, reject) => {
+        server.once('error', reject);
+        server.listen(0, '127.0.0.1', resolveReady);
+      });
+      try {
+        const baseUrl = `http://127.0.0.1:${server.address().port}`;
+        const { stdout } = await execute('pwsh', ['-NoProfile', '-File', join(root, 'credential-test.ps1'), '-Scenario', 'real-http-connect', '-BaseUrl', baseUrl], {
+          timeout: 20000, env: { ...process.env, CREDENTIAL_TEST_CODE: code },
+        });
+        assert.deepEqual(JSON.parse(stdout.trim().split(/\r?\n/).at(-1)), { scenario: 'real-http-connect', passed: true });
+        assert.deepEqual(routes, ['/api/me', '/api/conversations', '/api/users']);
+        const binding = JSON.parse(await readFile(join(root, 'environment', 'config', 'real-http-connect.json'), 'utf8'));
+        assert.deepEqual(binding.conversationIds, ['group']);
+        assert.deepEqual(binding.senderIds, ['admin', 'alice', 'bob']);
+        assert.equal(binding.startup.enabled, true);
+      } finally {
+        server.closeAllConnections();
+        await new Promise(resolveClosed => server.close(resolveClosed));
+      }
+    });
     const config = await readFile(join(root, 'environment', 'config', 'connect.json'), 'utf8');
     assert.equal(JSON.parse(config).startup.enabled, true);
   } finally {
