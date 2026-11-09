@@ -21,10 +21,10 @@ async function fixture(t, extras = {}) {
     close: async () => { for (const run of runs.values()) run.reject(Object.assign(new Error('closed'), { processTreeStopped: true })); },
     inspect: async () => ({ diff: 'one file changed' }), ...extras.pool };
   const c = new SuperCoordinator({ state: extras.state ?? { cursor: 0 }, store: { write: async value => saved.push(structuredClone(value)) },
-    config: { projectId: 'p', conversationIds: ['chat'], senderIds: ['human'], maxWorkers: 2 }, api: { request: async () => conversations,
+    config: { projectId: 'p', conversationIds: ['chat'], senderIds: ['human'], maxWorkers: 2, ...extras.config }, api: { request: async () => conversations,
       reply: async (message, text, id) => { replies.push({ message, text, id }); if (extras.reply) return extras.reply(message, text, id); return { id: 99 }; } },
     bot, pool, delivery: extras.delivery, release: extras.release,
-    router: { route: async events => events.map(item => ({ eventId: item.id, action: 'new', summary: item.text, instructions: item.text })) } });
+    router: extras.router ?? { route: async events => events.map(item => ({ eventId: item.id, action: 'new', summary: item.text, instructions: item.text })) } });
   await c.initialize(); await c.ingestIm([], conversations);
   t.after(() => c.close()); return { c, runs, replies, saved, starts };
 }
@@ -132,6 +132,53 @@ test('uncertain artifact build preserves merged code and needs attention without
   assert.equal(releases, 1); assert.equal(f.c.data.tasks.T000001.status, 'merged');
 });
 
+test('followup to a merged task creates a successor and preserves the parent result and context', async t => {
+  const f = await fixture(t, { delivery: { deliver: async () => ({ merged: true, number: 7, url: 'https://github.com/owner/repo/pull/7', threadId: 'github:owner/repo:pr:7' }) } });
+  await f.c.ingestIm([event(1, 'Fix first')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  f.runs.get('T000001').resolve({ finalResponse: 'original verified result' });
+  await until(() => f.c.data.tasks.T000001.status === 'merged' && f.c.active.size === 0);
+  const parent = structuredClone(f.c.data.tasks.T000001);
+  await f.c.ingestIm([event(2, '#T000001 请补充空输入处理')], conversations); await until(() => f.starts.length === 2);
+  const child = f.c.data.tasks.T000002;
+  assert.equal(child.parentTaskId, parent.id); assert.equal(child.status, 'running');
+  assert.equal(child.workspace, '/work/T000002'); assert.equal(f.c.data.tasks.T000001.status, 'merged');
+  assert.deepEqual(f.c.data.tasks.T000001.delivery, parent.delivery); assert.equal(f.c.data.tasks.T000001.result, parent.result);
+  assert.ok(f.c.data.graph[child.reference].links.includes(parent.reference));
+});
+
+test('continue on a merged task responds with a new-request hint without rerunning old work', async t => {
+  const f = await fixture(t, { delivery: { deliver: async () => ({ merged: true, number: 7, url: 'https://github.com/owner/repo/pull/7' }) } });
+  await f.c.ingestIm([event(1, 'Fix first')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  f.runs.get('T000001').resolve({ finalResponse: 'done' }); await until(() => f.c.data.tasks.T000001.status === 'merged' && f.c.active.size === 0);
+  await f.c.ingestIm([event(2, '继续修正 #T000001')], conversations); await f.c.flushOutbox();
+  assert.equal(f.starts.length, 1); assert.equal(Object.keys(f.c.data.tasks).length, 1);
+  assert.ok(f.replies.some(item => /已合并.*请描述新的修正需求/u.test(item.text)));
+});
+
+for (const status of ['closed', 'merged']) test(`a question about a ${status} task never reopens or starts coding`, async t => {
+  const f = await fixture(t);
+  await f.c.ingestIm([event(1, 'Fix first')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  f.runs.get('T000001').resolve({ finalResponse: 'done' }); await until(() => f.c.active.size === 0);
+  await f.c.transaction(data => { data.tasks.T000001.status = status; data.tasks.T000001.prClosed = true; data.tasks.T000001.prMerged = status === 'merged'; });
+  await f.c.ingestIm([event(2, '#T000001 为什么关闭了？')], conversations); await f.c.flushOutbox();
+  assert.equal(f.starts.length, 1); assert.equal(Object.keys(f.c.data.tasks).length, 1);
+  assert.equal(f.c.data.tasks.T000001.status, status); assert.equal(f.c.data.tasks.T000001.resumeClosedPr, undefined);
+  assert.ok(f.replies.some(item => /如需继续改代码/u.test(item.text)));
+});
+
+test('explicit continuation reopens a closed-unmerged task in its original workspace with an explicit PR flag', async t => {
+  const threadId = 'github:owner/repo:pr:7';
+  const f = await fixture(t, { delivery: { deliver: async () => ({ number: 7, url: 'https://github.com/owner/repo/pull/7', threadId }) } });
+  await f.c.ingestIm([event(1, 'Fix first')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  f.runs.get('T000001').resolve({ finalResponse: 'done' }); await until(() => f.c.data.tasks.T000001.status === 'ready' && f.c.active.size === 0);
+  await f.c.ingestGithub({ events: [{ id: 'closed-7', source: 'github', taskId: 'T000001', threadId, kind: 'closed', text: 'Closed without merge', at: new Date().toISOString(), meta: { merged: false } }], cursor: {} });
+  assert.equal(f.c.data.tasks.T000001.status, 'closed'); assert.equal(f.c.data.tasks.T000001.resumeClosedPr, undefined);
+  await f.c.ingestIm([event(2, '继续修正 #T000001')], conversations); await until(() => f.starts.length === 2);
+  const task = f.c.data.tasks.T000001;
+  assert.equal(Object.keys(f.c.data.tasks).length, 1); assert.equal(task.resumeClosedPr, true);
+  assert.equal(task.workspace, '/work/T000001'); assert.equal(task.stopRequested, false); assert.equal(task.status, 'running');
+});
+
 test('revoking the task author stops only that worker and denies future task context reads', async t => {
   const f = await fixture(t); await f.c.ingestIm([event(1, 'Fix')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
   await f.c.ingestIm([], [{ id: 'chat', members: [bot] }]); await until(() => f.c.active.size === 0);
@@ -167,4 +214,57 @@ test('an offline device retains unadmitted work in the queue and reconnects with
   assert.equal(f.starts.length, 0); assert.equal(f.c.data.tasks.T000001.status, 'queued');
   offline = false; await f.c.transaction(data => { data.tasks.T000001.retryAt = null; }); f.c.kick();
   await until(() => f.starts.length === 1); assert.equal(f.starts[0], 'T000001');
+});
+
+const speculativeRouter = { route: async events => events.map(item => ({ eventId: item.id, action: 'speculate', taskId: null, summary: 'Investigate the reported defect', instructions: item.text })) };
+
+test('an offline execution device does not publish a silent investigation notice', async t => {
+  const f = await fixture(t, { config: { proactive: { enabled: true } }, router: speculativeRouter, delivery: {},
+    pool: { prepare: async () => { throw Object.assign(new Error('offline'), { offline: true, safeToRetry: true }); } } });
+  await f.c.ingestIm([event(1, 'A specific defect was reported')], conversations); await f.c.routePending();
+  await until(() => f.c.data.tasks.T000001?.deviceStatus === 'offline' && f.c.active.size === 0);
+  assert.equal(f.starts.length, 0); assert.equal(f.c.data.tasks.T000001.status, 'queued'); assert.equal(Object.keys(f.c.data.outbox).length, 0);
+});
+
+test('opted-in speculative investigation stays silent when real delivery confirms no change', async t => {
+  const f = await fixture(t, { config: { proactive: { enabled: true } }, router: speculativeRouter,
+    delivery: { deliver: async () => ({ skipped: true, reason: 'no_verified_change' }) } });
+  await f.c.ingestIm([event(1, 'A user reported the same odd result again')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  assert.equal(Object.keys(f.c.data.outbox).length, 0);
+  f.runs.get('T000001').resolve({ finalResponse: 'Not reproduced; no files changed.' }); await until(() => f.c.active.size === 0);
+  assert.equal(f.c.data.tasks.T000001.status, 'completed'); assert.equal(Object.keys(f.c.data.outbox).length, 0);
+});
+
+test('an unrequested investigation failure remains recorded without a group interruption', async t => {
+  const f = await fixture(t, { config: { proactive: { enabled: true } }, router: speculativeRouter, delivery: { deliver: async () => assert.fail('No delivery after failure') } });
+  await f.c.ingestIm([event(1, 'The same defect is being discussed')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  f.runs.get('T000001').reject(Object.assign(new Error('Unconfirmed reproduction'), { processTreeStopped: true })); await until(() => f.c.active.size === 0);
+  assert.equal(f.c.data.tasks.T000001.status, 'paused'); assert.equal(Object.keys(f.c.data.outbox).length, 0);
+});
+
+test('speculative work speaks only after the verified PR delivery exists', async t => {
+  const f = await fixture(t, { config: { proactive: { enabled: true } }, router: speculativeRouter,
+    delivery: { deliver: async () => ({ number: 9, url: 'https://github.com/owner/repo/pull/9', threadId: 'github:owner/repo:pr:9', head: 'a'.repeat(40), merged: false }) } });
+  await f.c.ingestIm([event(1, 'Another report of the specific defect')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  assert.equal(Object.keys(f.c.data.outbox).length, 0);
+  f.runs.get('T000001').resolve({ finalResponse: 'Reproduced and fixed; configured verification passed.' }); await until(() => f.c.active.size === 0);
+  const messages = Object.values(f.c.data.outbox);
+  assert.equal(messages.length, 1); assert.match(messages[0].text, /pull\/9/u); assert.equal(f.c.data.tasks.T000001.status, 'ready');
+});
+
+test('the coordinator rejects speculative work unless both policy and trusted delivery verification are enabled', async t => {
+  const f = await fixture(t, { router: speculativeRouter, delivery: { deliver: async () => assert.fail('Policy disabled') } });
+  await f.c.ingestIm([event(1, 'A possible defect')], conversations); await f.c.routePending();
+  assert.equal(f.starts.length, 0); assert.equal(Object.keys(f.c.data.tasks).length, 0);
+});
+
+test('an explicit human followup promotes a silent investigation and receives ordinary task feedback', async t => {
+  const f = await fixture(t, { config: { proactive: { enabled: true } }, router: speculativeRouter,
+    delivery: { deliver: async () => ({ skipped: true, reason: 'no_verified_change' }) } });
+  await f.c.ingestIm([event(1, 'People reported this defect')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
+  await f.c.ingestIm([event(2, '#T000001 please check the empty case too')], conversations);
+  assert.equal(f.c.data.tasks.T000001.speculative, false);
+  f.runs.get('T000001').resolve({ finalResponse: 'The requested followup is complete.' }); await until(() => f.c.active.size === 0);
+  assert.ok(Object.values(f.c.data.outbox).some(message => message.text.includes('补充已加入')));
+  assert.ok(Object.values(f.c.data.outbox).some(message => message.text.includes('requested followup')));
 });

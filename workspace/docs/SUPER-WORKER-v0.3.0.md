@@ -3,6 +3,7 @@
 2026-11-09。实现前冻结；任务协调器另见主规格。
 
 - 每项任务使用独立 Git worktree、`codex/super/<任务ID>` 分支及独立的原生 DSH session 映射。任务恢复必须验证工作目录、分支和映射；不 reset、删工作副本或清除旧锁。
+- 自动合并启用后的新任务可由可信配置设置`refreshBase:true, baseBranch:'main'`：每个新任务创建前单次参数化fetch固定origin/base，验证remote-tracking引用与远端SHA后从该完整SHA创建worktree并持久baseCommit。只更新远端跟踪引用，不pull/reset开发者主检出，也不覆盖其脏文件。首次fetch或SHA确认失败不创建任务worktree；恢复已有任务仍沿用原base，不擅自升级。默认false保留本地HEAD验收行为；Git代理仅用于该次调用，诊断留忽略运行目录。
 - `TaskWorkerPool.prepare(task)` 返回持久化元数据；`start(task,{onProgress})` 在进程完成前返回 `{completion}`。协调器限制并发数。每项任务单独拥有 executor，代码任务上限仍为两小时。
 - `input(taskId,input)` 将输入以稳定 ID 持久化到任务 inbox，由附加 Cordis 插件调用实际 Agent 的 `steer`（next-step），在下个可接纳输入的步骤送入原会话。只有插件从原生`user/message`事件确认并写入持久接纳记录才记 delivered；未接纳输入在恢复时补送。模型执行细节仅在本机保存。
 - `cancel(taskId)` 仅终止本实例拥有的原生进程树，并核实退出；无法证明停止则保留互斥锁，拒绝续跑。输入补充不通过强制杀进程实现。
@@ -55,3 +56,4 @@
 - 根协调再明确授权一次remote-tools验收T900003。控制侧原生session在空cwd运行，实际只调用`mcp__task__read/write/exec`进行代码操作，没有原生文件或shell调用。源码只位于独立daemon worktree，控制cwd开始/结束均为空；独立断言/pytest、测试hash和端侧命令终态均通过。没有部署腾讯或新云服务器。
 - 以上真实worker总预算与实际使用均为3个native session，另有原A一次明确追加turn；不含主协调另做的只读模型验证。复现入口`environment/scripts/verify-super-live.mjs`默认零调用，`--live`为双任务，`--live --resume-from <旧验收目录>`为显式原A补验收，`--remote-tools-live`为单个MCP端侧任务。原始日志和账号不提交。
 - 远端工具命令增加持久prepared/running/termination-failed账本，异常重启后不凭缺少内存进程记录而重新执行或声称已停止。测试发现成功HTTP响应早于finished账本写入的窗口，已将响应移到提交后并复验。远端媒体附件运输/模型理解未在本轮真实MCP验收中覆盖；本机默认路径继续传入既有校验后的附件metadata。
+- 自动合并后续任务基线补验收：当前worker模块11项全部通过。真实临时bare origin先为A，task1固定A；另一检出推送B，本地主HEAD仍A且有未提交文件，task2确认并基于origin/main=B创建，原HEAD与脏文件未变；既有task1仍A。随后使origin不可用，新task明确失败且无分支/账本，不退回旧tracking ref。Git代理仅存在于fetch/ls-remote调用参数和子进程环境，父进程代理未变。此次仅本机临时Git、零模型/零真实GitHub写入。

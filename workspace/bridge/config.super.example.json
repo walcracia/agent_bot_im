@@ -71,7 +71,18 @@
       "requiredChecks": [],
       "reviewers": [],
       "autoMerge": false,
+      "mergePolicy": "review",
+      "syncBaseBeforeMerge": true,
+      "versioning": {
+        "enabled": false,
+        "versionFile": "workspace/package.json",
+        "jsonVersionFiles": ["workspace/package.json", "workspace/package-lock.json", "workspace/bridge/package.json", "workspace/bridge/package-lock.json"],
+        "pythonVersionFiles": ["workspace/server/app.py"]
+      },
       "pollMilliseconds": 15000
+    },
+    "proactive": {
+      "enabled": false
     }
   }
 }

@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { replaceOwnedFile } from '../file-replace.mjs';
 
 const bridgePath = fileURLToPath(new URL('../bridge.mjs', import.meta.url));
 const fixturesByTest = new WeakMap();
@@ -68,8 +69,12 @@ async function waitFor(check, label, timeout = 15000) {
 }
 async function replaceJson(path, value) {
   const temporary = `${path}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(value));
-  await rename(temporary, path);
+  await writeFile(temporary, JSON.stringify(value), { flag: 'wx', mode: 0o600, flush: true });
+  // The listener may briefly hold its previous stop request without Windows
+  // delete-sharing. Keep fixture publication atomic and bounded; never bypass
+  // the stale-instance assertions or replace a failed write with success.
+  try { await replaceOwnedFile(temporary, path, undefined, { backoffMilliseconds: [25, 50, 100, 200, 400, 800, 1000, 1500, 2000, 2000] }); }
+  finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
 }
 
 async function fixture(t, options = {}) {

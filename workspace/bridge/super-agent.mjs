@@ -63,6 +63,7 @@ export function normalizeConfig(config, configPath) {
     for (const [field, fallback] of [['repositoryPath', superConfig.repositoryPath], ['worktreesPath', '../build/super-releases'], ['statePath', '../data/super-agent/releases.json']]) superConfig.release[field] = resolve(base, superConfig.release[field] ?? fallback);
   }
   superConfig.projectId ??= 'agent-bot-im'; superConfig.maxWorkers ??= 2;
+  if (superConfig.proactive?.enabled !== undefined && typeof superConfig.proactive.enabled !== 'boolean') throw new Error('Proactive policy must be explicitly boolean.');
   if (superConfig.initialCursor !== undefined && (!Number.isSafeInteger(superConfig.initialCursor) || superConfig.initialCursor < 0)) throw new Error('Invalid migration cursor.');
   if (!/^[A-Za-z0-9_.-]{1,80}$/u.test(superConfig.projectId) || !Number.isSafeInteger(superConfig.maxWorkers) || superConfig.maxWorkers < 1 || superConfig.maxWorkers > 8) throw new Error('Invalid project/concurrency configuration.');
   superConfig.controlPort ??= 18202;
@@ -114,7 +115,7 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
     const workers = await import('./super-worker.mjs');
     const contextUrl = `${controlOrigin}/api/context/read`;
     let pool;
-    const poolOptions = { ...options, harness: { ...config.harness, env: scrubbed }, contextUrl, contextTokenFor: taskTokenFor,
+    const poolOptions = { ...options, versioning: options.github?.versioning, refreshBase: options.refreshBase ?? Boolean(options.github?.enabled), baseBranch: options.github?.base ?? 'main', harness: { ...config.harness, env: scrubbed }, contextUrl, contextTokenFor: taskTokenFor,
       daemon: options.daemon ? { ...options.daemon, token: process.env[options.daemon.tokenEnv ?? 'SUPER_AGENT_DAEMON_TOKEN'] } : undefined };
     if (options.executionMode === 'remote-native') {
       const { RemoteTaskWorkerPool } = await import('./super-daemon.mjs'); pool = new RemoteTaskWorkerPool({ ...poolOptions, ...poolOptions.daemon });
@@ -127,7 +128,7 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
     const release = options.release?.enabled ? new (await import('./super-release.mjs')).ReleasePipeline({ ...options.release,
       diagnosticsPath: join(options.runsPath, 'release-commands'), secretEnvNames: privateNames }) : null;
     coordinator = new SuperCoordinator({ state, store, config: { ...config, ...options }, api, bot,
-      router: new SuperRouter({ projectId: options.projectId, classify: prompt => classifier.classify(prompt) }), pool, delivery, release });
+      router: new SuperRouter({ projectId: options.projectId, allowProactive: options.proactive?.enabled === true && Boolean(delivery), classify: prompt => classifier.classify(prompt) }), pool, delivery, release });
     if (!state.superAgent && options.initialCursor !== undefined) state.cursor = Math.max(state.cursor, options.initialCursor);
     if (!state.superAgent && options.initialCursor === undefined && options.processExistingMessages !== true) {
       const conversations = await api.request('/api/conversations');

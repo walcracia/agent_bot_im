@@ -171,7 +171,8 @@ async function realFixture(t, overrides = {}) {
   await exec('git', ['init', '--initial-branch=main', workspace], { windowsHide: true });
   await git(['config', 'user.name', 'Synthetic Relay Test']); await git(['config', 'user.email', 'test@example.invalid']);
   await writeFile(join(workspace, 'app.js'), 'export const value = 1;\n');
-  await git(['add', '--', 'app.js']); await git(['commit', '-m', 'initial fixture']);
+  if (overrides.packageVersion) await writeFile(join(workspace, 'package.json'), JSON.stringify({ name: 'synthetic', version: overrides.packageVersion }, null, 2) + '\n');
+  await git(['add', '--', 'app.js', ...(overrides.packageVersion ? ['package.json'] : [])]); await git(['commit', '-m', 'initial fixture']);
   await git(['remote', 'add', 'origin', remote]); await git(['push', 'origin', 'main']);
   await git(['checkout', '-b', 'codex/T000001']);
   await writeFile(join(workspace, 'app.js'), 'export const value = 2;\n');
@@ -185,13 +186,27 @@ async function realFixture(t, overrides = {}) {
       if (plain[0] === 'push' && f.losePush) { f.losePush = false; throw new Error('lost push response'); }
       return result;
     }
-    if (file !== 'gh') return exec(file, args, { cwd: options.cwd, windowsHide: true });
+    if (file !== 'gh') {
+      const result = await exec(file, args, { cwd: options.cwd, windowsHide: true });
+      if (f.testVersionReads) f.testVersionReads.push(result.stdout.trim());
+      return result;
+    }
     f.ghCalls.push(args);
     const head = (await git(['rev-parse', 'HEAD'])).stdout.trim();
     if (args[0] === 'api') {
       const endpoint = args.find(arg => arg.startsWith('repos/'));
       if (endpoint.includes('/pulls?')) return { stdout: JSON.stringify([f.pr ? [f.pr] : []]) };
-      if (endpoint.endsWith('/pulls/7')) return { stdout: JSON.stringify(f.pr) };
+      if (endpoint.endsWith('/pulls/7')) {
+        f.prReads = (f.prReads ?? 0) + 1;
+        if (f.dirtyAtRead === f.prReads) await writeFile(join(workspace, 'late-source.txt'), 'late unverified source');
+        if (f.localHeadAtRead === f.prReads) await git(['commit', '--allow-empty', '-m', 'unverified late head']);
+        const value = structuredClone(f.pr);
+        if (f.nullMergeableReads && f.prReads <= f.nullMergeableReads) value.mergeable = null;
+        if (f.baseSha) value.base.sha = f.baseSha;
+        if (f.changeHeadAtRead && f.prReads >= f.changeHeadAtRead) value.head.sha = 'e'.repeat(40);
+        if (f.changeBaseAtRead && f.prReads >= f.changeBaseAtRead) value.base.sha = 'd'.repeat(40);
+        return { stdout: JSON.stringify(value) };
+      }
       if (endpoint.includes('/check-runs')) return { stdout: JSON.stringify([{ check_runs: [{ id: 1, name: 'test', head_sha: head,
         status: f.pending ? 'in_progress' : 'completed', conclusion: f.pending ? null : (f.checkConclusion ?? 'success') }] }]) };
       if (endpoint.includes('/status?')) return { stdout: '[{"statuses":[]}]' };
@@ -207,9 +222,16 @@ async function realFixture(t, overrides = {}) {
       return { stdout: f.pr.html_url };
     }
     if (args[0] === 'pr' && args[1] === 'edit') { f.edits++; return { stdout: '' }; }
+    if (args[0] === 'pr' && args[1] === 'reopen') {
+      f.reopens = (f.reopens ?? 0) + 1; assert.equal(f.pr.merged, false); f.pr.state = 'open';
+      if (f.loseReopen) { f.loseReopen = false; throw new Error('lost reopen acknowledgement'); }
+      return { stdout: '' };
+    }
     if (args[0] === 'pr' && args[1] === 'merge') {
       f.merges++; assert.equal(args[args.indexOf('--match-head-commit') + 1], head);
-      f.pr.state = 'closed'; f.pr.merged = true; return { stdout: '' };
+      f.pr.state = 'closed'; f.pr.merged = true;
+      if (f.loseMerge) { f.loseMerge = false; throw new Error('lost merge acknowledgement'); }
+      return { stdout: '' };
     }
     throw new Error('Unexpected fake gh call ' + args.join(' '));
   };
@@ -231,6 +253,56 @@ test('delivery verifies real code, commits explicit files, proves push, and crea
   const again = await delivery.sync(f.task);
   assert.equal(again.head, result.head); assert.equal(f.creates, 1); assert.equal(f.edits, 1);
   assert.equal((await f.git(['rev-list', '--count', 'HEAD'])).stdout.trim(), count);
+});
+
+test('unchanged speculative investigation ends without tests, commits, push or PR, including ignored artifacts', async t => {
+  const f = await realFixture(t);
+  await writeFile(join(f.workspace, 'app.js'), 'export const value = 1;\n');
+  const baseCommit = (await f.git(['rev-parse', 'HEAD'])).stdout.trim();
+  await writeFile(join(f.workspace, '.git', 'info', 'exclude'), 'ignored-investigation.txt\n');
+  await writeFile(join(f.workspace, 'ignored-investigation.txt'), 'synthetic reproduction output');
+  const delivery = new GitDelivery({ ...f.options, testCommands: [] });
+  const result = await delivery.deliver({ ...f.task, speculative: true, baseCommit });
+  assert.deepEqual(result, { skipped: true, reason: 'no_verified_change', head: baseCommit, branch: f.task.branch });
+  assert.equal(f.ghCalls.length, 0); assert.ok(!f.gitCalls.some(args => ['add', 'commit', 'push'].includes(args[0])));
+});
+
+test('ordinary task with a trusted base and no real code changes skips before version stamping or publishing', async t => {
+  const f = await realFixture(t);
+  await writeFile(join(f.workspace, 'app.js'), 'export const value = 1;\n');
+  const baseCommit = (await f.git(['rev-parse', 'HEAD'])).stdout.trim();
+  const delivery = new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests', versioning: { enabled: true } });
+  const result = await delivery.deliver({ ...f.task, baseCommit });
+  assert.equal(result.skipped, true); assert.equal(result.reason, 'no_verified_change');
+  assert.equal(f.ghCalls.length, 0); assert.equal(f.merges, 0);
+  assert.ok(!f.gitCalls.some(args => ['add', 'commit', 'push', 'fetch'].includes(args[0])));
+});
+
+test('speculative code already committed by a worker remains a real base-to-head change', async t => {
+  const f = await realFixture(t);
+  const baseCommit = (await f.git(['rev-parse', 'HEAD'])).stdout.trim();
+  await f.git(['add', 'app.js']); await f.git(['commit', '-m', 'worker fix']);
+  assert.equal((await f.git(['status', '--porcelain'])).stdout, '');
+  const result = await new GitDelivery(f.options).deliver({ ...f.task, speculative: true, baseCommit });
+  assert.equal(result.verifiedChange, true); assert.deepEqual(result.changedFiles, ['app.js']); assert.equal(f.creates, 1);
+});
+
+test('speculative untracked source is verified before delivery and private or invalid bases cannot publish', async t => {
+  const f = await realFixture(t);
+  const baseCommit = (await f.git(['rev-parse', 'HEAD'])).stdout.trim();
+  const task = { ...f.task, speculative: true, baseCommit };
+  await assert.rejects(new GitDelivery(f.options).deliver({ ...task, baseCommit: 'main' }), /recorded baseCommit/);
+  await assert.rejects(new GitDelivery(f.options).deliver({ ...task, baseCommit: 'f'.repeat(40) }), /invalid or outside/);
+  const tree = (await f.git(['rev-parse', 'HEAD^{tree}'])).stdout.trim();
+  const foreign = (await f.git(['commit-tree', tree, '-m', 'independent root fixture'])).stdout.trim();
+  await assert.rejects(new GitDelivery(f.options).deliver({ ...task, baseCommit: foreign }), /outside the task history/);
+  await writeFile(join(f.workspace, 'app.js'), 'export const value = 1;\n');
+  await writeFile(join(f.workspace, 'new-feature.js'), 'export const extra = true;\n');
+  const failed = new GitDelivery({ ...f.options, testCommands: [['node', '-e', 'process.exit(3)']] });
+  await assert.rejects(failed.deliver(task), /command failed/); assert.equal(f.creates, 0);
+  await writeFile(join(f.workspace, '.env'), 'SYNTHETIC_SECRET=never-publish');
+  await assert.rejects(new GitDelivery(f.options).deliver(task), /sensitive/);
+  assert.ok(!f.gitCalls.some(args => args[0] === 'push'));
 });
 
 test('failed configured verification never stages, commits, pushes or opens PR', async t => {
@@ -272,6 +344,111 @@ test('automatic merge requires explicit policy, fresh trusted review and success
   assert.equal((await delivery.sync(f.task)).merged, false); assert.equal(f.merges, 0);
   f.checkConclusion = 'success';
   assert.equal((await delivery.sync(f.task)).merged, true); assert.equal(f.merges, 1);
+});
+
+test('verified-tests is explicitly enabled, waits for mergeability and merges the exact tested head without a review API', async t => {
+  assert.throws(() => new GitDelivery({ repository: repo, autoMerge: true, mergePolicy: 'verified-tests' }), /nonempty trusted/);
+  assert.throws(() => new GitDelivery({ repository: repo, mergePolicy: 'unknown' }), /mergePolicy/);
+  const f = await realFixture(t, { nullMergeableReads: 3, loseMerge: true });
+  const result = await new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests' }).deliver(f.task);
+  assert.equal(result.merged, true); assert.equal(f.merges, 1); assert.ok(result.verifiedBase);
+  assert.ok(f.prReads >= 5);
+  assert.ok(!f.ghCalls.some(args => args.some(arg => typeof arg === 'string' && arg.includes('/reviews'))));
+  assert.ok(f.ghCalls.some(args => args.includes('--match-head-commit') && args.includes(result.head)));
+});
+
+test('verified-tests blocks failed local tests and configured failing or pending CI checks', async t => {
+  const f = await realFixture(t);
+  const failed = new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests', testCommands: [['node', '-e', 'process.exit(1)']] });
+  await assert.rejects(failed.deliver(f.task), /command failed/); assert.equal(f.merges, 0); assert.equal(f.creates, 0);
+  const delivery = new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests', requiredChecks: ['test'] });
+  f.checkConclusion = 'failure'; assert.equal((await delivery.deliver(f.task)).merged, false); assert.equal(f.merges, 0);
+  f.pending = true; assert.equal((await delivery.sync(f.task)).merged, false); assert.equal(f.merges, 0);
+});
+
+test('verified-tests refuses dirty source or changed local/remote heads before merge', async t => {
+  for (const fault of [{ dirtyAtRead: 2 }, { localHeadAtRead: 2 }, { changeHeadAtRead: 2 }]) {
+    const f = await realFixture(t, fault);
+    const delivery = new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests' });
+    await assert.rejects(delivery.deliver(f.task), /source or HEAD changed|head\/base changed/); assert.equal(f.merges, 0);
+  }
+});
+
+async function advanceBase(f, conflict = false) {
+  const other = join(f.root, 'other-task');
+  await f.git(['worktree', 'add', other, 'main']);
+  await writeFile(join(other, conflict ? 'app.js' : 'parallel-feature.js'), conflict ? 'export const value = 3;\n' : 'export const parallel = true;\n');
+  await exec('git', ['-C', other, 'add', '--', conflict ? 'app.js' : 'parallel-feature.js'], { windowsHide: true });
+  await exec('git', ['-C', other, 'commit', '-m', 'another task merged first'], { windowsHide: true });
+  await exec('git', ['-C', other, 'push', 'origin', 'main'], { windowsHide: true });
+  return (await exec('git', ['-C', other, 'rev-parse', 'HEAD'], { windowsHide: true })).stdout.trim();
+}
+
+test('verified-tests brings fresh base into its dedicated branch and reruns trusted tests before pushing and merging', async t => {
+  const f = await realFixture(t); f.baseSha = await advanceBase(f);
+  const result = await new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests' }).deliver(f.task);
+  assert.equal(result.verifiedBase, f.baseSha); assert.equal(result.merged, true);
+  assert.equal((await readFile(join(f.workspace, 'parallel-feature.js'), 'utf8')).replaceAll('\r\n', '\n'), 'export const parallel = true;\n');
+  assert.equal(result.tests.length, 2); assert.equal(result.tests[1].phase, 'after-base-sync');
+  assert.ok(f.gitCalls.some(args => args[0] === 'merge' && args.includes(f.baseSha)));
+  assert.equal(f.merges, 1);
+});
+
+test('trusted version stamping is tested in the real source before its explicit version commit and final PR merge', async t => {
+  const f = await realFixture(t, { packageVersion: '0.3.0' });
+  f.testVersionReads = [];
+  f.options.testCommands = [['node', '-e', "const v=require('./package.json').version;if(!['0.3.0','0.3.1'].includes(v))process.exit(1);process.stdout.write(v)"]];
+  const baseCommit = (await f.git(['rev-parse', 'HEAD'])).stdout.trim();
+  const result = await new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests', versioning: {
+    enabled: true, versionFile: 'package.json', jsonVersionFiles: ['package.json'], pythonVersionFiles: [],
+  } }).deliver({ ...f.task, baseCommit });
+  assert.equal(result.version, '0.3.1'); assert.equal(result.merged, true); assert.equal(f.merges, 1);
+  assert.deepEqual(f.testVersionReads, ['0.3.0', '0.3.1']);
+  assert.equal(result.tests.at(-1).phase, 'after-version-stamp');
+  assert.equal(JSON.parse(await readFile(join(f.workspace, 'package.json'), 'utf8')).version, '0.3.1');
+  assert.equal((await f.git(['rev-list', '--count', 'HEAD'])).stdout.trim(), '3');
+  assert.equal(result.head, (await f.git(['rev-parse', 'HEAD'])).stdout.trim()); assert.equal(f.pr.head.sha, result.head);
+  assert.equal(await readFile(join(f.workspace, 'app.js'), 'utf8'), 'export const value = 2;\n');
+});
+
+test('fresh base conflicts and a base advancing during mergeability calculation stop verified-tests without overwriting work', async t => {
+  const conflict = await realFixture(t); await advanceBase(conflict, true);
+  await assert.rejects(new GitDelivery({ ...conflict.options, autoMerge: true, mergePolicy: 'verified-tests' }).deliver(conflict.task), /command failed/);
+  assert.match((await conflict.git(['status', '--porcelain'])).stdout, /UU app\.js/); assert.equal(conflict.creates, 0); assert.equal(conflict.merges, 0);
+  const f = await realFixture(t, { nullMergeableReads: 3, changeBaseAtRead: 3 });
+  f.baseSha = (await f.git(['rev-parse', 'main'])).stdout.trim();
+  await assert.rejects(new GitDelivery({ ...f.options, autoMerge: true, mergePolicy: 'verified-tests' }).deliver(f.task), /base advanced/);
+  assert.equal(f.merges, 0);
+});
+
+test('verified-tests serializes different task deliveries while leaving duplicate task coalescing intact', async () => {
+  const delivery = new GitDelivery({ repository: repo, mergePolicy: 'verified-tests' });
+  const order = []; let release;
+  delivery.perform = async task => { order.push(task.id); if (task.id === 'T1') await new Promise(done => { release = done; }); return task.id; };
+  const one = delivery.deliver({ id: 'T1' }), repeat = delivery.deliver({ id: 'T1' }), two = delivery.deliver({ id: 'T2' });
+  await new Promise(done => setImmediate(done)); assert.deepEqual(order, ['T1']); release();
+  assert.deepEqual(await Promise.all([one, repeat, two]), ['T1', 'T1', 'T2']); assert.deepEqual(order, ['T1', 'T2']);
+});
+
+test('closed unmerged PR only reopens after an explicit trusted continuation and preserves new local changes', async t => {
+  const f = await realFixture(t), delivery = new GitDelivery(f.options);
+  await delivery.deliver(f.task); f.pr.state = 'closed';
+  await writeFile(join(f.workspace, 'app.js'), 'export const value = 3;\n');
+  const pushes = f.gitCalls.filter(args => args[0] === 'push').length;
+  await assert.rejects(delivery.sync(f.task), /explicit trusted continuation/);
+  assert.equal(f.reopens ?? 0, 0); assert.equal(f.gitCalls.filter(args => args[0] === 'push').length, pushes);
+  f.loseReopen = true;
+  const resumed = await delivery.sync({ ...f.task, resumeClosedPr: true });
+  assert.equal(resumed.number, 7); assert.equal(f.reopens, 1); assert.equal(f.creates, 1); assert.equal(f.pr.state, 'open');
+  assert.equal(await readFile(join(f.workspace, 'app.js'), 'utf8'), 'export const value = 3;\n');
+});
+
+test('a merged PR never reopens even when a stale continuation flag exists', async t => {
+  const f = await realFixture(t), delivery = new GitDelivery(f.options);
+  await delivery.deliver(f.task); f.pr.state = 'closed'; f.pr.merged = true;
+  const pushes = f.gitCalls.filter(args => args[0] === 'push').length;
+  await assert.rejects(delivery.sync({ ...f.task, resumeClosedPr: true }), /Merged PR is terminal/);
+  assert.equal(f.reopens ?? 0, 0); assert.equal(f.gitCalls.filter(args => args[0] === 'push').length, pushes);
 });
 
 test('concurrent duplicate deliveries share one in-flight transaction', async t => {
