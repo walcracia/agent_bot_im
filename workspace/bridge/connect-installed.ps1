@@ -125,7 +125,7 @@ try {
       cwd = $workspacePath; cliPath = $cli
       runsPath = Join-Path $projectRoot ('environment/logs/' + $instance)
       sessionMapPath = Join-Path $stateDirectory 'sessions.json'
-      auth = 'stored'; permissionMode = 'danger-full-access'; powershellPath = 'pwsh'; runTimeoutMs = 300000
+      auth = 'stored'; permissionMode = 'danger-full-access'; powershellPath = 'pwsh'; runTimeoutMs = 7200000; classificationTimeoutMs = 120000
     }
   }
   if (Test-Path -LiteralPath ($config.statePath + '.lock')) { throw '此实例存在桥接锁；请先检查拥有该锁的监听进程，不自动删锁或重复启动。' }

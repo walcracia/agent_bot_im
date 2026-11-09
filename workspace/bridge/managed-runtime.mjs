@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { link, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
+import { replaceOwnedFile } from './file-replace.mjs';
 
 /** Local control channel: unique run identity, atomic status, graceful stop only. */
 export class ManagedRuntime {
@@ -19,19 +20,26 @@ export class ManagedRuntime {
     const temporary = `${this.path}.${randomUUID()}.tmp`;
     await writeFile(temporary, JSON.stringify(this.record), { flag: 'wx', mode: 0o600, flush: true });
     try { await link(temporary, this.path); } // Publish complete JSON without overwriting an existing run.
-    finally { await unlink(temporary); }
+    finally { await unlink(temporary).catch(() => {}); }
     this.timer = setInterval(() => { this.checkStop().catch(() => this.onStop()); }, 200);
     this.timer.unref();
   }
 
   publish(status, details = {}) {
-    this.writes = this.writes.then(async () => {
+    this.writes = this.writes.catch(() => {}).then(async () => {
       const current = JSON.parse(await readFile(this.path, 'utf8'));
       if (current.instanceId !== this.record.instanceId || current.pid !== process.pid) throw new Error('Managed runtime ownership changed.');
       this.record = { ...this.record, ...details, status, updatedAt: new Date().toISOString() };
       const temporary = `${this.path}.${randomUUID()}.tmp`;
       await writeFile(temporary, JSON.stringify(this.record), { flag: 'wx', mode: 0o600, flush: true });
-      await rename(temporary, this.path);
+      try {
+        // Windows readers can briefly deny delete-sharing. Keep publication
+        // atomic, retry a bounded interval, and recheck ownership each time.
+        await replaceOwnedFile(temporary, this.path, async () => {
+          const owner = JSON.parse(await readFile(this.path, 'utf8'));
+          if (owner.instanceId !== this.record.instanceId || owner.pid !== process.pid) throw new Error('Managed runtime ownership changed.');
+        });
+      } finally { await unlink(temporary).catch(() => {}); }
     });
     return this.writes;
   }

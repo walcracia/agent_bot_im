@@ -83,11 +83,30 @@ try {
     const state = await store.read(config.baseUrl + '|' + bot.id);
     await initializeAutoCursor(api, state, store, config);
     const bridge = new Bridge({ config, api, store, state, executor, bot, shouldStop });
-    await bridge.resolveCurrent(values['retry-event'], values['skip-event']);
+    let transportReady = false, publishedTask;
+    const taskDetails = () => ({ taskStatus: bridge.taskStatus(), pendingEventId: state.current?.event?.id ?? null });
+    const publishTask = async () => {
+      if (!runtime || !transportReady || stopping) return;
+      const details = taskDetails(), identity = JSON.stringify(details);
+      if (identity !== publishedTask) {
+        try { await runtime.publish('listening', details); publishedTask = identity; }
+        catch (error) {
+          // The task ledger was already committed. A display/status-file error
+          // must not strand a prepared worker lease before model admission.
+          console.error(JSON.stringify({ status: 'runtime-status-warning', error: String(error.message).slice(0, 1000) }));
+        }
+      }
+    };
+    const writeState = store.write.bind(store);
+    store.write = async value => { await writeState(value); await publishTask(); };
+    if (values['retry-event'] || values['skip-event'] || !bridge.supportsChatRecovery) {
+      await bridge.resolveCurrent(values['retry-event'], values['skip-event']);
+    } else { await bridge.prepareChatRecovery(); }
     if (!(await shouldStop())) {
       const ready = { cursor: state.cursor, conversations: config.conversationIds.length,
-        authorizedSenders: config.senderIds.length, executor: config.executor, triggerMode: config.triggerMode };
+        authorizedSenders: config.senderIds.length, executor: config.executor, triggerMode: config.triggerMode, ...taskDetails() };
       await runtime?.publish('listening', ready);
+      transportReady = true; publishedTask = JSON.stringify(taskDetails());
       console.log(JSON.stringify({ status: 'listening', ...ready }));
     }
     let failures = 0;
@@ -96,10 +115,18 @@ try {
         const processed = await bridge.poll(); failures = 0;
         if (processed) console.log(JSON.stringify({ status: 'processed', count: processed, cursor: state.cursor }));
       } catch (error) {
-        if (['started', 'uncertain', 'routing_failed'].includes(state.current?.phase) || values.once) throw error;
-        failures++;
-        console.error(JSON.stringify({ status: 'retrying', error: error.message, failures }));
+        if (values.once) throw error;
+        if (bridge.supportsChatRecovery && bridge.isPaused()) {
+          failures = 0;
+          console.error(JSON.stringify({ status: 'task-paused', eventId: state.current.event.id, phase: state.current.phase,
+            error: String(error.message).slice(0, 1000), cause: error.cause ? String(error.cause.message).slice(0, 1000) : undefined }));
+        } else {
+          if (['started', 'uncertain', 'routing_failed'].includes(state.current?.phase)) throw error;
+          failures++;
+          console.error(JSON.stringify({ status: 'retrying', error: error.message, failures }));
+        }
       }
+      await publishTask();
       if (values.once || await shouldStop()) break;
       try { await delay(Math.min(60000, config.pollMilliseconds * 2 ** Math.min(failures, 5)), undefined, { signal: sleepAbort.signal }); }
       catch (error) { if (error.name !== 'AbortError') throw error; }

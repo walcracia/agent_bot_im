@@ -15,3 +15,9 @@
 规格见STARTUP-v0.2.1.md。新增隔离Windows进程验收：managed启动前CLI零模型检查/身份/白名单/游标/异常任务；完成当前分类或worker后停止、同批次下一事件不执行、锁释放、错误nonce不影响当前实例；DPAPI真实保存/另一PowerShell进程解密、无明文落地、路径/格式拒绝、原前台方式兼容；start/stop模拟身份错配与超时、重复启动、ServerOnly和控制器互斥。测试使用临时目录、动态端口、假CLI，不读取本机团队凭据或调用模型。
 
 本机另外检查已安装CLI版本、当前隔离测试群真实ready、重复start及stop/start无需重输码；代码worker的真实模型改文件证据沿用v0.2.0，不能将本轮fakeCLI当作新增模型验收。实际结果写outputs/VERIFICATION-v0.2.1.md。
+
+## v0.2.2 恢复验收计划
+
+规格见DSH-RECOVERY-v0.2.2.md。worker两小时预算以参数和假CLI短超时验证，分类独立两分钟；不真实等待两小时。覆盖超时已证实清理/无法确认保留租约、终态侧车、同群授权精确继续/取消、原会话和已有改动保留、重启暂停零调用、旧继续命令去重、连续失败需新指令、原会话缺失不可换新、通知ACK丢失、同批最后有效控制与权限再验。
+
+实际Node+HTTP+fakeCLI进行在线暂停和恢复集成；Windows状态文件rename注入EPERM/EIO，验证有限退避、owner重验、失败队列恢复及非任务账本状态发布不打断worker。所有假CLI结果和本机真实原任务续接分开记录；正式命令和结果见outputs/VERIFICATION-v0.2.2.md。

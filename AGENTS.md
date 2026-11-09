@@ -30,6 +30,8 @@ v0.2.0 自动编码规格：`workspace/docs/DSH-AUTO-v0.2.0.md`。用户已选�
 
 v0.2.1 启动规格：`workspace/docs/STARTUP-v0.2.1.md`。默认start同时确认服务和已绑定DSH就绪；首次bootstrap明确用ServerOnly，connect的EnableStartup把IM助手码以Windows当前用户DPAPI保存在忽略目录。重复启动复用核验身份的进程；stop先等待监听当前事件完成、正常退出再停服务器，超时不杀worker、不删锁。运行状态随时实查，不把旧ready文件当作存活证据。
 
+v0.2.2 恢复规格：`workspace/docs/DSH-RECOVERY-v0.2.2.md`。代码worker上限2小时，分类单独限时；任务中断后auto/installed监听保持在线等待。原群授权成员明确发送“继续修正”后，在原native session核对保留的改动并接续；“取消任务”只结束等待、不撤销文件。未收到明确控制不自动重做，已有控制持久去重；旧锁或原会话无法验证时仍暂停，不能换新会话冒充接续。
+
 ## 多 agent 接续（2026-11-08）
 
 - 通用流程见 `.agents/skills/proj_multihandoff/SKILL.md`，用户要求的 skill 名称保留为 `proj_multihandoff`。首次提供 Git 地址；已有检出先检查工作树、远端和分支，再 `git pull --ff-only`。有本地修改时先保留，不自动 stash/reset。

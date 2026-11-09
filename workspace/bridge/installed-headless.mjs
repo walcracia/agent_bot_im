@@ -1,14 +1,23 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { access, lstat, mkdir, open, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { access, lstat, mkdir, open, readFile, realpath, stat, unlink, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { replaceOwnedFile } from './file-replace.mjs';
 
 const RUNNER = fileURLToPath(new URL('./installed-runner.ps1', import.meta.url));
 const NATIVE_SESSION = /^session-[A-Za-z0-9_-]+$/;
 const PERMISSIONS = new Set(['read-only', 'workspace-write', 'danger-full-access']);
+
+export class DshInvocationError extends Error {
+  constructor(message, { kind, processTreeStopped = false, timeoutMs, runDirectory, cause } = {}) {
+    super(message, { cause });
+    this.name = 'DshInvocationError';
+    Object.assign(this, { kind, processTreeStopped, timeoutMs, runDirectory });
+  }
+}
 
 function absolute(value, label) {
   if (typeof value !== 'string' || !isAbsolute(value) || /[\r\n\0]/.test(value)) throw new Error(`${label} must be an explicit absolute path.`);
@@ -33,6 +42,7 @@ export class InstalledHeadlessExecutor {
 
   async start() {
     if (this.closed) throw new Error('Installed DSH executor is closed.');
+    if (this.terminationUnconfirmed) throw new DshInvocationError('A previous DSH process tree could not be confirmed stopped; inspect its local run before resuming.', { kind: 'termination-failed' });
     if (this.ready) return;
     this.starting ??= this.prepare().catch(error => { this.starting = undefined; throw error; });
     await this.starting;
@@ -53,10 +63,12 @@ export class InstalledHeadlessExecutor {
     if (!(await stat(this.cwd)).isDirectory()) throw new Error('DSH cwd must be a directory.');
     this.auth = this.options.auth ?? 'stored';
     this.permissionMode = this.options.permissionMode ?? 'danger-full-access';
-    this.runTimeoutMs = this.options.runTimeoutMs ?? 600000;
+    this.runTimeoutMs = this.options.runTimeoutMs ?? 7200000;
+    this.classificationTimeoutMs = this.options.classificationTimeoutMs ?? Math.min(this.runTimeoutMs, 120000);
     if (!['stored', 'environment'].includes(this.auth)) throw new Error('auth must be stored or environment.');
     if (!PERMISSIONS.has(this.permissionMode)) throw new Error('Invalid worker permissionMode.');
     if (!Number.isSafeInteger(this.runTimeoutMs) || this.runTimeoutMs < 100 || this.runTimeoutMs > 86400000) throw new Error('runTimeoutMs must be 100..86400000.');
+    if (!Number.isSafeInteger(this.classificationTimeoutMs) || this.classificationTimeoutMs < 100 || this.classificationTimeoutMs > 86400000) throw new Error('classificationTimeoutMs must be 100..86400000.');
     this.map = { version: 1, cwd: this.cwd, sessions: {} };
     try { this.map = JSON.parse(await readFile(this.sessionMapPath, 'utf8')); }
     catch (error) { if (error.code !== 'ENOENT') throw new Error('Cannot read DSH session map; preserving it for inspection.'); }
@@ -110,6 +122,7 @@ export class InstalledHeadlessExecutor {
 
   async releaseWorkerLease(lease) {
     if (!lease || lease.released) return;
+    if (lease.terminationUnconfirmed) return;
     if ([...this.active].some(active => active.workerLease === lease)) return;
     lease.release ??= this.finishWorkerLease(lease);
     await lease.release;
@@ -149,7 +162,7 @@ export class InstalledHeadlessExecutor {
       await mkdir(dirname(this.sessionMapPath), { recursive: true });
       const temporary = `${this.sessionMapPath}.${randomUUID()}.tmp`;
       await writeFile(temporary, JSON.stringify(this.map, null, 2), { flag: 'wx', mode: 0o600, flush: true });
-      await rename(temporary, this.sessionMapPath);
+      await replaceOwnedFile(temporary, this.sessionMapPath);
     });
     await this.saveQueue;
   }
@@ -177,19 +190,28 @@ export class InstalledHeadlessExecutor {
     if (!restore && mapped) throw new Error('Logical DSH session already exists; explicitly restore it instead of replacing it.');
     const lease = await this.acquireWorkerLease();
     let used = false;
-    return { run: async (blocks, event) => {
-      if (used || lease.released) throw new Error('Prepared DSH session lease was consumed; obtain another session handle before running again.');
-      used = true;
-      try {
-        if (!Array.isArray(blocks) || !blocks.length || blocks.some(block => !block || !['text', 'image'].includes(block.type) || (block.type === 'text' && typeof block.text !== 'string'))) throw new Error('Unsupported DSH prompt blocks.');
-        // Core supplies checked attachment local_path in the text envelope. Headless CLI
-        // receives text and reads those local files; it does not receive inline base64 images.
-        const prompt = blocks.filter(block => block.type === 'text').map(block => block.text).join('\n');
-        if (!prompt.trim()) throw new Error('Headless DSH needs a text task with any attachment paths.');
-        lease.run = this.invoke({ prompt, logicalId, permissionMode: this.permissionMode, kind: 'worker', eventId: event?.id, workerLease: lease });
-        return await lease.run;
-      } finally { await this.releaseWorkerLease(lease); }
-    } };
+    return {
+      abortPreparation: async () => {
+        if (used) return false;
+        // Consume the handle before awaiting cleanup so run/abort cannot race.
+        used = true;
+        await this.releaseWorkerLease(lease);
+        return true;
+      },
+      run: async (blocks, event) => {
+        if (used || lease.released) throw new Error('Prepared DSH session lease was consumed; obtain another session handle before running again.');
+        used = true;
+        try {
+          if (!Array.isArray(blocks) || !blocks.length || blocks.some(block => !block || !['text', 'image'].includes(block.type) || (block.type === 'text' && typeof block.text !== 'string'))) throw new Error('Unsupported DSH prompt blocks.');
+          // Core supplies checked attachment local_path in the text envelope. Headless CLI
+          // receives text and reads those local files; it does not receive inline base64 images.
+          const prompt = blocks.filter(block => block.type === 'text').map(block => block.text).join('\n');
+          if (!prompt.trim()) throw new Error('Headless DSH needs a text task with any attachment paths.');
+          lease.run = this.invoke({ prompt, logicalId, permissionMode: this.permissionMode, kind: 'worker', eventId: event?.id, workerLease: lease });
+          return await lease.run;
+        } finally { await this.releaseWorkerLease(lease); }
+      },
+    };
   }
 
   async invoke(spec) {
@@ -199,15 +221,40 @@ export class InstalledHeadlessExecutor {
     finally { this.invoking = false; }
   }
 
+  async stopOwnedProcessTree(child, closed, runDirectory) {
+    const unconfirmed = cause => new DshInvocationError(`Could not prove the owned DSH process tree stopped. Inspect ${runDirectory}; do not start another worker.`, {
+      kind: 'termination-failed', processTreeStopped: false, runDirectory, cause,
+    });
+    // A closed launcher alone does not establish whether descendants survived.
+    if (!child.pid || child.exitCode !== null || child.signalCode !== null) throw unconfirmed();
+    if (process.platform === 'win32') {
+      const killed = await new Promise(resolveKill => {
+        const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+        killer.once('error', error => resolveKill({ error }));
+        killer.once('close', code => resolveKill({ code }));
+      });
+      if (killed.error || killed.code !== 0) throw unconfirmed(killed.error);
+    } else {
+      try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { throw unconfirmed(error); }
+    }
+    let timer;
+    const exited = await Promise.race([closed.then(() => true), new Promise(resolveWait => { timer = setTimeout(() => resolveWait(false), 5000); })]);
+    clearTimeout(timer);
+    if (!exited) throw unconfirmed();
+    return { processTreeStopped: true };
+  }
+
   async runInvocation({ prompt, logicalId, permissionMode = 'read-only', kind = 'version', versionOnly = false, eventId, workerLease }) {
     if (this.closed) throw new Error('Installed DSH executor is closed.');
     if (this.active.size) throw new Error('This DSH executor already owns a running invocation.');
     const runDirectory = join(this.runsPath, `${kind}-${randomUUID()}`);
+    const startedUtc = new Date().toISOString();
+    const timeoutMs = versionOnly ? Math.min(this.runTimeoutMs, 30000) : kind === 'classifier' ? this.classificationTimeoutMs : this.runTimeoutMs;
     await mkdir(runDirectory, { mode: 0o700 });
     const taskFile = join(runDirectory, 'task.txt');
     if (!versionOnly) await writeFile(taskFile, prompt, { flag: 'wx', mode: 0o600 });
     const nativeSessionId = logicalId && Object.hasOwn(this.map.sessions, logicalId) ? this.map.sessions[logicalId].nativeSessionId : undefined;
-    await writeFile(join(runDirectory, 'bridge-run.json'), JSON.stringify({ kind, logicalId, nativeSessionId, cwd: this.cwd, eventId }), { flag: 'wx', mode: 0o600 });
+    await writeFile(join(runDirectory, 'bridge-run.json'), JSON.stringify({ kind, logicalId, nativeSessionId, cwd: this.cwd, eventId, timeoutMs }), { flag: 'wx', mode: 0o600 });
     const args = ['-NoProfile', '-NonInteractive', '-File', this.runnerPath, '-Workspace', this.cwd, '-CliPath', this.cliPath, '-RunDirectory', runDirectory];
     if (versionOnly) args.push('-VersionOnly');
     else {
@@ -219,7 +266,7 @@ export class InstalledHeadlessExecutor {
     const child = spawn(this.options.powershellPath ?? 'pwsh', args, {
       cwd: this.cwd, env, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'],
     });
-    let spawnError, timedOut = false, cancelled = false, mappingError;
+    let spawnError, timedOut = false, cancelled = false, mappingError, stopping, processTreeStopped = false, failure, completed = false;
     let diagnostic = '';
     child.stdout.on('data', chunk => { diagnostic = (diagnostic + chunk.toString()).slice(-4096); });
     child.stderr.on('data', chunk => { diagnostic = (diagnostic + chunk.toString()).slice(-4096); });
@@ -227,20 +274,18 @@ export class InstalledHeadlessExecutor {
       child.once('error', error => { spawnError = error; });
       child.once('close', (code, signal) => resolveClose({ code, signal }));
     });
-    const stop = async () => {
-      if (child.exitCode !== null || child.signalCode !== null || !child.pid) return;
-      if (process.platform === 'win32') {
-        await new Promise(resolveKill => {
-          const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
-          killer.once('error', resolveKill); killer.once('close', resolveKill);
+    const stop = () => {
+      if (!stopping) {
+        this.terminationUnconfirmed = true;
+        if (workerLease) workerLease.terminationUnconfirmed = true;
+        stopping = this.stopOwnedProcessTree(child, closed, runDirectory).then(proof => {
+          if (proof?.processTreeStopped !== true) throw new DshInvocationError(`Owned DSH termination lacks a verified process-tree result. Inspect ${runDirectory}.`, { kind: 'termination-failed', runDirectory });
+          processTreeStopped = true;
+          this.terminationUnconfirmed = false;
+          if (workerLease) workerLease.terminationUnconfirmed = false;
         });
-      } else {
-        try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
       }
-      let timer;
-      const exited = await Promise.race([closed.then(() => true), new Promise(resolveWait => { timer = setTimeout(() => resolveWait(false), 5000); })]);
-      clearTimeout(timer);
-      if (!exited) throw new Error(`Could not prove the owned DSH process tree stopped. Inspect ${runDirectory}; do not start another worker.`);
+      return stopping;
     };
     const active = { stop: async () => { cancelled = true; await stop(); }, closed, workerLease };
     this.active.add(active);
@@ -266,31 +311,47 @@ export class InstalledHeadlessExecutor {
     const interval = setInterval(() => { capture = capture.then(captureOpening); }, 100);
     let stopFailed;
     const terminationFailure = new Promise((_, reject) => { stopFailed = reject; });
-    const timeout = setTimeout(() => { timedOut = true; stop().catch(stopFailed); }, versionOnly ? Math.min(this.runTimeoutMs, 30000) : this.runTimeoutMs);
+    const timeout = setTimeout(() => { timedOut = true; stop().catch(stopFailed); }, timeoutMs);
     try {
       const result = await Promise.race([closed, terminationFailure]);
+      if (stopping) await stopping;
       clearInterval(interval); clearTimeout(timeout);
       await capture; await captureOpening(); await this.saveQueue;
       if (spawnError) throw new Error(`Unable to run installed DSH launcher (${spawnError.code ?? 'process error'}).`);
-      if (timedOut || cancelled) throw new Error(`DSH invocation ${timedOut ? 'timed out' : 'was cancelled'}; owned process tree stopped. Inspect ${runDirectory}.`);
+      if (timedOut || cancelled) throw new DshInvocationError(`DSH invocation ${timedOut ? 'timed out' : 'was cancelled'}; owned process tree stopped. Inspect ${runDirectory}.`, {
+        kind: timedOut ? 'timeout' : 'cancelled', processTreeStopped, timeoutMs, runDirectory,
+      });
       if (mappingError) throw mappingError;
       let summary;
       try { summary = JSON.parse(await readFile(join(runDirectory, 'result.json'), 'utf8')); }
       catch { throw new Error(`DSH runner did not produce a verified result. Inspect ${runDirectory}.`); }
       if (versionOnly) {
         if (result.code !== 0 || summary.completed !== true || typeof summary.version !== 'string' || !summary.version.trim()) throw new Error(`Installed DSH version probe failed. Inspect ${runDirectory}.`);
+        completed = true;
         return { version: summary.version };
       }
       if (result.code !== 0 || summary.completed !== true || summary.nativeExitCode !== 0 || summary.finalReason !== 'completed' || !NATIVE_SESSION.test(summary.sessionId)) throw new Error(`Installed DSH run did not complete. Inspect ${runDirectory}.`);
       if (nativeSessionId && summary.sessionId !== nativeSessionId) throw new Error('DSH final session differs from its saved mapping.');
       await this.saveSession(logicalId, summary.sessionId);
       const finalResponse = await readFile(join(runDirectory, 'answer.txt'), 'utf8');
+      completed = true;
       return { finalResponse, finishReason: 'completed' };
+    } catch (error) {
+      failure = error;
+      throw error;
     } finally {
       clearInterval(interval); clearTimeout(timeout);
       if (child.exitCode !== null || child.signalCode !== null || spawnError) this.active.delete(active);
       // Keep raw events and diagnostics local; never include them in an IM reply.
       diagnostic = '';
+      // This bridge-owned sidecar records interruption even if the force-stopped
+      // PowerShell runner could not replace its initial run.json status.
+      await writeFile(join(runDirectory, 'bridge-supervision.json'), JSON.stringify({
+        version: 1, kind, status: completed ? 'completed' : failure?.kind === 'timeout' ? 'timed_out' : failure?.kind === 'cancelled' ? 'cancelled' : 'failed',
+        failureKind: completed ? null : failure?.kind ?? 'execution-failed', startedUtc, finishedUtc: new Date().toISOString(),
+        timeoutMs, launcherPid: child.pid ?? null, launcherExited: child.exitCode !== null || child.signalCode !== null || Boolean(spawnError),
+        ...(timedOut || cancelled || this.terminationUnconfirmed ? { processTreeStopped } : {}),
+      }, null, 2), { flag: 'wx', mode: 0o600, flush: true });
     }
   }
 
@@ -300,6 +361,7 @@ export class InstalledHeadlessExecutor {
     await this.preparingLease?.catch(() => {});
     await Promise.all([...this.active].map(active => active.stop()));
     await this.workerLease?.run?.catch(() => {});
+    if (this.terminationUnconfirmed) throw new DshInvocationError('DSH shutdown could not confirm all owned processes stopped; workspace lease is retained for inspection.', { kind: 'termination-failed' });
     await this.releaseWorkerLease(this.workerLease);
     await this.saveQueue;
   }

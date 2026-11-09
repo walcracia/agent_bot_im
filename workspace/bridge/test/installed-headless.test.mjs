@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { mkdtemp, mkdir, readFile, readdir, rename, unlink, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { InstalledHeadlessExecutor } from '../installed-headless.mjs';
+import { DshInvocationError, InstalledHeadlessExecutor } from '../installed-headless.mjs';
 
 const installedTest = (name, callback) => test(name, { skip: process.platform !== 'win32' ? 'Installed Desktop protocol fixture requires Windows PowerShell.' : false }, callback);
 
@@ -55,6 +55,19 @@ async function fixture(t, extra = {}) {
 
 async function runMetadata(options) {
   return Promise.all((await readdir(options.runsPath)).map(async name => JSON.parse(await readFile(join(options.runsPath, name, 'run.json'), 'utf8'))));
+}
+
+async function supervisionMetadata(options) {
+  return Promise.all((await readdir(options.runsPath)).map(async name => JSON.parse(await readFile(join(options.runsPath, name, 'bridge-supervision.json'), 'utf8'))));
+}
+
+async function waitForFile(path) {
+  for (let attempt = 0; attempt < 150; attempt++) {
+    try { return await readFile(path, 'utf8'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    await new Promise(resolve => setTimeout(resolve, 40));
+  }
+  throw new Error(`Timed out waiting for synthetic fixture file: ${path}`);
 }
 
 function assertFinishedMetadata(metadata, status) {
@@ -131,12 +144,19 @@ installedTest('session map rejects another workspace and launch options are vali
   await assert.rejects(new InstalledHeadlessExecutor({ ...options, auth: 'from-chat' }).start(), /auth/);
   await assert.rejects(new InstalledHeadlessExecutor({ ...options, permissionMode: 'from-chat' }).start(), /permissionMode/);
   await assert.rejects(new InstalledHeadlessExecutor({ ...options, runTimeoutMs: 0 }).start(), /runTimeoutMs/);
+  await assert.rejects(new InstalledHeadlessExecutor({ ...options, classificationTimeoutMs: 0 }).start(), /classificationTimeoutMs/);
 });
 
 installedTest('timeout terminates the owned worker tree and preserves its native session for inspection', async t => {
   const { executor, options, cwd } = await fixture(t, { runTimeoutMs: 4000 });
   const session = await executor.session('team-relay-timeout', false);
-  const failed = assert.rejects(session.run([{ type: 'text', text: 'MODE_HANG' }]), /timed out/);
+  const failed = assert.rejects(session.run([{ type: 'text', text: 'MODE_HANG' }]), error => {
+    assert.ok(error instanceof DshInvocationError);
+    assert.equal(error.kind, 'timeout');
+    assert.equal(error.processTreeStopped, true);
+    assert.equal(error.timeoutMs, 4000);
+    return true;
+  });
   let map;
   for (let attempt = 0; attempt < 60; attempt++) {
     try { map = JSON.parse(await readFile(options.sessionMapPath, 'utf8')); break; }
@@ -148,6 +168,83 @@ installedTest('timeout terminates the owned worker tree and preserves its native
   await failed;
   const pid = Number(await readFile(join(cwd, 'child.pid'), 'utf8'));
   assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+  const [supervision] = await supervisionMetadata(options);
+  assert.equal(supervision.status, 'timed_out');
+  assert.equal(supervision.failureKind, 'timeout');
+  assert.equal(supervision.processTreeStopped, true);
+  assert.equal(supervision.launcherExited, true);
+  assert.ok(Number.isFinite(Date.parse(supervision.finishedUtc)));
+  await assert.rejects(readFile(executor.workspaceLockPath), { code: 'ENOENT' });
+});
+
+installedTest('default worker budget is two hours while classifier and version budgets stay bounded', async t => {
+  const { executor, options } = await fixture(t, { runTimeoutMs: undefined });
+  await executor.start();
+  assert.equal(executor.runTimeoutMs, 7200000);
+  assert.equal(executor.classificationTimeoutMs, 120000);
+  await executor.handshake();
+  await executor.classify('Quick synthetic classification.');
+  const session = await executor.session('team-relay-two-hour-budget', false);
+  await session.run([{ type: 'text', text: 'Quick synthetic code task.' }]);
+  const budgets = Object.fromEntries((await supervisionMetadata(options)).map(record => [record.kind, record.timeoutMs]));
+  assert.deepEqual(budgets, { version: 30000, classifier: 120000, worker: 7200000 });
+});
+
+installedTest('short classifier budget expires independently and does not shorten the worker budget', async t => {
+  const { executor, options } = await fixture(t, { runTimeoutMs: 7200000, classificationTimeoutMs: 4000 });
+  await assert.rejects(executor.classify('MODE_HANG'), error => error.kind === 'timeout' && error.processTreeStopped === true && error.timeoutMs === 4000);
+  const session = await executor.session('team-relay-after-classifier-timeout', false);
+  assert.equal((await session.run([{ type: 'text', text: 'Explicit next task after the stopped read-only fixture.' }])).finishReason, 'completed');
+  const records = await supervisionMetadata(options);
+  assert.equal(records.find(record => record.kind === 'classifier').status, 'timed_out');
+  assert.equal(records.find(record => record.kind === 'worker').timeoutMs, 7200000);
+});
+
+installedTest('explicit owned cancellation is distinguished from a timeout and records a terminal sidecar', async t => {
+  const { executor, options, cwd } = await fixture(t);
+  const session = await executor.session('team-relay-cancelled', false);
+  const failed = assert.rejects(session.run([{ type: 'text', text: 'MODE_HANG' }]), error => error.kind === 'cancelled' && error.processTreeStopped === true);
+  const pid = Number(await waitForFile(join(cwd, 'child.pid')));
+  await executor.close();
+  await failed;
+  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+  const [record] = await supervisionMetadata(options);
+  assert.equal(record.status, 'cancelled');
+  assert.equal(record.processTreeStopped, true);
+  await assert.rejects(readFile(executor.workspaceLockPath), { code: 'ENOENT' });
+});
+
+installedTest('unconfirmed termination preserves the workspace lease and blocks another worker', async t => {
+  const { executor, options, cwd, directory } = await fixture(t);
+  const realStop = executor.stopOwnedProcessTree.bind(executor);
+  // Kill only our synthetic tree, then emulate loss of the proof. The adapter
+  // must conservatively quarantine its lease, even though this test can clean up.
+  executor.stopOwnedProcessTree = async (...args) => {
+    await realStop(...args);
+    throw new DshInvocationError('Synthetic termination proof was unavailable.', { kind: 'termination-failed' });
+  };
+  const session = await executor.session('team-relay-unconfirmed', false);
+  const failed = assert.rejects(session.run([{ type: 'text', text: 'MODE_HANG' }]), error => error.kind === 'termination-failed' && error.processTreeStopped === false);
+  const pid = Number(await waitForFile(join(cwd, 'child.pid')));
+  await assert.rejects(executor.close(), error => error.kind === 'termination-failed');
+  await failed;
+  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+  const other = new InstalledHeadlessExecutor({ ...options, runsPath: join(directory, 'blocked runs'), sessionMapPath: join(directory, 'blocked-map.json') });
+  try {
+    await assert.rejects(other.session('team-relay-blocked', false), /workspace is busy/);
+    assert.ok(await readFile(executor.workspaceLockPath, 'utf8'));
+    const [record] = await supervisionMetadata(options);
+    assert.equal(record.status, 'failed');
+    assert.equal(record.failureKind, 'termination-failed');
+    assert.equal(record.processTreeStopped, false);
+  } finally {
+    await other.close();
+    // realStop above proved the entire fixture tree exited. Release this test's
+    // exact owned lease only after those assertions, without deleting stale locks.
+    executor.terminationUnconfirmed = false;
+    executor.workerLease.terminationUnconfirmed = false;
+    await executor.close();
+  }
 });
 
 installedTest('different state files still share one canonical workspace worker lease', async t => {
@@ -177,6 +274,38 @@ installedTest('prepared-session close and invalid worker input release only thei
   await other.close();
   await assert.rejects(next.run([{ type: 'text', text: 'Closed before dispatch.' }]), /consumed/);
   await assert.rejects(readFile(other.workspaceLockPath), { code: 'ENOENT' });
+});
+
+installedTest('aborting an unstarted session consumes its handle and releases the exact prepared lease without invoking CLI', async t => {
+  const { executor, options, directory } = await fixture(t);
+  const session = await executor.session('team-relay-aborted-preparation', false);
+  assert.ok(await readFile(executor.workspaceLockPath, 'utf8'));
+  assert.equal(await session.abortPreparation(), true);
+  assert.equal(await session.abortPreparation(), false);
+  await assert.rejects(session.run([{ type: 'text', text: 'Aborted handles cannot dispatch.' }]), /consumed/);
+  await assert.rejects(readFile(executor.workspaceLockPath), { code: 'ENOENT' });
+  assert.deepEqual(await readdir(options.runsPath), [], 'Preparation and abort must not call the CLI.');
+
+  const other = new InstalledHeadlessExecutor({ ...options, runsPath: join(directory, 'after-abort runs'), sessionMapPath: join(directory, 'after-abort-map.json') });
+  t.after(() => other.close());
+  const next = await other.session('team-relay-next-preparation', false);
+  assert.equal(await next.abortPreparation(), true);
+  await assert.rejects(readFile(executor.workspaceLockPath), { code: 'ENOENT' });
+});
+
+installedTest('aborting preparation after run admission leaves the active worker and lease untouched', async t => {
+  const { executor, options, directory } = await fixture(t);
+  const session = await executor.session('team-relay-admitted-preparation', false);
+  const running = session.run([{ type: 'text', text: 'MODE_DELAY admitted worker must finish.' }]);
+  assert.equal(await session.abortPreparation(), false);
+  assert.ok(await readFile(executor.workspaceLockPath, 'utf8'));
+  const other = new InstalledHeadlessExecutor({ ...options, runsPath: join(directory, 'during-run runs'), sessionMapPath: join(directory, 'during-run-map.json') });
+  t.after(() => other.close());
+  await assert.rejects(other.session('team-relay-overlap-rejected', false), /workspace is busy/);
+  assert.equal((await running).finishReason, 'completed');
+  assert.equal(await session.abortPreparation(), false);
+  assert.equal((await supervisionMetadata(options)).length, 1);
+  await assert.rejects(readFile(executor.workspaceLockPath), { code: 'ENOENT' });
 });
 
 installedTest('workers in different canonical workspaces can run concurrently', async t => {

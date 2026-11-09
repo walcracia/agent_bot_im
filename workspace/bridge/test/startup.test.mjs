@@ -316,15 +316,18 @@ windowsTest('stop during a synthetic code worker allows the result reply and cur
   await assert.rejects(readFile(`${f.statePath}.lock`), { code: 'ENOENT' });
 });
 
-windowsTest('started, uncertain and routing_failed state cannot become ready or rerun on managed startup', async t => {
+windowsTest('started, uncertain and routing_failed restart online paused without automatically rerunning', async t => {
   for (const phase of ['started', 'uncertain', 'routing_failed']) {
     const f = await fixture(t, { current: { phase, event: { ...oldEvent, id: 1 } } });
-    assert.notEqual((await f.exited).code, 0);
-    assert.equal((await json(f.runtimePath)).status, 'failed');
+    const runtime = await f.ready();
+    assert.equal(runtime.taskStatus, 'paused');
+    assert.equal(runtime.pendingEventId, 1);
+    assert.equal(f.child.exitCode, null);
     const state = await json(f.statePath);
     assert.equal(state.current.event.id, 1);
     assert.equal(state.cursor, 0);
     assert.deepEqual(await f.modelCalls(), []);
+    assert.equal((await f.stop()).code, 0);
     await assert.rejects(readFile(`${f.statePath}.lock`), { code: 'ENOENT' });
   }
 });

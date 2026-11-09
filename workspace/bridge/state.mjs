@@ -1,5 +1,6 @@
-import { readFile, writeFile, rename, mkdir, open, unlink } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, open, unlink, lstat } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { replaceOwnedFile } from './file-replace.mjs';
 
 /** One bridge owns a cursor. Atomic file replacement keeps result recovery deterministic. */
 export class StateStore {
@@ -29,8 +30,15 @@ export class StateStore {
   }
   async unlock() {
     if (!this.lockHandle) return;
-    await this.lockHandle.close(); this.lockHandle = undefined;
-    await unlink(this.lockPath);
+    const handle = this.lockHandle;
+    try { await this.validateOwner(); await unlink(this.lockPath); }
+    finally { await handle.close(); this.lockHandle = undefined; }
+  }
+  async validateOwner() {
+    if (!this.lockHandle) return;
+    const mine = await this.lockHandle.stat({ bigint: true });
+    const current = await lstat(this.lockPath, { bigint: true });
+    if (mine.dev !== current.dev || mine.ino !== current.ino) throw new Error('Bridge state lock ownership changed; preserve it for inspection.');
   }
   async read(identity) {
     let value;
@@ -47,6 +55,6 @@ export class StateStore {
     await mkdir(dirname(this.path), { recursive: true });
     const temporary = `${this.path}.${process.pid}.tmp`;
     await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600, flush: true });
-    await rename(temporary, this.path);
+    await replaceOwnedFile(temporary, this.path, () => this.validateOwner());
   }
 }

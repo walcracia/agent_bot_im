@@ -18,6 +18,7 @@
     "auth": "stored",
     "permissionMode": "danger-full-access",
     "powershellPath": "pwsh",
-    "runTimeoutMs": 300000
+    "runTimeoutMs": 7200000,
+    "classificationTimeoutMs": 120000
   }
 }

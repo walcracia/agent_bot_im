@@ -103,7 +103,8 @@ try {
       $runtime = Get-ImBridgeRuntime -Record $existing
       if ($runtime.status -ne 'listening') { throw "DSH 实例尚未就绪或正在退出（$($runtime.status)），保留服务并请检查运行记录。" }
       Write-Host "DSH 监听已就绪，复用现有实例 (PID $($existing.pid))。"
-      return [pscustomobject]@{server_url="http://127.0.0.1:$Port";server_pid=$server.pid;dsh_pid=$existing.pid;dsh_status='listening'}
+      if ($runtime.taskStatus -eq 'paused') { Write-Host '上次任务已暂停；请在原聊天发送“继续修正”接续，或“取消任务”结束等待。' }
+      return [pscustomobject]@{server_url="http://127.0.0.1:$Port";server_pid=$server.pid;dsh_pid=$existing.pid;dsh_status='listening';task_status=$runtime.taskStatus}
     }
   }
 
@@ -139,7 +140,8 @@ try {
     if (!$current) { throw "DSH 监听进程已退出，请检查 $runtimePath；服务器保留运行。" }
     if ($runtime -and $runtime.status -eq 'listening') {
       Write-Host "同频服务和 DSH 监听均已就绪 (DSH PID $($dsh.pid))。"
-      return [pscustomobject]@{server_url="http://127.0.0.1:$Port";server_pid=$server.pid;dsh_pid=$dsh.pid;dsh_status='listening'}
+      if ($runtime.taskStatus -eq 'paused') { Write-Host '上次任务已暂停；请在原聊天发送“继续修正”接续，或“取消任务”结束等待。' }
+      return [pscustomobject]@{server_url="http://127.0.0.1:$Port";server_pid=$server.pid;dsh_pid=$dsh.pid;dsh_status='listening';task_status=$runtime.taskStatus}
     }
     if ($runtime -and $runtime.status -in @('stopping','stopped')) { throw 'DSH 在就绪前收到停止请求，未声明启动成功；服务器保留运行。' }
     Start-Sleep -Milliseconds 500
