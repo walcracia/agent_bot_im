@@ -1,8 +1,8 @@
 {
-  "version": "0.2.1",
+  "version": "0.2.2",
   "verified": [
     "26 Python tests",
-    "80 bridge tests including actual HTTP binding and Windows DPAPI; client/desktop JavaScript syntax",
+    "122 bridge tests including chat recovery, Windows file replacement faults, actual HTTP binding and DPAPI; client/desktop JavaScript syntax",
     "Real installed DSH 0.2.2-rc.1 zero-model version probe",
     "Real no-mention IM event to classifier to code edit to independent pytest to IM reply",
     "Real resolved/no-change classification ignored; worker not called",
@@ -12,19 +12,22 @@
     "Independent targeted integration review passed",
     "16 isolated Windows startup/stop orchestration checks",
     "Local IM and installed DSH listener ready together; duplicate start reuse and graceful stop/restart",
-    "Current-user encrypted IM bot binding restored without prompting"
+    "Current-user encrypted IM bot binding restored without prompting",
+    "Two-hour code worker configuration, separate classifier budget and verified owned-process timeout handling",
+    "Authorized same-chat continuation, native-session preservation and durable control deduplication",
+    "Real existing task resumed from an already posted chat command in its original native session; observed running"
   ],
   "desktop": "outputs/TeamRelay-win32-x64/TeamRelay.exe (local build; binaries are not in Git)",
   "project": "agent-bot-im",
   "github": {
-    "delivery_status": "Pre-delivery snapshot; verify remote main, peeled v0.2.1 tag and Release",
+    "delivery_status": "Pre-delivery snapshot; verify remote main, peeled v0.2.2 tag and Release",
     "restored_from": "3ff9870",
     "repository": "https://github.com/walcracia/agent_bot_im",
     "branch": "main",
     "handoff_tag": "v0.1.1-handoff.1",
-    "source_version": "0.2.1",
-    "release_tag": "v0.2.1",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.2.1"
+    "source_version": "0.2.2",
+    "release_tag": "v0.2.2",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.2.2"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry"
@@ -33,8 +36,8 @@
     "Tencent production deployment requires actual server/domain details",
     "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
   ],
-  "updated_at": "2026-11-09T12:08:23+08:00",
-  "stage": "service-and-local-dsh-listening",
+  "updated_at": "2026-11-09T14:26:33+08:00",
+  "stage": "dsh-chat-recovery-verified-and-existing-task-resumed",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -73,7 +76,7 @@
     "manual_acceptance_report": "outputs/MANUAL-TEST-2026-11-09.md",
     "manual_credentials": "environment/config/demo-accounts.json (ignored, local only)",
     "manual_handoff_tag": "v0.2.0-manual.1",
-    "verification_report": "outputs/VERIFICATION-v0.2.1.md",
+    "verification_report": "outputs/VERIFICATION-v0.2.2.md",
     "service_started": true,
     "node": "24.19.0",
     "date": "2026-11-09",
@@ -92,9 +95,16 @@
     "listener_worktree": "environment/tools/dsh/worktrees/agent-bot-im",
     "listener_branch": "codex/dsh-agent-bot-im",
     "startup_credential_storage": "Windows current-user DPAPI; ignored config JSON",
-    "startup_cli_probes_observed": 3,
+    "startup_cli_probes_observed": 4,
     "startup_model_runs_observed": 0,
-    "verification_note": "Initial startup fixture wait timed out once; root cause unconfirmed; original failure preserved and diagnostics improved; final checks passed",
+    "startup_version_probes_zero_model": true,
+    "worker_timeout_ms": 7200000,
+    "classification_timeout_ms": 120000,
+    "chat_recovery_verified": true,
+    "existing_native_session_resumed": true,
+    "local_recovery_workers_observed": 1,
+    "task_status_observed": "running",
+    "verification_note": "Windows EPERM rename was reproduced for runtime and task ledger under process tests; bounded retries, ownership validation and pre-admission cleanup passed; failures preserved. Existing task continuation was observed, not claimed complete.",
     "desktop_version": "0.1.2",
     "automatic_binding_entry": "workspace/bridge/connect-installed.ps1"
   }

@@ -1,5 +1,14 @@
 # 当前接续状态
 
+## 2026-11-09 · v0.2.2 两小时与软件内接续
+
+用户要求2小时任务上限，并让超时后软件里的“继续修正”有响应。worker默认及本机配置已改7200000ms，分类独立120000ms。auto/installed异常任务保留在线暂停；原群授权明确继续沿用原native会话和现有修改，取消仅结束等待。无控制不自动重做、控制持久去重，旧锁和原会话验证不放松。读DSH-RECOVERY-v0.2.2.md与outputs/VERIFICATION-v0.2.2.md。
+
+- 最终verify：26 Python、122 Node、16 Windows编排及JS语法全部通过。实际进程测试捕获Windows EPERM（状态与账本原子rename），已增加有界重试/owner校验、状态发布故障隔离及worker调用前准备清理；全部失败日志保留，诊断/修正见报告。
+- 本机服务已重启至v0.2.2，新监听处理了此前软件里的继续消息。14:26观察确认原native session实际opening、worker两小时、原任务正在继续；这不是主题完成或发布的证据。监听和任务当前状态必须实查runtime与任务账本，不从此快照推断完成。
+- 原来的五个主题修改文件已备份；独立副本ff到本轮运行时代码时hash均保持。蓝色主题的后续修改仍在environment/tools/dsh/worktrees/agent-bot-im，禁止reset/覆盖或混入本轮运行时功能提交。主题完成后再核对diff/验证/交付，原EXE不会仅凭源码修改自动变色。
+- 当前恢复记录/备份位于忽略的environment/verification/recovery-v0.2.2。正常中断后在原群发送“继续修正”，放弃等待发“取消任务”；原会话缺失、进程退出无法证明或旧锁存在时仍需本机检查，不能新建会话冒充恢复。旧CLI Retry/Skip仅为操作者后备，不能与在线监听并发抢state锁。
+
 ## 2026-11-09 · v0.2.1 服务与DSH同步启动
 
 用户要求监听随服务启动绑定，已实现并实际接通本机测试群。默认`environment/scripts/start.ps1`同时启动或复用已核验的IM与DSH，只有两者就绪才成功；`stop.ps1`先等监听当前事件完成、回传并释放锁，再关服务器。忙时超时保留两者，不杀worker、不删旧锁。规格`STARTUP-v0.2.1.md`，验收`outputs/VERIFICATION-v0.2.1.md`。
