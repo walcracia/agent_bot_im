@@ -1,5 +1,14 @@
 # 当前接续状态
 
+## 2026-11-09 · 本机人工测试就绪
+
+用户要求启动服务并提供Windows EXE进行人工测试。本机已用`environment/scripts/start.ps1`启动单进程服务，健康接口返回v0.2.0，地址为`http://127.0.0.1:18200`。这是本机回环测试服务，不是腾讯部署；进程身份在忽略文件`environment/config/server-process.json`，后续先查健康和进程再决定是否启动，停止使用原stop脚本。
+
+- 在此前不存在的`environment/data`显式创建隔离demo：admin/alice/bob为测试成员，另有未连接的助手账号和一个测试群。密码只保存在忽略的`environment/config/demo-accounts.json`及`environment/verification/manual-test-20261109/测试入口与账号.txt`，不进入Git。两个账号实际HTTP登录、身份与群列表读取通过，验证会话已退出。
+- Windows v0.1.2便携包与v0.2.0服务兼容。实际启动`outputs/TeamRelay-win32-x64/TeamRelay.exe`并通过Windows原生窗口树核验登录页、默认服务地址；窗口保留给用户登录。未代替用户完成本轮客户端登录后的人工验收。
+- 完整ZIP的SHA256与v0.1.2校验文件一致；asar白名单及五个客户端文件/桌面入口与当前源码逐字节一致。此次没有产品源码变化，不重建或冒称v0.2.0桌面包。
+- 安全测试说明见`outputs/MANUAL-TEST-2026-11-09.md`。真实DSH群绑定和常驻监听仍未启动，手工测试结果待用户反馈。此记录中的“已运行”只描述当日观察，重启后必须重查。
+
 ## 2026-11-08 · v0.2.0 讨论自动编码
 
 用户确认当前agent-bot-im作为首个项目，普通讨论也自动识别任务。新增auto路由、同群有限上下文、本机installed-headless executor与交互绑定/重启入口。原SDK与mention配置保留，桌面界面无需升级，仍用v0.1.2。
