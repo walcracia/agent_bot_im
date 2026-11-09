@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createServer } from 'node:net';
@@ -29,12 +29,17 @@ test('real FastAPI/SQLite event → bridge → attachment → idempotent reply a
   ].join('\n')], { cwd: workspace, env: { ...process.env, IM_DATA_DIR: join(directory, 'data'), IM_TEST_PASSWORD: password },
     windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const exited = once(child, 'exit');
+  const closed = once(child, 'close');
   let diagnostic = '';
   child.stderr.on('data', chunk => { diagnostic = (diagnostic + chunk).slice(-3000); });
   t.after(async () => {
     if (child.exitCode === null) child.kill();
     await exited;
-    await rm(directory, { recursive: true, force: true });
+    await closed;
+    if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('relay-bridge-http-')) throw new Error('Unexpected fixture cleanup target.');
+    // Windows can release SQLite/WAL mappings just after process/stdio close.
+    // Retry only cleanup of this exact isolated fixture; never repeat the test.
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
   const baseUrl = `http://127.0.0.1:${port}`;
   let ready = false;

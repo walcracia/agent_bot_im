@@ -17,6 +17,11 @@ const { values } = parseArgs({ options: {
 const configPath = resolve(values.config), configDirectory = dirname(configPath);
 if (Boolean(values['runtime-file']) !== Boolean(values['instance-id'])) throw new Error('runtime-file and instance-id must be specified together.');
 if (values['runtime-file'] && (values.handshake || values.once)) throw new Error('Managed startup requires a persistent listener.');
+const selectedConfig = JSON.parse(await readFile(configPath, 'utf8'));
+if (selectedConfig.superAgent?.enabled) {
+  const { runSuperAgent } = await import('./super-agent.mjs');
+  await runSuperAgent({ config: selectedConfig, configPath, values });
+} else {
 const runtime = values['runtime-file'] ? new ManagedRuntime(values['runtime-file'], values['instance-id'], configPath) : null;
 let store, api, executor, failure, runtimeStarted = false, stopping = false;
 const sleepAbort = new AbortController();
@@ -139,4 +144,5 @@ try {
   try { await executor?.close(); await store?.unlock(); }
   catch (error) { failure = error; throw error; }
   finally { if (runtimeStarted) await runtime.finish(Boolean(failure)); }
+}
 }

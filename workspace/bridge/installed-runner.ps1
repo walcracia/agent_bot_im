@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$RunDirectory,
     [string]$TaskFile,
     [string]$SessionId,
+    [string]$ExtraPatchesJson = '[]',
     [ValidateSet('stored', 'environment')][string]$Auth = 'stored',
     [ValidateSet('read-only', 'workspace-write', 'danger-full-access')][string]$PermissionMode = 'danger-full-access',
     [switch]$VersionOnly
@@ -46,6 +47,9 @@ try {
         if ([string]::IsNullOrWhiteSpace($taskText)) { throw 'Task file is empty.' }
         $cliArguments = @()
         if ($Auth -eq 'stored') { $cliArguments += @('--patch', (Join-Path $PSScriptRoot 'saved-auth.patch.yml')) }
+        $extraPatches = $ExtraPatchesJson | ConvertFrom-Json -NoEnumerate
+        if ($extraPatches -isnot [array]) { throw 'Extra patches must be a JSON array.' }
+        foreach ($patch in $extraPatches) { $cliArguments += @('--patch', (Resolve-Path -LiteralPath $patch).ProviderPath) }
         $cliArguments += @('--profile', 'headless', '--json', '--permission-mode', $PermissionMode, '--approval-policy', 'never')
         if ($SessionId) { $cliArguments += @('--session-id', $SessionId) }
         $cliArguments += '-'

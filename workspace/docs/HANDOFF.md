@@ -1,5 +1,11 @@
 # 当前接续状态
 
+## 2026-11-09 · v0.3.0 Super-agent 已验证候选
+
+用户要求补齐Super-agent所有缺口，并明确继续本机。先读SUPERAGENT-v0.3.0及各SUPER模块设计/操作。新控制器、每任务并发worktree/session、原生next-step及消费回执、Thread订阅/引用图召回、独立语义Watchdog、remote-tools环境分离、GitHub与发布流水线已实现。完整验收26 Python/最终208 Node/16编排；真实模型3个worker会话+原A额外1turn、Router/监督各1只读会话，详见outputs/VERIFICATION-v0.3.0.md，首轮失败与追加预算保留。
+
+当前处于本机启用/远端交付前快照。旧服务/监听最后仍为v0.2.2，新0.3.0 Windows包位于outputs/desktop-v0.3.0，不能从此处推断新模式已上线。启用要先正常stop、enable-super保留旧账本并继承确定游标、再start；HEAD必须已包含新代码供任务worktree使用。实际运行、tag和Release状态待本轮后续记录，不自动清空任何任务/锁。
+
 ## 2026-11-09 · v0.2.3 新Windows App
 
 已审查并集成DSH蓝色主题提交23e3c0c，Windows客户端版本升为0.2.3并实际重建。服务/桥接仍为运行中的v0.2.2，不因发新App重启或重新绑定。规格DESKTOP-v0.2.3.md；交付验证outputs/VERIFICATION-desktop-v0.2.3.md。

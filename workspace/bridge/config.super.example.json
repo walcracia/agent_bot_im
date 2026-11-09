@@ -1,0 +1,77 @@
+{
+  "executor": "installed-headless",
+  "triggerMode": "auto",
+  "baseUrl": "http://127.0.0.1:18200",
+  "tokenEnv": "TEAM_RELAY_BOT_TOKEN",
+  "botUsername": "dsh",
+  "conversationIds": [],
+  "senderIds": [],
+  "pollMilliseconds": 2000,
+  "statePath": "../../environment/data/bridge-installed/state.json",
+  "harness": {
+    "cwd": "../../environment/tools/dsh/worktrees/agent-bot-im",
+    "cliPath": "C:/Path/To/DeepSeek/runtime/cli/bin/dsh.cmd",
+    "runsPath": "../../environment/logs/dsh-installed",
+    "sessionMapPath": "../../environment/data/bridge-installed/sessions.json",
+    "auth": "stored",
+    "permissionMode": "danger-full-access",
+    "powershellPath": "pwsh",
+    "runTimeoutMs": 7200000,
+    "classificationTimeoutMs": 120000
+  },
+  "superAgent": {
+    "enabled": true,
+    "projectId": "agent-bot-im",
+    "executionMode": "local",
+    "repositoryPath": "../..",
+    "statePath": "../../environment/data/super-agent/state.json",
+    "worktreesPath": "../../environment/tools/dsh/super-agent",
+    "runsPath": "../../environment/logs/super-agent",
+    "sessionMapsPath": "../../environment/data/super-agent/sessions",
+    "maxWorkers": 2,
+    "maxAutoRepairs": 2,
+    "controlHost": "127.0.0.1",
+    "controlPort": 18202,
+    "routerBatchSize": 8,
+    "contextCharacters": 12000,
+    "watchdog": {
+      "enabled": true,
+      "intervalMs": 60000,
+      "staleHeartbeatMs": 90000,
+      "taskAgeMs": 120000,
+      "cooldownMs": 300000,
+      "maxAssessmentsPerTick": 4,
+      "maxConsecutiveModelFailures": 3
+    },
+    "release": {
+      "enabled": false,
+      "publishRelease": false,
+      "repository": "owner/repository",
+      "repositoryPath": "../..",
+      "worktreesPath": "../../environment/build/super-releases",
+      "statePath": "../../environment/data/super-agent/releases.json",
+      "versionFile": "workspace/package.json",
+      "buildCommands": [],
+      "artifacts": []
+    },
+    "github": {
+      "enabled": false,
+      "repository": "owner/repository",
+      "base": "main",
+      "remote": "origin",
+      "allowedActors": [],
+      "testCommands": [
+        [
+          "pwsh",
+          "-NoProfile",
+          "-File",
+          "environment/scripts/verify.ps1"
+        ]
+      ],
+      "requiredChecks": [],
+      "reviewers": [],
+      "autoMerge": false,
+      "pollMilliseconds": 15000
+    }
+  }
+}

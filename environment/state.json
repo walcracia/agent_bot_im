@@ -40,7 +40,7 @@
     "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
   ],
   "updated_at": "2026-11-09T14:43:56+08:00",
-  "stage": "blue-windows-client-ready",
+  "stage": "super-agent-verified-awaiting-local-activation",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -115,5 +115,22 @@
     "desktop_zip": "outputs/TeamRelay-v0.2.3-win32-x64.zip",
     "desktop_zip_sha256": "004df2f81d0ac847986032eb9729d546a2bb9e381a94b8fa55794c685189c3e9",
     "automatic_binding_entry": "workspace/bridge/connect-installed.ps1"
+  },
+  "next_iteration": {
+    "version": "0.3.0",
+    "design": "workspace/docs/SUPERAGENT-v0.3.0.md",
+    "verification": "outputs/VERIFICATION-v0.3.0.md",
+    "python_tests": 26,
+    "node_tests": 208,
+    "startup_checks": 16,
+    "worker_native_sessions": 3,
+    "worker_invocations": 4,
+    "readonly_router_sessions": 1,
+    "readonly_watchdog_sessions": 1,
+    "native_next_step_verified": true,
+    "remote_tools_real_model_verified": true,
+    "local_activation": "pending",
+    "remote_delivery": "pending",
+    "user_deployment_choice": "local"
   }
 }

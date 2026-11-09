@@ -23,6 +23,8 @@
 
 ## 当前路线
 
+v0.3.0 Super-agent规格：先读 `workspace/docs/SUPERAGENT-v0.3.0.md` 及各SUPER模块设计。新模式通过独立superAgent配置/账本启用，旧未完成任务不得覆盖。每任务独立worktree/session、持续收消息与任务并发；运行中原生steer必须以实际消费回执确认。Watchdog独立运行、只读监督、有界纠偏，崩溃恢复先证明进程/原生调用终态，不自动删除worker锁。GitHub仅绑定PR，评审/CI按head处理，自动修复次数有限；发布使用已确认merge的独立checkout及可信命令/产物清单，不移动已发布tag/资产。用户本轮已明确继续本机，不部署腾讯。
+
 v0.1：设计、IM 服务/客户端、访问隔离、媒体、DSH 适配与本机端到端验证、Windows 便携包、腾讯 Docker 部署资料。
 之后版本必须先记录新增范围和测试标准。
 
