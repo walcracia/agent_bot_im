@@ -9,4 +9,8 @@ try {
   if ($LASTEXITCODE) { throw '客户端语法检查未通过。' }
   node --test bridge/test/*.test.mjs
   if ($LASTEXITCODE) { throw '桥接可靠性测试未通过。' }
+  if ($IsWindows) {
+    & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File (Join-Path $PSScriptRoot 'verify-startup.ps1')
+    if ($LASTEXITCODE) { throw '启动编排测试未通过。' }
+  }
 } finally { Pop-Location }

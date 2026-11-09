@@ -7,12 +7,14 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSVersion.Major -lt 7) { throw '请使用 PowerShell 7。' }
+. (Join-Path $PSScriptRoot 'startup-credential.ps1')
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 if (!$Config) { $Config = Join-Path $projectRoot 'environment/config/bridge-installed.local.json' }
 $configPath = [IO.Path]::GetFullPath($Config)
 $configDirectory = Join-Path $projectRoot 'environment/config'
 $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
 if (!$configPath.StartsWith($configDirectory + [IO.Path]::DirectorySeparatorChar, $comparison)) { throw '请使用本项目 environment/config 内已经绑定的本机配置。' }
+$configPath = Resolve-ImStartupConfigFile -Path $configPath
 try { $settings = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json -ErrorAction Stop }
 catch { throw '本机配置不存在或无法解析；首次请运行 connect-installed.ps1。' }
 if ($settings.executor -ne 'installed-headless' -or $settings.tokenEnv -ne 'TEAM_RELAY_BOT_TOKEN') { throw '此入口仅运行本机 DSH 绑定配置。' }
@@ -28,10 +30,14 @@ $previous = [Environment]::GetEnvironmentVariable('TEAM_RELAY_BOT_TOKEN', 'Proce
 $secureCode = $null
 try {
   if (!$previous) {
-    $secureCode = Read-Host '同频助手连接码（不写入文件）' -AsSecureString
-    $env:TEAM_RELAY_BOT_TOKEN = [Net.NetworkCredential]::new('', $secureCode).Password.Trim()
+    if ($settings.startup.enabled -eq $true) {
+      $env:TEAM_RELAY_BOT_TOKEN = Get-ImStartupToken -ConfigPath $configPath
+    } else {
+      $secureCode = Read-Host '同频助手连接码（不写入文件）' -AsSecureString
+      $env:TEAM_RELAY_BOT_TOKEN = [Net.NetworkCredential]::new('', $secureCode).Password.Trim()
+    }
   }
-  if (!$env:TEAM_RELAY_BOT_TOKEN) { throw '连接码为空，未启动监听。' }
+  if (!$env:TEAM_RELAY_BOT_TOKEN -or $env:TEAM_RELAY_BOT_TOKEN -match '\s') { throw '连接码为空或格式无效，未启动监听。' }
   & $node.Source @arguments
   if ($LASTEXITCODE) { throw '监听退出；请检查本机运行记录。不要为恢复而删除状态或重做不确定任务。' }
 } finally {

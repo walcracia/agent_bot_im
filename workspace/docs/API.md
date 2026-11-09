@@ -4,7 +4,7 @@ JSON 接口 `/api`，时间为 UTC ISO-8601（UI 按用户本地时区）；ID �
 
 ## 身份
 
-- `GET /api/health` -> `{status:"ok", version:"0.2.0", max_file_bytes:100000000}`。
+- `GET /api/health` -> `{status:"ok", version:"0.2.1", max_file_bytes:100000000}`。
 - `POST /api/login {username,password}` -> `{token,user}`。
 - `GET /api/me` -> User。`POST /api/logout` -> `{ok:true}`。
 - `GET /api/users` -> User[]。User `{id,username,display_name,is_admin,is_bot}`（不含密码/令牌）。

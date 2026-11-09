@@ -1,5 +1,11 @@
 # 本机环境
 
+## v0.2.1 同步启动
+
+已绑定后，`scripts/start.ps1`默认同时启动/复用IM服务和DSH监听；两者就绪才返回成功。首次创建账号/绑定前显式用`-ServerOnly`，然后按`../workspace/README.md`运行`connect-installed.ps1 -EnableStartup`。IM助手连接码的DPAPI密文只保存在本项目忽略的config JSON中，需同一Windows用户解密，DSH认证继续使用其自身stored配置。
+
+`scripts/stop.ps1`先请求监听停止，等当前事件和回传完成，再停IM；超时不杀worker、不停服务器。异常任务/锁需按桥接恢复规则处理，不自动删旧锁。进程记录为config/server-process.json和dsh-process.json，实例就绪/停止请求在data/startup；日志每实例保留在logs/dsh-startup。所有运行状态均需实查。规格见`../workspace/docs/STARTUP-v0.2.1.md`。
+
 ## 2026-11-08 干净检出恢复
 
 本目录下的 venv、工具、数据和私有配置不会随 Git 下载。以下历史记录不代表这台电脑已存在对应服务、账号、成品或授权。当前验收见 `state.json` 的 `current_checkout` 与 `../outputs/VERIFICATION-handoff-2026-11-08.md`。

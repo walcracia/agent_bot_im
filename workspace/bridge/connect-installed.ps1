@@ -6,11 +6,14 @@ param(
   [string[]]$ConversationIds,
   [string[]]$SenderIds,
   [string]$ConfigPath,
+  [switch]$EnableStartup,
   [switch]$PassThru
 )
 
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSVersion.Major -lt 7) { throw '请使用 PowerShell 7 运行此入口。' }
+if ($EnableStartup -and !$IsWindows) { throw 'EnableStartup 需要 Windows 当前用户 DPAPI；其他系统请使用原进程连接方式。' }
+. (Join-Path $PSScriptRoot 'startup-credential.ps1')
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 $workspacePath = (Resolve-Path -LiteralPath $Workspace).Path
 if (!(Test-Path -LiteralPath $workspacePath -PathType Container)) { throw 'Workspace 必须是已准备好的独立 Git 工作副本。' }
@@ -39,6 +42,7 @@ $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [
 if (!$configPathFull.StartsWith($configDirectory + [IO.Path]::DirectorySeparatorChar, $comparison) -or [IO.Path]::GetExtension($configPathFull) -ne '.json') {
   throw 'ConfigPath 必须位于本项目忽略的 environment/config 目录中，并使用 .json 扩展名。'
 }
+$configPathFull = Resolve-ImStartupConfigFile -Path $configPathFull
 
 function Get-ImJson([string]$Route, [hashtable]$Headers) {
   try { return Invoke-RestMethod -Uri ($base + $Route) -Headers $Headers -Method Get -TimeoutSec 20 }
@@ -76,9 +80,18 @@ $previousToken = [Environment]::GetEnvironmentVariable('TEAM_RELAY_BOT_TOKEN', '
 $secureCode = $null
 $headers = $null
 try {
-  $secureCode = Read-Host '同频助手连接码（仅用于当前进程，不写入配置）' -AsSecureString
+  if ($previousToken) {
+    $secureCode = ConvertTo-SecureString -String $previousToken.Trim() -AsPlainText -Force
+  } else {
+    $prompt = if ($EnableStartup) { '同频助手连接码（将由 Windows 当前用户加密保存，用于随服务启动）' } else { '同频助手连接码（仅用于当前进程，不写入配置）' }
+    $secureCode = Read-Host $prompt -AsSecureString
+  }
   $token = [Net.NetworkCredential]::new('', $secureCode).Password.Trim()
   if (!$token -or $token -match '[\r\n]') { throw '助手连接码为空或格式无效。' }
+  # Persist the same normalized value used for IM authentication, including
+  # when a pasted connection code has leading/trailing whitespace.
+  $secureCode.Dispose()
+  $secureCode = ConvertTo-SecureString -String $token -AsPlainText -Force
   $env:TEAM_RELAY_BOT_TOKEN = $token
   $headers = @{ Authorization = 'Bearer ' + $token }
   $token = $null
@@ -117,11 +130,18 @@ try {
     if ($old.baseUrl -ne $base -or $old.botUsername -ne $bot.username -or $old.harness.cwd -ne $workspacePath -or $old.harness.cliPath -ne $cli) {
       throw '已有配置绑定了其他服务、助手或工作副本；请用新的 ConfigPath 建立独立实例，原配置与状态保持不变。'
     }
+    if (!$EnableStartup -and $null -ne $old.startup) { $config.startup = $old.startup }
   }
   New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($configPathFull)) | Out-Null
+  if ($EnableStartup) {
+    $credentialPath = Join-Path $configDirectory ($instance + '.credential.json')
+    Save-ImStartupToken -ConfigPath $configPathFull -CredentialPath $credentialPath -Token $secureCode
+    $config.startup = [ordered]@{ enabled = $true; credentialPath = $credentialPath }
+  }
   [IO.File]::WriteAllText($configPathFull, ($config | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
   Write-Host "配置已保存：$configPathFull"
   Write-Host "项目副本：$workspacePath；聊天 $($selectedConversations.Count) 个；授权成员 $($selectedSenders.Count) 位。"
+  if ($EnableStartup) { Write-Host '已启用随服务器启动；连接码已由当前 Windows 用户加密保存。' }
   if ($PassThru) { return [pscustomobject]$config }
   Write-Host '正在前台监听；普通讨论自动识别任务。Ctrl+C 退出。'
   & $node.Source (Join-Path $PSScriptRoot 'bridge.mjs') --config $configPathFull

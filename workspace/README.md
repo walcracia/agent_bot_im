@@ -8,6 +8,7 @@
 
 ```powershell
 .\environment\scripts\setup.ps1
+# 已经绑定DSH时，服务与监听同步启动；重复运行复用已核验的进程
 .\environment\scripts\start.ps1
 ```
 
@@ -25,6 +26,16 @@ Remove-Item Env:\IM_ADMIN_PASSWORD
 ```
 
 已有同名账号不会覆盖。管理员登录后可在设置中创建成员和工作助手。
+
+首次空检出尚无DSH绑定，先用 `environment/scripts/start.ps1 -ServerOnly` 启动服务，创建成员/助手并将助手加入指定群。在项目根准备独立代码副本：
+
+```powershell
+git worktree add -b codex/dsh-agent-bot-im environment/tools/dsh/worktrees/agent-bot-im HEAD
+.\workspace\bridge\connect-installed.ps1 -Workspace .\environment\tools\dsh\worktrees\agent-bot-im -EnableStartup -PassThru | Out-Null
+.\environment\scripts\start.ps1
+```
+
+绑定入口会在本机输入助手连接码、选择群与派任务成员；Windows当前用户加密保存连接码，后续start无需再输入。已有副本有修改时保留，勿重复创建或清空。默认start只有IM和监听均就绪才成功；stop先等当前DSH事件结束再关服务，超时保留运行。完整规则见 `docs/STARTUP-v0.2.1.md`。
 
 ## 验证与构建
 

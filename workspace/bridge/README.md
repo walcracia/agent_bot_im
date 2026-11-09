@@ -2,6 +2,21 @@
 
 先读根 `AGENTS.md`、`RESTORE.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`。详细设计见本目录 `DESIGN.md`，一手来源和文章摘要见 `references/DSH-SOURCES.md`。
 
+## v0.2.1：随本机服务启动
+
+Windows同机部署增加统一入口。首次尚无绑定时，先在项目根运行`environment/scripts/start.ps1 -ServerOnly`，完成下述助手/群/独立代码副本准备，再绑定一次：
+
+```powershell
+.\workspace\bridge\connect-installed.ps1 -Workspace .\environment\tools\dsh\worktrees\agent-bot-im -EnableStartup -PassThru | Out-Null
+.\environment\scripts\start.ps1
+# 以后仍用同一个start；已运行时核验身份并复用，不多开监听
+.\environment\scripts\stop.ps1
+```
+
+`-EnableStartup`将IM助手连接码以Windows当前用户DPAPI保存到忽略的config JSON；配置明文只有密文路径，不含码。以后start以及run-installed可直接解密复用，无需再输入。原来不带此开关的前台绑定仍只使用当前进程。迁移电脑/Windows用户需重新绑定，DSH本身的stored认证仍由DSH读取，不从这里复制密钥。远端IM上的异机监听可继续使用原前台入口；统一start针对同机loopback IM。
+
+统一start只有IM健康、CLI零模型版本检查、bot/群/成员权限、状态锁及游标准备全部通过，才报告两者就绪。首次auto跳过历史；重复启动核验PID/路径/创建时间/命令行/本次实例就绪记录。stop通过本次实例停止请求让当前事件结束、回传并释放锁，之后关闭服务器；超时保持worker和IM运行，不强杀、不删锁。没有系统登录自启或崩溃无限重启。详情见`workspace/docs/STARTUP-v0.2.1.md`。
+
 ## v0.2.0：本机已安装 DSH，普通讨论自动触发
 
 用户确认的当前路线。它复用本机 Desktop 自带 headless CLI 及其存储认证，创建独立原生会话，不操纵桌面上已经打开的聊天。无需下载本项目旧版隔离 Desktop 或 npm SDK 依赖；系统 Node>=24.9、PowerShell7 和已可用的 DSH 是前置条件。
@@ -10,7 +25,7 @@
 2. 在项目根准备一个新的独立 Git 工作副本。先用 `git worktree list` 检查已有副本；下面路径/分支都未使用时执行：
 
    ```powershell
-   git worktree add -b dsh/agent-bot-im environment/tools/dsh/worktrees/agent-bot-im HEAD
+   git worktree add -b codex/dsh-agent-bot-im environment/tools/dsh/worktrees/agent-bot-im HEAD
    .\workspace\bridge\connect-installed.ps1 -Workspace .\environment\tools\dsh\worktrees\agent-bot-im
    ```
 
@@ -31,7 +46,7 @@
 .\workspace\bridge\run-installed.ps1 -SkipEvent 123 -Once
 ```
 
-不要同时给RetryEvent和SkipEvent。配置不同实例可用 `-ConfigPath`；即便状态不同，也不能让两个worker同时改同一个工作副本。异常锁不自动清理，按错误里给出的确切锁路径检查拥有者和相关子进程后再处理，保留任务状态与会话映射。执行中的任务不支持通过普通聊天即时接管/取消；后续取消消息经过分类不再新建代码任务。退出/中断后须按上述状态规则核对是否已经产生修改。
+不要同时给RetryEvent和SkipEvent。配置不同实例时connect入口用 `-ConfigPath`，run入口用 `-Config`；即便状态不同，也不能让两个worker同时改同一个工作副本。异常锁不自动清理，按错误里给出的确切锁路径检查拥有者和相关子进程后再处理，保留任务状态与会话映射。执行中的任务不支持通过普通聊天即时接管/取消；后续取消消息经过分类不再新建代码任务。退出/中断后须按上述状态规则核对是否已经产生修改。
 
 示例为 `config.installed.example.json`。目录、CLI、派任务成员和权限只能由本机配置指定；默认worker沿用本机DSH技能的danger-full-access偏好，分类器强制read-only。该权限模式以当前OS用户权限为上限，独立worktree是变更隔离，不能当作OS级沙箱。模型在既有DSH认证下运行，连接码只用于IM，发给模型子进程前移除。原始JSONL与映射留本机，不推Git。
 

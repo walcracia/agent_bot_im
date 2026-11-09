@@ -95,8 +95,8 @@ export async function attachmentInput(api, event, cwd) {
 
 /** Injected executor enables isolated reliability tests; production always uses official SDK. */
 export class Bridge {
-  constructor({ config, api, store, state, executor, bot }) {
-    Object.assign(this, { config, api, store, state, executor, bot });
+  constructor({ config, api, store, state, executor, bot, shouldStop }) {
+    Object.assign(this, { config, api, store, state, executor, bot, shouldStop });
     this.router = config.triggerMode === 'auto' ? new AutoRouter({ config, api, executor }) : null;
   }
   async acknowledge(id) {
@@ -170,7 +170,9 @@ export class Bridge {
     await this.acknowledge(event.id);
   }
   async poll() {
+    if (await this.shouldStop?.()) return 0;
     const conversations = await this.api.request('/api/conversations');
+    if (await this.shouldStop?.()) return 0;
     if (this.state.current) {
       const current = this.state.current;
       const conversation = conversations.find(item => item.id === current.event.conversation_id);
@@ -183,6 +185,7 @@ export class Bridge {
     if (!Array.isArray(page.events)) throw new Error('Malformed IM events page.');
     let processed = 0;
     for (const event of page.events) {
+      if (await this.shouldStop?.()) break;
       if (!Number.isSafeInteger(event.id) || event.id <= this.state.cursor) throw new Error('IM events are not strictly ordered.');
       const conversation = conversations.find(item => item.id === event.conversation_id);
       if (!conversation || !selected(event, conversation, this.config, this.bot.id)) {
