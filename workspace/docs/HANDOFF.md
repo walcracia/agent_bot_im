@@ -1,5 +1,14 @@
 # 当前接续状态
 
+## 2026-11-09 · v0.2.3 新Windows App
+
+已审查并集成DSH蓝色主题提交23e3c0c，Windows客户端版本升为0.2.3并实际重建。服务/桥接仍为运行中的v0.2.2，不因发新App重启或重新绑定。规格DESKTOP-v0.2.3.md；交付验证outputs/VERIFICATION-desktop-v0.2.3.md。
+
+- 新EXE为outputs/TeamRelay-win32-x64/TeamRelay.exe，实际原生蓝色登录页已打开供用户登录；必须保留整个便携目录。完整ZIP为TeamRelay-v0.2.3-win32-x64.zip，75条目、CRC/清单及SHA256通过；包中不含服务器、DSH或用户数据。
+- 完整verify通过26 Python/122 Node/16编排；修正主题脚本camelCase CSS属性取值覆盖缺口后，7张主题截图、15组对比度和背景/边框颜色扫描通过。asar9条目白名单、6源文件字节一致、PE与manifest版本0.2.3已核验。
+- 历史绿色预览/ZIP不覆盖；本次主题源码合并历史保留两边交接记录，不丢v0.2.2恢复说明。用户人工登录后测试结果待反馈。
+- 源码、校验与脱敏交付记录按新v0.2.3 annotated tag上传，Windows ZIP走Release；远端资产digest确认后才称上传完成。
+
 ## 2026-11-09 · v0.2.2 两小时与软件内接续
 
 用户要求2小时任务上限，并让超时后软件里的“继续修正”有响应。worker默认及本机配置已改7200000ms，分类独立120000ms。auto/installed异常任务保留在线暂停；原群授权明确继续沿用原native会话和现有修改，取消仅结束等待。无控制不自动重做、控制持久去重，旧锁和原会话验证不放松。读DSH-RECOVERY-v0.2.2.md与outputs/VERIFICATION-v0.2.2.md。
@@ -8,6 +17,15 @@
 - 本机服务已重启至v0.2.2，新监听处理了此前软件里的继续消息。14:26观察确认原native session实际opening、worker两小时、原任务正在继续；这不是主题完成或发布的证据。监听和任务当前状态必须实查runtime与任务账本，不从此快照推断完成。
 - 原来的五个主题修改文件已备份；独立副本ff到本轮运行时代码时hash均保持。蓝色主题的后续修改仍在environment/tools/dsh/worktrees/agent-bot-im，禁止reset/覆盖或混入本轮运行时功能提交。主题完成后再核对diff/验证/交付，原EXE不会仅凭源码修改自动变色。
 - 当前恢复记录/备份位于忽略的environment/verification/recovery-v0.2.2。正常中断后在原群发送“继续修正”，放弃等待发“取消任务”；原会话缺失、进程退出无法证明或旧锁存在时仍需本机检查，不能新建会话冒充恢复。旧CLI Retry/Skip仅为操作者后备，不能与在线监听并发抢state锁。
+
+## 2026-11-09 · v0.1.3 蓝色主题（中断接续完成）
+
+用户要求把当前界面改为蓝色主色调，更新主色/强调色，统一登录页与主界面并清除旧主色；布局、文案和功能不变，检查对比度。中断前已完成源码修改，本轮沿用现有多文件改动继续验证和记录，没有 reset 或重做已完成的步骤。
+
+- `client/tokens.css` 用 `--primary/--primary-deep/--primary-hover/--primary-pressed/--accent` 取代旧绿色令牌，页面/会话/自身气泡/文件媒体表面改为蓝调中性色；`client/styles.css` 只替换颜色引用和强调色落点；`client/logo.svg` 保留图形改为蓝底白气泡。
+- 完整浏览器回归使用既有 `environment/scripts/verify-ui-v0.1.2.py`，13项检查、8张截图、0页面异常；新增 `environment/scripts/verify-ui-theme.py` 检查蓝色角色、旧色残留、可见绿色和15组对比度，7张截图全部通过。实际对比度：登录按钮5.17、未读白字4.91、正文14.09、次要文字5.68、输入边界3.91、焦点环6.53。
+- 26项Python测试通过（1条Starlette弃用警告），三个客户端/桌面JS文件 `node --check` 通过。截图在忽略目录 `environment/verification/ui-blue-theme/`，可共享报告为 `outputs/VERIFICATION-ui-v0.1.3.md`。
+- 未完成：Windows 0.1.2安装包与 `outputs/design-preview-v0.1.2` 仍是旧绿色快照，未重建；没有声称它们已包含新主题。未部署生产、未调用真实DSH模型。工作树原有v0.2.2接续提交保留，本主题按独立文件清单提交。
 
 ## 2026-11-09 · v0.2.1 服务与DSH同步启动
 

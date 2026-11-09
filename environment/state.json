@@ -1,5 +1,5 @@
 {
-  "version": "0.2.2",
+  "version": "0.2.3",
   "verified": [
     "26 Python tests",
     "122 bridge tests including chat recovery, Windows file replacement faults, actual HTTP binding and DPAPI; client/desktop JavaScript syntax",
@@ -15,19 +15,22 @@
     "Current-user encrypted IM bot binding restored without prompting",
     "Two-hour code worker configuration, separate classifier budget and verified owned-process timeout handling",
     "Authorized same-chat continuation, native-session preservation and durable control deduplication",
-    "Real existing task resumed from an already posted chat command in its original native session; observed running"
+    "Real existing task resumed in its original native session; subsequent completion and IM acknowledgement observed",
+    "Blue theme, seven fresh browser screenshots and fifteen contrast checks after correcting CSS property scan coverage",
+    "Windows 0.2.3 native blue login window, ASAR allowlist and six source byte comparisons",
+    "Complete Windows ZIP with 75 file entries, CRC and SHA256 verified"
   ],
   "desktop": "outputs/TeamRelay-win32-x64/TeamRelay.exe (local build; binaries are not in Git)",
   "project": "agent-bot-im",
   "github": {
-    "delivery_status": "Pre-delivery snapshot; verify remote main, peeled v0.2.2 tag and Release",
+    "delivery_status": "Pre-delivery snapshot; verify remote main, peeled v0.2.3 tag and Release assets",
     "restored_from": "3ff9870",
     "repository": "https://github.com/walcracia/agent_bot_im",
     "branch": "main",
     "handoff_tag": "v0.1.1-handoff.1",
-    "source_version": "0.2.2",
-    "release_tag": "v0.2.2",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.2.2"
+    "source_version": "0.2.3",
+    "release_tag": "v0.2.3",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.2.3"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry"
@@ -36,8 +39,8 @@
     "Tencent production deployment requires actual server/domain details",
     "Complex DSH tool/media tasks and chosen production model need separate acceptance plan"
   ],
-  "updated_at": "2026-11-09T14:26:33+08:00",
-  "stage": "dsh-chat-recovery-verified-and-existing-task-resumed",
+  "updated_at": "2026-11-09T14:43:56+08:00",
+  "stage": "blue-windows-client-ready",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -76,7 +79,9 @@
     "manual_acceptance_report": "outputs/MANUAL-TEST-2026-11-09.md",
     "manual_credentials": "environment/config/demo-accounts.json (ignored, local only)",
     "manual_handoff_tag": "v0.2.0-manual.1",
-    "verification_report": "outputs/VERIFICATION-v0.2.2.md",
+    "verification_report": "outputs/VERIFICATION-desktop-v0.2.3.md",
+    "service_version": "0.2.2",
+    "bridge_version": "0.2.2",
     "service_started": true,
     "node": "24.19.0",
     "date": "2026-11-09",
@@ -84,7 +89,8 @@
     "isolated_ui_verified": true,
     "desktop_built": true,
     "native_desktop_window_verified": true,
-    "preview": "outputs/design-preview-v0.1.2/index.html",
+    "preview": "environment/verification/desktop-v0.2.3/theme-final (local screenshots; reproducible with verify-ui-theme.py)",
+    "historical_preview": "outputs/design-preview-v0.1.2/index.html",
     "dsh_cli_version": "0.2.2-rc.1",
     "dsh_live_classifier_sessions": 2,
     "dsh_live_code_workers": 1,
@@ -103,9 +109,11 @@
     "chat_recovery_verified": true,
     "existing_native_session_resumed": true,
     "local_recovery_workers_observed": 1,
-    "task_status_observed": "running",
-    "verification_note": "Windows EPERM rename was reproduced for runtime and task ledger under process tests; bounded retries, ownership validation and pre-admission cleanup passed; failures preserved. Existing task continuation was observed, not claimed complete.",
-    "desktop_version": "0.1.2",
+    "task_status_observed": "ready",
+    "verification_note": "Current desktop is blue 0.2.3; running IM/DSH remain compatible 0.2.2. Corrected computed-color scan was rerun. Historical failure evidence remains in earlier reports.",
+    "desktop_version": "0.2.3",
+    "desktop_zip": "outputs/TeamRelay-v0.2.3-win32-x64.zip",
+    "desktop_zip_sha256": "004df2f81d0ac847986032eb9729d546a2bb9e381a94b8fa55794c685189c3e9",
     "automatic_binding_entry": "workspace/bridge/connect-installed.ps1"
   }
 }
