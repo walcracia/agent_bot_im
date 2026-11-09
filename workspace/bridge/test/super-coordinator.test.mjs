@@ -177,6 +177,11 @@ test('explicit continuation reopens a closed-unmerged task in its original works
   const task = f.c.data.tasks.T000001;
   assert.equal(Object.keys(f.c.data.tasks).length, 1); assert.equal(task.resumeClosedPr, true);
   assert.equal(task.workspace, '/work/T000001'); assert.equal(task.stopRequested, false); assert.equal(task.status, 'running');
+  f.runs.get('T000001').resolve({ finalResponse: 'continued work verified' });
+  await until(() => f.c.data.tasks.T000001.status === 'ready' && f.c.active.size === 0);
+  assert.equal(f.c.data.tasks.T000001.resumeClosedPr, undefined); assert.equal(f.c.data.tasks.T000001.prClosed, false);
+  await f.c.ingestGithub({ events: [{ id: 'closed-again-7', source: 'github', taskId: 'T000001', threadId, kind: 'closed', text: 'Closed again', at: new Date().toISOString(), meta: { merged: false } }], cursor: {} });
+  assert.equal(f.c.data.tasks.T000001.status, 'closed'); assert.equal(f.c.data.tasks.T000001.resumeClosedPr, undefined);
 });
 
 test('revoking the task author stops only that worker and denies future task context reads', async t => {
