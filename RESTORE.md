@@ -1,5 +1,9 @@
 # agent-IM 恢复与接续
 
+## 2026-11-10 审计更正
+
+接续先读`outputs/AUDIT-SUPERAGENT-v0.3.1-2026-11-10.md`及HANDOFF最新条目。v0.3.1具备核心Super-agent框架，但仍有交付期输入遗漏、可信测试来源、发布恢复等已复现缺口，不可再宣称全部符合原文。当前桌面为Electron；EXE不启动后台，只有start.ps1统一确认IM/已绑定DSH/独立监督。Tauri尚未迁移。本轮仅审计记录与合成探针，现有产品/Release/配置不变。
+
 ## v0.3.1 当前入口
 
 用户要求的Super-agent范围见`workspace/docs/SUPERAGENT-v0.3.0.md`及各SUPER模块设计，操作见`SUPER-OPERATIONS-v0.3.0.md`。本机选择不部署腾讯。默认start仍从已绑定本机配置同时确认IM与监听；新模式另确认独立Watchdog。首次机器先按下方setup恢复、ServerOnly建账号、connect-installed绑定，再以enable-super转换；私有账号、DPAPI密文、任务/模型会话和本机工具不会随Git clone出现。

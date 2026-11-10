@@ -35,7 +35,7 @@
     "User manual testing of graphite App 0.3.1",
     "Cloud deployment remains outside this iteration; user chose local"
   ],
-  "updated_at": "2026-11-10T08:10:42.488Z",
+  "updated_at": "2026-11-10T09:50:17.388070+00:00",
   "stage": "published-local-graphite-ready",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
@@ -287,5 +287,42 @@
       "supported_runtime_check": "Node24/current v0.3.0 bridge 256 passed, 0 failed/skipped",
       "observation_only": "Earlier service/DSH/EXE reports refer to previous dated checkouts; credentials and binaries do not transfer through Git"
     }
+  },
+  "super_agent_audit": {
+    "date": "2026-11-10",
+    "source_commit": "dad375d5b37023e45c6120fbc14da7841950b1c8",
+    "status": "core-framework-present-not-full-article-conformance",
+    "report": "outputs/AUDIT-SUPERAGENT-v0.3.1-2026-11-10.md",
+    "maintenance_tag": "v0.3.1-audit.1",
+    "scope": "Read-only product audit, synthetic reproductions and documentation; no service/config/product changes",
+    "dsh_model_calls": 0,
+    "existing_related_tests_passed": 35,
+    "reproduction_probes": {
+      "coordinator": 5,
+      "delivery": 3,
+      "remote_tools": 2,
+      "note": "Success means known gaps reproduced, not product acceptance; release recovery is cross-checked twice"
+    },
+    "priority_findings": [
+      "A1: New input accepted during delivery can remain unconsumed while old result merges",
+      "A2: Worker-writable verifier and test sources can weaken verified-tests merge gate"
+    ],
+    "other_findings": [
+      "A3: Build can change HEAD without post-build pinned-merge check",
+      "A4: needs_attention release has no in-app explicit recovery",
+      "A5: In-flight remote write can land after cancellation acknowledgement",
+      "A6: IM graph and Router recall incomplete",
+      "A7: Silent speculative task emits notice after restart"
+    ],
+    "desktop_framework": "Electron 45.2.3",
+    "exe_starts_backend": false,
+    "startup_script_confirms_bound_dsh": true,
+    "tauri_migration_implemented": false,
+    "desktop_zip_bytes": 162326214,
+    "desktop_directory_bytes": 374112472,
+    "app_asar_bytes": 88232,
+    "runtime_observed_at": "2026-11-10T17:39:05+08:00",
+    "runtime_observation": "IM 0.3.1 healthy; controller listening/ready; independent watchdog alive; current ledger 0 tasks; recheck after restart",
+    "git_delivery": "Query remote main and annotated maintenance tag after push; audit snapshot cannot contain its own commit SHA"
   }
 }
