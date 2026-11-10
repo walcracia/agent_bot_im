@@ -181,3 +181,14 @@ PR #1已由可信测试策略自动合并：b8cc74166072b0f4c559426d758dd2183883
 ## 2026-11-10 · C石墨与规则齿轮开始
 
 用户已选C并要求重做设置图标，先冻结UI-v0.1.4，再分工改语义令牌/样式/标志和共享settings路径。UI真实隔离10截图/27检查/29对比度、原13项浏览器回归及Hallmark渲染通过；全量Node首轮255/256卡在恢复后Windows登记等待，原失败保留，由独立模块复验与冷副本门禁确认。无模型调用和真实任务重启。最终交付见outputs/VERIFICATION-v0.3.1.md。
+
+## 2026-11-10 · v0.3.1 实际交付
+
+用户已选C石墨，规则六齿设置图标与生产主题落地。独立冷副本26 Python/256 Node及语法通过，16启动编排、原UI13项回归、石墨10截图/27检查/29对比度通过。最低文字6.140、边界4.220、rail焦点9.756。独立齿轮复核ship，Hallmark渲染0 FAIL/REFLEX/WARN。原255/256等待失败保留，targeted3/3和冷副本通过，未改测试或归因成已知原因。
+
+PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907；在该merge的独立checkout构建并发布https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.1，新annotated v0.3.1与两资产远端digest已核验。ZIP 74文件/162326214字节，SHA256 5f350874756a1bcdf0011b4d9034c27fd48e5efc069784c4abeee624f6438aa8，CRC/每文件hash、ASAR9条目/6源文件字节、PE/manifest 0.3.1均通过。发布初次创建draft后即时API尚未确认，随后只读确认既有owned draft，原账本继续上传；没有重建或重复创建Release。
+
+此前18200未在线且账本0活动任务，本轮默认start恢复已有绑定，当前IM v0.3.1、DSH listening/ready及独立Watchdog身份实查通过；没有重启/中断真实worker。只更新本项目失效代理引用到当前系统已有回环端口，不改全局网络。新App可用原账号连接http://127.0.0.1:18200。实际运行须接续时重查，不把Git当成账号/服务/二进制恢复。
+
+
+新版EXE另以独立TEAMRELAY_PROFILE和临时CDP端口完成真实原生登录页检查：石墨背景rgb(23,26,29)、新settings图标、0页面错误/0网络请求；未输入真实账号或登录。测试实例正常退出、调试端口释放、父进程变量恢复，未关闭用户旧App或修改bundle。

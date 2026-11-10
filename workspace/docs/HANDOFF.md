@@ -1,5 +1,15 @@
 # 当前接续状态
 
+## 2026-11-10 · v0.3.1 实际交付
+
+用户已选C石墨，规则六齿设置图标与生产主题落地。独立冷副本26 Python/256 Node及语法通过，16启动编排、原UI13项回归、石墨10截图/27检查/29对比度通过。最低文字6.140、边界4.220、rail焦点9.756。独立齿轮复核ship，Hallmark渲染0 FAIL/REFLEX/WARN。原255/256等待失败保留，targeted3/3和冷副本通过，未改测试或归因成已知原因。
+
+PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907；在该merge的独立checkout构建并发布https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.1，新annotated v0.3.1与两资产远端digest已核验。ZIP 74文件/162326214字节，SHA256 5f350874756a1bcdf0011b4d9034c27fd48e5efc069784c4abeee624f6438aa8，CRC/每文件hash、ASAR9条目/6源文件字节、PE/manifest 0.3.1均通过。发布初次创建draft后即时API尚未确认，随后只读确认既有owned draft，原账本继续上传；没有重建或重复创建Release。
+
+此前18200未在线且账本0活动任务，本轮默认start恢复已有绑定，当前IM v0.3.1、DSH listening/ready及独立Watchdog身份实查通过；没有重启/中断真实worker。只更新本项目失效代理引用到当前系统已有回环端口，不改全局网络。新App可用原账号连接http://127.0.0.1:18200。实际运行须接续时重查，不把Git当成账号/服务/二进制恢复。
+
+先读UI-v0.1.4、VERIFICATION-v0.3.1和当前state。初轮四风格截图保留为历史，当前C预览与源码为规则新图标。下方是历史条目。
+
 ## 2026-11-10 · 四套风格审核待用户选择
 
 本轮在D:/Work/CodexProjects/agent-bot-im从fd1238c接续。用户明确调用Hallmark要求几套配色/设计风格供审核，输出outputs/design-review-2026-11-10/index.html：A霁蓝、B暖砂、C石墨、D暮紫；聊天/登录可切换，四图对照或单套可操作。仅合成演示数据，真实client/desktop零改动，未切换正式主题、未重建EXE、未接触正式IM/DSH/私有数据。
@@ -131,3 +141,5 @@ UI已完成：红框四处直接删除，清理普通界面技术词/眉题/页�
 新增协作说明：`TEAM-WORKFLOW.md`，由用户明确要求的新子代理整理并经事实复核。人提任务与验收、IM沟通、DSH在指定工作副本执行、原仓库交付。特别注意：普通群聊/前条附件不自动成为任务输入，当前UI附件和文字分开发；每实例单cwd串行，分支/PR/上线是建议人工流程，未由桥接自动实现。
 
 发布回执：v0.1.1 Release已公开，Windows ZIP与SHA256文件上传成功，远端digest一致；设计、v0.1.0与v0.1.1 tag均已推送。
+
+新版EXE另以独立TEAMRELAY_PROFILE和临时CDP端口完成真实原生登录页检查：石墨背景rgb(23,26,29)、新settings图标、0页面错误/0网络请求；未输入真实账号或登录。测试实例正常退出、调试端口释放、父进程变量恢复，未关闭用户旧App或修改bundle。

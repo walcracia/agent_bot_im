@@ -1,41 +1,42 @@
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "verified": [
-    "26 Python tests on this checkout",
-    "256 Node bridge tests on supported isolated Node 24.19.0",
-    "16 mocked Windows startup orchestration checks",
-    "Client/desktop JavaScript syntax",
-    "17 isolated proj_multihandoff synchronization tests",
-    "proj_multihandoff 4 files match source Git blobs",
-    "Hallmark 187 files match pinned upstream Git blobs",
-    "Hallmark official reference/theme dry-run validation"
+    "26 Python and 256 Node tests in the independent final task checkout",
+    "16 isolated Windows startup checks",
+    "13 original real browser UI regression flows; zero page errors",
+    "Graphite UI: 10 screenshots, 27 checks, 29 contrast pairs; zero bright surface residue",
+    "Hallmark real render: 0 FAIL/REFLEX/WARN",
+    "Regular concentric six-tooth gear reviewed independently and shared across settings entry points",
+    "Confirmed exact-head automatic merge of PR #2 and release built from its pinned merge",
+    "PE and ASAR version 0.3.1; nine-entry ASAR allowlist, six source byte comparisons; ZIP CRC and every file hash",
+    "GitHub Release asset digests confirmed; local IM/DSH/Watchdog ready on 0.3.1"
   ],
-  "desktop": "outputs/desktop-v0.3.0/TeamRelay-win32-x64/TeamRelay.exe",
+  "desktop": "environment/build/graphite-releases/T900005/outputs/desktop-v0.3.1/TeamRelay-win32-x64/TeamRelay.exe",
   "project": "agent-bot-im",
   "github": {
     "repository": "https://github.com/walcracia/agent_bot_im",
     "branch": "main",
-    "source_version": "0.3.0",
-    "release_tag": "v0.3.0",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.0",
-    "release_commit": "b8cc74166072b0f4c559426d758dd21838838860",
+    "source_version": "0.3.1",
+    "release_tag": "v0.3.1",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.1",
+    "release_commit": "95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907",
     "source_pushed": true,
     "release_published": true,
-    "delivery_status": "Maintenance commit/tag prepared after source sync; verify remote main and peeled maintenance tag",
-    "handoff_tag": "v0.3.0-handoff.1",
+    "delivery_status": "Pinned release and digests confirmed; query final main and handoff tag after push",
+    "handoff_tag": "v0.3.1-handoff.1",
     "maintenance_tag": "v0.3.0-skills.1",
     "maintenance_scope": "Skill installation and checkout handoff records only; no new product Release"
   },
   "known_failures": [
-    "Local model IM exact-match response had extra @dsh prefix; no retry"
+    "Local model IM exact-match response had extra @dsh prefix; no retry",
+    "One Windows managed-CIM registration wait timed out in initial 255/256 run; unchanged targeted 3/3 and cold full 256/256 passed; cause unconfirmed"
   ],
   "pending": [
-    "User manual testing of the new Windows package",
-    "Cloud deployment is outside this iteration: user selected local",
-    "Remote media understanding and arbitrary complex model tasks require their own acceptance scope"
+    "User manual testing of graphite App 0.3.1",
+    "Cloud deployment remains outside this iteration; user chose local"
   ],
-  "updated_at": "2026-11-10",
-  "stage": "code-synced-skills-verified",
+  "updated_at": "2026-11-10T08:10:42.488Z",
+  "stage": "published-local-graphite-ready",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -67,28 +68,26 @@
   },
   "current_checkout": {
     "date": "2026-11-10",
-    "project_root": "D:/Work/codexproj/agent-IM",
-    "source_base_commit": "a0e9de1deb0c6ec40bdd73c4302d26343ce6247d",
-    "source_version": "0.3.0",
-    "python": "3.12.16 (existing project venv)",
-    "node": "24.19.0 (project-local official ZIP, SHA256 checked)",
-    "node_global": "22.14.0 (unsupported for current bridge; not changed)",
-    "service_started": false,
-    "local_chat_listener_running": false,
-    "port_18200_observation": "No listener observed this iteration",
-    "desktop_source_version": "0.3.0",
-    "desktop_built": false,
-    "native_desktop_window_verified_this_iteration": false,
-    "dsh_live_calls_this_iteration": 0,
-    "skills_installed": [
-      "proj_multihandoff",
-      "hallmark"
-    ],
-    "skill_root": "C:/Users/water/.codex/skills",
-    "verification_report": "outputs/VERIFICATION-skills-2026-11-10.md",
-    "failed_prior_runtime_check": "Node22/old v0.2.0 bridge 45 passed, 8 failed due Windows dev mismatch; protection not weakened",
-    "supported_runtime_check": "Node24/current v0.3.0 bridge 256 passed, 0 failed/skipped",
-    "observation_only": "Earlier service/DSH/EXE reports refer to previous dated checkouts; credentials and binaries do not transfer through Git"
+    "workspace": "D:\\Work\\CodexProjects\\agent-bot-im",
+    "service_version": "0.3.1",
+    "bridge_version": "0.3.1",
+    "desktop_version": "0.3.1",
+    "ui_version": "0.1.4",
+    "theme": "C graphite",
+    "service_started": true,
+    "local_chat_listener_running": true,
+    "listener_mode": "super-agent",
+    "task_status_observed": "ready",
+    "local_url": "http://127.0.0.1:18200",
+    "production_deployment": false,
+    "scope": "Bound local synthetic group; previous binding restored without copying credentials into Git",
+    "worker_timeout_ms": 7200000,
+    "desktop_zip": "outputs/TeamRelay-v0.3.1-portable.zip",
+    "desktop_zip_sha256": "5f350874756a1bcdf0011b4d9034c27fd48e5efc069784c4abeee624f6438aa8",
+    "verification_report": "outputs/VERIFICATION-v0.3.1.md",
+    "native_desktop_window_verified": true,
+    "native_profile_isolated": true,
+    "native_test_client_closed": true
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -230,7 +229,7 @@
     "date": "2026-11-10",
     "screenshots": 16,
     "preview_url": "http://127.0.0.1:18310/",
-    "status": "awaiting-user-theme-selection",
+    "status": "C-selected-and-applied",
     "themes": [
       "A blue",
       "B sand",
@@ -244,6 +243,49 @@
     "model_calls": 0,
     "production_theme_changed": false,
     "review_tag": "v0.3.0-design-review.1",
-    "report": "outputs/VERIFICATION-design-review-2026-11-10.md"
+    "report": "outputs/VERIFICATION-design-review-2026-11-10.md",
+    "selected": "C graphite",
+    "selection_date": "2026-11-10",
+    "settings_icon": "Regular six-tooth shared gear, 24px/1.6px",
+    "applied_version": "0.3.1",
+    "current_report": "outputs/VERIFICATION-v0.3.1.md"
+  },
+  "previous_checkout_before_graphite": {
+    "version": "0.3.0",
+    "verified": [
+      "26 Python tests on this checkout",
+      "256 Node bridge tests on supported isolated Node 24.19.0",
+      "16 mocked Windows startup orchestration checks",
+      "Client/desktop JavaScript syntax",
+      "17 isolated proj_multihandoff synchronization tests",
+      "proj_multihandoff 4 files match source Git blobs",
+      "Hallmark 187 files match pinned upstream Git blobs",
+      "Hallmark official reference/theme dry-run validation"
+    ],
+    "current_checkout": {
+      "date": "2026-11-10",
+      "project_root": "D:/Work/codexproj/agent-IM",
+      "source_base_commit": "a0e9de1deb0c6ec40bdd73c4302d26343ce6247d",
+      "source_version": "0.3.0",
+      "python": "3.12.16 (existing project venv)",
+      "node": "24.19.0 (project-local official ZIP, SHA256 checked)",
+      "node_global": "22.14.0 (unsupported for current bridge; not changed)",
+      "service_started": false,
+      "local_chat_listener_running": false,
+      "port_18200_observation": "No listener observed this iteration",
+      "desktop_source_version": "0.3.0",
+      "desktop_built": false,
+      "native_desktop_window_verified_this_iteration": false,
+      "dsh_live_calls_this_iteration": 0,
+      "skills_installed": [
+        "proj_multihandoff",
+        "hallmark"
+      ],
+      "skill_root": "C:/Users/water/.codex/skills",
+      "verification_report": "outputs/VERIFICATION-skills-2026-11-10.md",
+      "failed_prior_runtime_check": "Node22/old v0.2.0 bridge 45 passed, 8 failed due Windows dev mismatch; protection not weakened",
+      "supported_runtime_check": "Node24/current v0.3.0 bridge 256 passed, 0 failed/skipped",
+      "observation_only": "Earlier service/DSH/EXE reports refer to previous dated checkouts; credentials and binaries do not transfer through Git"
+    }
   }
 }
