@@ -1,0 +1,78 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand + Furrow + Console + Dusk · scope: app · redesign: restyle · v2.0.0
+ * nav: kept icon rail · signature: same conversation in four visual systems · states: full, empty, error and loading use original client logic · copy: verbatim
+ * axes: light and dark/grotesk-sans/warm and cool · posture: restrained · typography: system face retained for Chinese app work
+ * finish-review: subagent · fix · 2 findings · 2 resolved · gap: none
+ */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 · weakest: E, dark surfaces split primary ink from paper and every token gets a contrast check */
+/* Hallmark · waive 39b · two-line conversation row · Conversation selections hold a name, preview and time; their row height preserves readable chat previews rather than toolbar geometry. */
+/* Hallmark · waive 72 · clipped conversation summary · The conversation summary keeps one-line ellipsis; range geometry includes clipped text while the visible row retains 16px horizontal padding. */
+/* Hallmark · dismissed 40 · Four computed theme checks pass text contrast; rail selections are icons needing 3:1, while primary text has at least 5.574:1. Static merged theme variables do not describe a rendered theme. */
+/* Hallmark · dismissed 41 · The primary-ink and surface roles are separate in every active theme, verified by real browser computed styles for both light and dark buttons. */
+:root { --font-body:"Segoe UI","Microsoft YaHei",sans-serif; --font-code:Consolas,monospace; --primary-ink:#ffffff; --radius-control:9px; --radius-bubble:12px; --sidebar-width:292px; }
+:root[data-theme="blue"] {
+ --ink:#25344b; --muted:#56657b; --primary:#205bd0; --primary-ink:#ffffff; --primary-deep:#1b3158; --primary-hover:#205bd0; --primary-pressed:#205bd0; --accent:#205bd0; --focus:#1c58c9;
+ --paper:#f6f8fc; --chat:#f6f8fc; --surface:#f6f8fc; --surface-white:#ffffff; --surface-soft:#edf2fa; --surface-hover:#e5edf9; --surface-selected:#e1ebff; --surface-pressed:#e1ebff; --line:#dce3ee; --field-line:#77869b;
+ --rail-bg:#edf2fa; --rail-ink:#435776; --rail-active:#e1ebff; --inverse-ink:#ffffff; --selection-surface:#e1ebff; --selection-ink:#25344b;
+ --avatar-surface:#edf2fa; --avatar-ink:#56657b; --assistant-surface:#e1ebff; --avatar-warm:#edf2fa; --avatar-warm-ink:#25344b; --avatar-blue:#edf2fa; --avatar-blue-ink:#25344b; --avatar-rose:#edf2fa; --avatar-rose-ink:#25344b; --avatar-indigo:#edf2fa; --avatar-indigo-ink:#25344b; --self-avatar-surface:#e1ebff; --self-avatar-ink:#25344b;
+ --own-bubble:#e4edff; --own-bubble-line:#dce3ee; --media-ground:#edf2fa; --video-ground:#edf2fa; --file-surface:#edf2fa; --file-ink:#25344b; --red:#b53b3b; --error-surface:#ffeded; --warning:#205bd0; --drop-surface:#edf2fa; --drop-line:#205bd0; --shadow:#dce3ee; --backdrop:#10141b80; --image-backdrop:#10141bed; --toast-surface:#25344b;
+ --radius-control:9px; --radius-bubble:12px; --sidebar-width:292px;
+}
+:root[data-theme="sand"] {
+ --ink:#342e28; --muted:#6c5b4b; --primary:#a74525; --primary-ink:#fffaf4; --primary-deep:#4e3629; --primary-hover:#a74525; --primary-pressed:#a74525; --accent:#a74525; --focus:#a74525;
+ --paper:#f5f0e7; --chat:#f5f0e7; --surface:#f5f0e7; --surface-white:#fffcf7; --surface-soft:#ece5d9; --surface-hover:#e9dfd0; --surface-selected:#edddd0; --surface-pressed:#edddd0; --line:#d8cdbd; --field-line:#8a7a68;
+ --rail-bg:#e9dfcf; --rail-ink:#66523e; --rail-active:#edddd0; --inverse-ink:#fffaf4; --selection-surface:#edddd0; --selection-ink:#342e28;
+ --avatar-surface:#ece5d9; --avatar-ink:#6c5b4b; --assistant-surface:#edddd0; --avatar-warm:#ece5d9; --avatar-warm-ink:#342e28; --avatar-blue:#ece5d9; --avatar-blue-ink:#342e28; --avatar-rose:#ece5d9; --avatar-rose-ink:#342e28; --avatar-indigo:#ece5d9; --avatar-indigo-ink:#342e28; --self-avatar-surface:#edddd0; --self-avatar-ink:#342e28;
+ --own-bubble:#eed9ca; --own-bubble-line:#d8cdbd; --media-ground:#ece5d9; --video-ground:#e9dfcf; --file-surface:#ece5d9; --file-ink:#342e28; --red:#a52d31; --error-surface:#fbe4e0; --warning:#a74525; --drop-surface:#ece5d9; --drop-line:#a74525; --shadow:#d8cdbd; --backdrop:#10141b80; --image-backdrop:#10141bed; --toast-surface:#342e28;
+ --radius-control:3px; --radius-bubble:4px; --sidebar-width:300px;
+}
+:root[data-theme="graphite"] {
+ --ink:#edf0f2; --muted:#aeb8c2; --primary:#eab45c; --primary-ink:#241d13; --primary-deep:#edf0f2; --primary-hover:#eab45c; --primary-pressed:#eab45c; --accent:#eab45c; --focus:#eab45c;
+ --paper:#171a1d; --chat:#171a1d; --surface:#171a1d; --surface-white:#21262b; --surface-soft:#292f35; --surface-hover:#343b42; --surface-selected:#3a3427; --surface-pressed:#3a3427; --line:#3a424a; --field-line:#7d8893;
+ --rail-bg:#121518; --rail-ink:#b7c0c8; --rail-active:#3a3427; --inverse-ink:#172027; --selection-surface:#3a3427; --selection-ink:#edf0f2;
+ --avatar-surface:#292f35; --avatar-ink:#aeb8c2; --assistant-surface:#3a3427; --avatar-warm:#292f35; --avatar-warm-ink:#edf0f2; --avatar-blue:#292f35; --avatar-blue-ink:#edf0f2; --avatar-rose:#292f35; --avatar-rose-ink:#edf0f2; --avatar-indigo:#292f35; --avatar-indigo-ink:#edf0f2; --self-avatar-surface:#3a3427; --self-avatar-ink:#edf0f2;
+ --own-bubble:#343a40; --own-bubble-line:#3a424a; --media-ground:#292f35; --video-ground:#121518; --file-surface:#292f35; --file-ink:#edf0f2; --red:#ff9d98; --error-surface:#4a2728; --warning:#eab45c; --drop-surface:#292f35; --drop-line:#eab45c; --shadow:#3a424a; --backdrop:#10141b80; --image-backdrop:#10141bed; --toast-surface:#edf0f2;
+ --radius-control:5px; --radius-bubble:6px; --sidebar-width:278px;
+}
+:root[data-theme="dusk"] {
+ --ink:#f0eef8; --muted:#b8b9ce; --primary:#b7aff5; --primary-ink:#282139; --primary-deep:#eeebfb; --primary-hover:#b7aff5; --primary-pressed:#b7aff5; --accent:#b7aff5; --focus:#c4baff;
+ --paper:#20212e; --chat:#242634; --surface:#20212e; --surface-white:#2d2f40; --surface-soft:#35384c; --surface-hover:#41445c; --surface-selected:#41415f; --surface-pressed:#41415f; --line:#47495f; --field-line:#9193ad;
+ --rail-bg:#282a39; --rail-ink:#c0bed3; --rail-active:#41415f; --inverse-ink:#24202e; --selection-surface:#41415f; --selection-ink:#f0eef8;
+ --avatar-surface:#35384c; --avatar-ink:#b8b9ce; --assistant-surface:#41415f; --avatar-warm:#35384c; --avatar-warm-ink:#f0eef8; --avatar-blue:#35384c; --avatar-blue-ink:#f0eef8; --avatar-rose:#35384c; --avatar-rose-ink:#f0eef8; --avatar-indigo:#35384c; --avatar-indigo-ink:#f0eef8; --self-avatar-surface:#41415f; --self-avatar-ink:#f0eef8;
+ --own-bubble:#41415f; --own-bubble-line:#47495f; --media-ground:#35384c; --video-ground:#282a39; --file-surface:#35384c; --file-ink:#f0eef8; --red:#ffb0a7; --error-surface:#4e303b; --warning:#b7aff5; --drop-surface:#35384c; --drop-line:#b7aff5; --shadow:#47495f; --backdrop:#10141b80; --image-backdrop:#10141bed; --toast-surface:#f0eef8;
+ --radius-control:17px; --radius-bubble:20px; --sidebar-width:310px;
+}
+html,body { overflow-x:clip; } :root { font-size:16px; }
+body { color:var(--ink); background:var(--paper); }
+button,input,textarea,select { font-family:var(--font-body); }
+h1,h2,h3 { min-width:0; overflow-wrap:break-word; }
+.app-view { max-width:1680px; margin-inline:auto; min-height:0; height:100dvh; }
+.rail { background:var(--rail-bg); color:var(--rail-ink); border-right:1px solid var(--line); width:72px; }
+.rail-button:hover,.rail-button.active { background:var(--surface-selected); color:var(--primary); }
+.rail-button,.icon-button,.primary,.secondary,.input-icon,.search-box,.conversation,.attachment-options,.modal { border-radius:var(--radius-control); }
+.primary,.unread { background:var(--primary); color:var(--primary-ink); }
+.primary:hover { filter:brightness(.94); } .primary:active { filter:brightness(.88); }
+.sidebar { width:var(--sidebar-width); background:var(--surface-white); }
+.conversation { padding:16px; } .conversation-name { font-size:15px; } .conversation-summary p { font-size:13px; }
+.conversation.selected { background:var(--surface-selected); }
+.avatar { border-radius:var(--radius-control); } .bubble { font-size:16px; line-height:1.7; border-radius:var(--radius-bubble); background:var(--surface-white); border-color:var(--line); }
+.message.own .bubble { background:var(--own-bubble); color:var(--ink); border-color:var(--own-bubble-line); }
+.message-author,.message-time { color:var(--muted); } .message { margin-bottom:24px; }
+.chat-heading h2 { font-size:20px; } .composer textarea { font-size:16px; }
+.messages { padding:28px 32px; } .chat-header { background:var(--surface-white); }
+.composer { background:var(--surface-white); } .message-timestamp time { background:var(--surface-white); color:var(--ink); }
+.login-panel { max-width:352px; } .login-brand { margin-bottom:40px; } .login-form label,.input-icon input { font-size:16px; }
+.brand-mark { width:40px; height:40px; flex-shrink:0; } .rail-brand .brand-mark { width:36px; height:36px; }
+.brand-mark rect { fill:var(--primary); } .brand-mark .mark-bubble { fill:var(--primary-ink); } .brand-mark .mark-line { stroke:var(--primary); }
+.toast { background:var(--toast-surface); color:var(--paper); }
+:where(button,a,summary,input,textarea,select,[tabindex]):focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+.rail-button:focus-visible { outline-color:var(--focus); }
+.search-box { min-height:44px; padding-block:0; } .search-box input { min-height:32px; }
+:root[data-theme="sand"] .conversation.selected { box-shadow:inset 3px 0 var(--primary); }
+:root[data-theme="sand"] .bubble { border:0; border-left:2px solid var(--line); }
+:root[data-theme="graphite"] .conversation { padding-block:12px; } :root[data-theme="graphite"] .message { margin-bottom:16px; }
+:root[data-theme="graphite"] .bubble { border:0; } :root[data-theme="graphite"] .rail-button.active { box-shadow:inset 2px 0 var(--primary); }
+:root[data-theme="dusk"] .conversation { padding-block:20px; } :root[data-theme="dusk"] .message { margin-bottom:24px; }
+:root[data-theme="dusk"] .bubble { border:0; padding:12px 20px; } :root[data-theme="dusk"] .login-panel { max-width:372px; }
+@media(max-width:1000px) { .sidebar { width:250px; } .messages { padding:24px; } }
+@media(max-width:600px) { .rail { width:52px; } .sidebar { width:180px; } .messages { padding:12px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; animation:none!important; scroll-behavior:auto!important; } }

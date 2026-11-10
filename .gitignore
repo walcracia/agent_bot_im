@@ -29,3 +29,5 @@ workspace/data/
 .team-relay-incoming-*/
 *.log
 references/vendor/
+.hallmark/
+outputs/design-review-2026-11-10/.hallmark/

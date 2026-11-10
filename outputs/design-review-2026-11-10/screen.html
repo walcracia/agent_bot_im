@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="同频，小团队的聊天与文件沟通工具。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http: wss: ws:; img-src 'self' blob: https: http: data:; media-src 'self' blob: https: http:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>同频</title>
+  <link rel="icon" type="image/svg+xml" href="client/logo.svg">
+  <link rel="stylesheet" href="client/styles.css">
+  <script src="client/app.js" defer></script>
+<link rel="stylesheet" href="themes.css"><script src="fixture.js" defer></script></head>
+<body>
+  <main id="login-view" class="login-view">
+    <section class="login-panel">
+      <div class="brand login-brand"><img src="client/logo.svg" alt=""><h1>同频</h1></div>
+      <form id="login-form" class="login-form">
+        <div class="login-welcome"><h2>登录</h2></div>
+        <details id="connection-settings" class="login-connection" open><summary title="连接设置" aria-label="连接设置"><span data-icon="settings"></span></summary><label for="server-url">团队地址</label><div class="input-icon"><span data-icon="server"></span><input id="server-url" name="server" type="url" required placeholder="https://im.example.com" autocomplete="url"></div></details>
+        <label for="username">账号</label><div class="input-icon"><span data-icon="user"></span><input id="username" name="username" required maxlength="64" autocomplete="username" placeholder="输入账号"></div>
+        <label for="password">密码</label><div class="input-icon"><span data-icon="lock"></span><input id="password" name="password" type="password" required autocomplete="current-password" placeholder="输入密码"></div>
+        <div id="login-error" class="form-error" role="alert" hidden></div>
+        <button id="login-submit" type="submit" class="primary login-submit">登录<span data-icon="arrow-right"></span></button>
+      </form>
+    </section>
+  </main>
+
+  <main id="app-view" class="app-view" hidden>
+    <nav class="rail" aria-label="主导航">
+      <div class="rail-brand"><img src="client/logo.svg" alt="同频"></div>
+      <div class="rail-links"><button id="nav-chats" class="rail-button active" title="聊天" aria-label="聊天" data-icon="chat"></button><button id="nav-members" class="rail-button" title="团队成员" aria-label="团队成员" data-icon="users"></button></div>
+      <div class="rail-bottom"><button id="nav-settings" class="rail-button" title="设置" aria-label="设置" data-icon="settings"></button><button id="nav-logout" class="rail-button" title="退出登录" aria-label="退出登录" data-icon="logout"></button><div id="my-avatar" class="avatar rail-avatar">我</div></div>
+    </nav>
+    <aside class="sidebar">
+      <div class="workspace-heading"><div class="workspace-title"><h1>聊天</h1><span id="conversation-count" class="sr-only">0 个聊天</span></div><button id="new-chat" class="icon-button new-button" title="新聊天" aria-label="新聊天" data-icon="plus"></button></div>
+      <label class="search-box"><span data-icon="search"></span><input id="conversation-search" type="search" placeholder="搜索" aria-label="搜索聊天"></label>
+      <div id="conversation-list" class="conversation-list" role="list" aria-label="聊天列表" aria-describedby="conversation-count"></div>
+      <div class="sidebar-footer"><span id="connection-dot" class="tiny-dot offline" title="正在连接" role="status" aria-label="正在连接"></span><span id="connection-text" hidden>正在连接</span></div>
+    </aside>
+    <section class="chat-area" id="chat-area">
+      <div id="empty-chat" class="empty-chat"><h2>选择一个聊天</h2><button class="primary" id="empty-new-chat"><span data-icon="plus"></span>新聊天</button></div>
+      <div id="active-chat" class="active-chat" hidden>
+        <header class="chat-heading"><div id="chat-avatar" class="avatar avatar-group"></div><div class="chat-heading-copy"><h2 id="chat-title"></h2><p id="chat-subtitle"></p></div><button id="toggle-details" class="icon-button" title="会话详情" aria-label="会话详情" data-icon="panel"></button></header>
+        <div id="messages" class="messages" role="log" aria-label="聊天消息" aria-live="polite"><button id="load-history" class="load-history" type="button">加载更早的消息</button><div id="message-items"></div></div>
+        <div id="upload-list" class="upload-list" aria-live="polite"></div>
+        <form id="composer" class="composer">
+          <div class="composer-toolbar"><div class="composer-actions">
+            <details id="attachment-menu" class="attachment-menu">
+              <summary id="attachment-toggle" class="icon-button" title="发送附件" aria-label="发送附件" aria-controls="attachment-options"><span data-icon="paperclip"></span></summary>
+              <div id="attachment-options" class="attachment-options" role="group" aria-label="附件类型">
+                <button id="attach-file" type="button" title="发送文件" aria-label="发送文件" data-icon="file">文件</button>
+                <button id="attach-image" type="button" title="发送图片" aria-label="发送图片" data-icon="image">图片</button>
+                <button id="attach-media" type="button" title="发送音频或视频" aria-label="发送音频或视频" data-icon="play">音频或视频</button>
+              </div>
+            </details>
+            <button id="mention-assistant" class="icon-button" type="button" title="请助手处理" aria-label="请助手处理" data-icon="spark" hidden></button>
+          </div><span id="composer-counter" class="composer-counter"></span></div>
+          <textarea id="message-input" aria-label="消息内容" aria-describedby="keyboard-hint" title="Enter 发送，Shift + Enter 换行" placeholder="输入消息…" maxlength="10000" rows="1"></textarea>
+          <div class="composer-bottom"><span id="keyboard-hint" class="sr-only">Enter 发送，Shift + Enter 换行。</span><button id="send-message" class="primary send-button" type="submit" title="发送消息" aria-label="发送消息"><span data-icon="send"></span></button></div>
+        </form>
+      </div>
+      <div id="drop-overlay" class="drop-overlay" hidden><span data-icon="upload"></span><h3>松开发送</h3></div>
+    </section>
+    <aside id="details-panel" class="details-panel" hidden></aside>
+  </main>
+  <input id="file-input" type="file" multiple hidden>
+  <dialog id="modal" class="modal"><div id="modal-content"></div></dialog>
+  <dialog id="image-modal" class="image-modal"><button id="close-image" class="image-close icon-button" title="关闭预览" aria-label="关闭预览" data-icon="close"></button><img id="preview-image" src="client/logo.svg" alt="图片预览"></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

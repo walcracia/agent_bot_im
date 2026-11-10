@@ -38,3 +38,9 @@
 规格见UI-v0.1.3.md。用真实 Chrome 在临时隔离服务上检查登录页和聊天主界面在1280×860、960×680的整体配色与不溢出；从源码移除旧绿色十六进制/令牌名，从 computed style 确认无绿色族可见颜色；主蓝、深蓝导航、亮蓝强调、蓝调表面都来自 `tokens.css`。对比度用计算值检查：正文/次要文字/未读白字≥4.5:1，控件边界/焦点环≥3:1；同时重跑既有v0.1.2真实浏览器流程，证明布局、文案和功能未回退。
 
 验收脚本为 `environment/scripts/verify-ui-v0.1.2.py`（全流程回归）与 `environment/scripts/verify-ui-theme.py`（蓝色角色/旧色/对比度）。Windows包重建和原生窗口不在本轮自动范围；未重建时必须明确记录安装包仍是旧配色。实际结果见outputs/VERIFICATION-ui-v0.1.3.md。
+
+## 2026-11-10 · 四套风格审核待用户选择
+
+本轮在D:/Work/CodexProjects/agent-bot-im从fd1238c接续。用户明确调用Hallmark要求几套配色/设计风格供审核，输出outputs/design-review-2026-11-10/index.html：A霁蓝、B暖砂、C石墨、D暮紫；聊天/登录可切换，四图对照或单套可操作。仅合成演示数据，真实client/desktop零改动，未切换正式主题、未重建EXE、未接触正式IM/DSH/私有数据。
+
+确认轮16截图/288检查、审核页7项功能检查通过；Hallmark渲染0 FAIL/0 REFLEX/0 WARN，两项已记录waiver。独立复核2项意见均解决。报告outputs/VERIFICATION-design-review-2026-11-10.md；构建build-design-review.mjs，重开静态审核服务preview-designs.ps1，默认http://127.0.0.1:18310/。服务运行是本次观察，重启后须实查。下一步等用户在Codex对话选A/B/C/D，再做正式落地/完整回归/App打包。

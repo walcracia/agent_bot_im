@@ -38,3 +38,5 @@ uv 未加入 PATH 时用 `setup.ps1 -UvCommand 'uv.exe的实际路径'`；仅恢
 历史v0.2交付记录（不代表当前运行）：服务/桥接当时为v0.2.2，桌面客户端v0.2.3已构建并包含v0.1.3蓝色主题；完整目录/ZIP见outputs或v0.2.3 Release，交付验证见`outputs/VERIFICATION-desktop-v0.2.3.md`。接续自动编码先读 `workspace/docs/DSH-AUTO-v0.2.0.md`、`workspace/docs/STARTUP-v0.2.1.md`、`workspace/docs/DSH-RECOVERY-v0.2.2.md`、`workspace/bridge/README.md` 与本轮验收报告。默认 `environment/scripts/start.ps1` 同时启动或复用IM和已绑定DSH；首次绑定前用 `-ServerOnly`。绑定时 `connect-installed.ps1 -EnableStartup` 保存当前Windows用户加密的IM助手码，后续无需重复输入。真实团队的连接码/群绑定不在Git中，也不能跨Windows用户搬运密文；不要从测试日志推断监听已启动，不自动重做uncertain或routing_failed事件。2小时代码任务中断后监听保持在线，在原群明确发送“继续修正”接续原会话，发送“取消任务”结束等待；旧状态/改动/会话映射保留。
 
 当前v0.3.0已发布并在本机启用，下载/验收见HANDOFF和outputs/VERIFICATION-v0.3.0.md。自动合并策略按用户选择为verified-tests；新机器须配置自己的可信工具与绑定，不能仅clone后推断已在线。
+
+风格审核入口：outputs/design-review-2026-11-10/index.html。使用environment/scripts/preview-designs.ps1重开独立静态预览（默认18310），不启动正式IM/DSH；规格与报告见UI-REVIEW-2026-11-10和outputs/VERIFICATION-design-review-2026-11-10.md。等待用户选择后才落地App。

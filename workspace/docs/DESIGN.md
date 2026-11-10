@@ -68,3 +68,5 @@ flowchart LR
 UI 的布局、减负与图标依据仍是 [UI-v0.1.2.md](UI-v0.1.2.md) 和 [UI-v0.1.1.md](UI-v0.1.1.md)：用户要求删除解释性技术文字，默认收起详情，多图标、必要操作文字与无障碍标签。
 
 DSH实际接缝为官方 `@deepseek-ai/dsh-sdk-client@0.2.2-rc.1` 的stdio JSON-RPC，使用官方签名Desktop内置CLI，不调用未公开的Desktop HTTP接口。按会话恢复session、双白名单、结果缓存与幂等回复；执行中断必须人工决定重试或跳过，不声称分布式exactly-once。真实本地模型文本实验及格式失败边界见 bridge/LOCAL-MODEL-TEST.md。部署运行时依赖也已完整锁定在requirements.lock.txt。
+
+当前待审核的独立风格方案见UI-REVIEW-2026-11-10.md；正式App仍沿用UI-v0.1.3，用户选择后再实施。

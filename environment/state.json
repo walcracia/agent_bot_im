@@ -220,5 +220,30 @@
         "observation_only": "Recheck process identity after restarting or cloning; Git does not carry credentials, services, native sessions or binaries"
       }
     }
-  ]
+  ],
+  "ui_review": {
+    "hallmark_floor_failures": 0,
+    "source_base": "fd1238c",
+    "entry": "outputs/design-review-2026-11-10/index.html",
+    "gallery_checks": 7,
+    "hallmark_waived": 2,
+    "date": "2026-11-10",
+    "screenshots": 16,
+    "preview_url": "http://127.0.0.1:18310/",
+    "status": "awaiting-user-theme-selection",
+    "themes": [
+      "A blue",
+      "B sand",
+      "C graphite",
+      "D dusk"
+    ],
+    "exe_rebuilt": false,
+    "hallmark_unresolved_reflex": 0,
+    "workspace": "D:\\Work\\CodexProjects\\agent-bot-im",
+    "checks": 288,
+    "model_calls": 0,
+    "production_theme_changed": false,
+    "review_tag": "v0.3.0-design-review.1",
+    "report": "outputs/VERIFICATION-design-review-2026-11-10.md"
+  }
 }
