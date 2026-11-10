@@ -1,5 +1,15 @@
 # 当前接续状态
 
+## 2026-11-10 · 本机代码同步与技能就绪
+
+当前检出是D:/Work/codexproj/agent-IM，已安全同步到远端a0e9de1（v0.3.0），下方其他检出上的运行状态是历史快照，不能据此启动或接管进程。本轮18200未监听，没有启动正式IM/DSH/Watchdog或调用模型；本机旧EXE没有重建成v0.3.0。
+
+- 本机Codex技能已安装proj_multihandoff和Hallmark2.0.0。前者与a0e9de1仓库源4文件一致，后者与官方407fa689...的187文件一致；17项同步测试及Hallmark官方dry-run校验通过。来源和备份说明见references/SKILL-SOURCES.md。下条消息可使用技能，安装不等于授权重新设计UI。
+- 全量常规复验已通过26 Python/256 Node/16编排及语法。Node22曾有8项锁检查失败，已保留证据；官方Node24.19隔离运行后独立文件身份探针与整体验证通过，没有放宽锁校验。
+- 隔离Node在environment/tools/node-v24.19.0-win-x64，未改系统PATH。需在当前PowerShell会话将该目录前置PATH再运行verify.ps1，参见environment/README.md；不能用旧Node22结果冒充受支持运行时。
+- 上次未提交计划先保存为本地分支codex/skills-install-record-20261110/a733c44后才快进，其文本已保留在PROCESS中。当前只提交本轮明确的维护记录，不改产品功能或复制凭据/旧绑定。维护tag计划为v0.3.0-skills.1，先查远端确认是否已发布，禁止移动旧标签。
+- 本轮脱敏报告：outputs/VERIFICATION-skills-2026-11-10.md。后续没有新的产品需求时，只完成接续准备，不扩展Super-agent/部署/界面范围。
+
 ## 2026-11-09 · v0.3.0 最终实际交付
 
 PR #1已由可信测试策略自动合并：b8cc74166072b0f4c559426d758dd21838838860。最终冷副本26 Python/256 Node/语法通过，源码与索引未变；16项Windows编排另行通过。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.0 已发布，annotated tag及两个资产的远端digest确认。Windows ZIP 74文件、162325663字节，SHA256 58f7e07e06ad47065e645ea89a959dd8a3b742ed9df3ea6f81894282e7614012；CRC/每文件hash、ASAR9条目和6源码字节比较通过，PE/manifest为0.3.0。

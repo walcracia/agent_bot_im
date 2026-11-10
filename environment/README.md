@@ -1,5 +1,18 @@
 # 本机环境
 
+## 2026-11-10 此检出的运行时复核
+
+本机默认Node仍为22.14，低于新版桥接要求。已在本项目忽略目录安装并按官方SHA256校验Node24.19.0，不更改系统或其他项目。当前检出在该运行时下通过26 Python/256 Node/16编排；下方其他日期的已运行服务、绑定和构建记录不能视为此次检出的状态。
+
+在项目根的当前PowerShell会话中启用本项目运行时再验证：
+
+```powershell
+$env:PATH = (Resolve-Path 'environment/tools/node-v24.19.0-win-x64').Path + [IO.Path]::PathSeparator + $env:PATH
+.\environment\scripts\verify.ps1
+```
+
+该目录不随Git分发；新机器可安装符合要求的Node>=24.9。当前Python为已有项目venv的3.12.16。两个新增技能的本机安装与来源见references/SKILL-SOURCES.md，验证结论见outputs/VERIFICATION-skills-2026-11-10.md。本轮没有启动正式服务或真实模型，不应根据历史ready文件认定已经监听。
+
 ## v0.2.1 同步启动
 
 已绑定后，`scripts/start.ps1`默认同时启动/复用IM服务和DSH监听；两者就绪才返回成功。首次创建账号/绑定前显式用`-ServerOnly`，然后按`../workspace/README.md`运行`connect-installed.ps1 -EnableStartup`。IM助手连接码的DPAPI密文只保存在本项目忽略的config JSON中，需同一Windows用户解密，DSH认证继续使用其自身stored配置。

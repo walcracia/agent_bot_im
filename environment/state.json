@@ -1,15 +1,14 @@
 {
   "version": "0.3.0",
   "verified": [
-    "26 Python tests",
-    "256 Node tests in the final cold worktree; source/index unchanged",
-    "16 isolated Windows startup orchestration checks",
-    "Three real native code-worker sessions and four invocations: concurrent work, same-session next-step input and separate remote tools",
-    "Two real read-only Router sessions and one semantic Watchdog session; synthetic stall evidence explicitly labelled",
-    "Actual trusted-test GitDelivery exact-head merge of PR #1; release built from its confirmed merge",
-    "Windows PE/manifest 0.3.0; ASAR nine-entry allowlist, six source byte comparisons; complete ZIP CRC and all file hashes",
-    "Published annotated v0.3.0 and assets verified against GitHub SHA256 digests",
-    "Local IM, bound DSH and independent Watchdog ready; duplicate startup reuses verified processes"
+    "26 Python tests on this checkout",
+    "256 Node bridge tests on supported isolated Node 24.19.0",
+    "16 mocked Windows startup orchestration checks",
+    "Client/desktop JavaScript syntax",
+    "17 isolated proj_multihandoff synchronization tests",
+    "proj_multihandoff 4 files match source Git blobs",
+    "Hallmark 187 files match pinned upstream Git blobs",
+    "Hallmark official reference/theme dry-run validation"
   ],
   "desktop": "outputs/desktop-v0.3.0/TeamRelay-win32-x64/TeamRelay.exe",
   "project": "agent-bot-im",
@@ -22,8 +21,10 @@
     "release_commit": "b8cc74166072b0f4c559426d758dd21838838860",
     "source_pushed": true,
     "release_published": true,
-    "delivery_status": "Release verified; final handoff commit/tag must be confirmed with Git instead of embedding its own hash",
-    "handoff_tag": "v0.3.0-handoff.1"
+    "delivery_status": "Maintenance commit/tag prepared after source sync; verify remote main and peeled maintenance tag",
+    "handoff_tag": "v0.3.0-handoff.1",
+    "maintenance_tag": "v0.3.0-skills.1",
+    "maintenance_scope": "Skill installation and checkout handoff records only; no new product Release"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry"
@@ -33,8 +34,8 @@
     "Cloud deployment is outside this iteration: user selected local",
     "Remote media understanding and arbitrary complex model tasks require their own acceptance scope"
   ],
-  "updated_at": "2026-11-09T09:27:31.342Z",
-  "stage": "published-local-super-agent-ready",
+  "updated_at": "2026-11-10",
+  "stage": "code-synced-skills-verified",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -65,38 +66,29 @@
     ]
   },
   "current_checkout": {
-    "date": "2026-11-09",
-    "service_version": "0.3.0",
-    "bridge_version": "0.3.0",
-    "desktop_version": "0.3.0",
-    "python": "3.12.15",
-    "node": "24.19.0",
-    "dsh_cli_version": "0.2.2-rc.1",
-    "local_url": "http://127.0.0.1:18200",
-    "service_started": true,
-    "local_chat_listener_running": true,
-    "listener_mode": "super-agent",
-    "task_status_observed": "ready",
-    "listener_scope": "One bound local synthetic manual-test group and three authorized test members; credentials/data ignored",
-    "max_workers": 2,
-    "worker_timeout_ms": 7200000,
-    "classification_timeout_ms": 120000,
-    "auto_merge": true,
-    "merge_policy": "verified-tests",
-    "proactive_enabled": true,
-    "versioning_enabled": true,
-    "publish_release": true,
-    "worker_native_sessions": 3,
-    "worker_invocations": 4,
-    "readonly_router_sessions": 2,
-    "readonly_watchdog_sessions": 1,
-    "desktop_built": true,
+    "date": "2026-11-10",
+    "project_root": "D:/Work/codexproj/agent-IM",
+    "source_base_commit": "a0e9de1deb0c6ec40bdd73c4302d26343ce6247d",
+    "source_version": "0.3.0",
+    "python": "3.12.16 (existing project venv)",
+    "node": "24.19.0 (project-local official ZIP, SHA256 checked)",
+    "node_global": "22.14.0 (unsupported for current bridge; not changed)",
+    "service_started": false,
+    "local_chat_listener_running": false,
+    "port_18200_observation": "No listener observed this iteration",
+    "desktop_source_version": "0.3.0",
+    "desktop_built": false,
     "native_desktop_window_verified_this_iteration": false,
-    "desktop_zip": "outputs/TeamRelay-v0.3.0-portable.zip",
-    "desktop_zip_sha256": "58f7e07e06ad47065e645ea89a959dd8a3b742ed9df3ea6f81894282e7614012",
-    "verification_report": "outputs/VERIFICATION-v0.3.0.md",
-    "docker_or_production_revalidated": false,
-    "observation_only": "Recheck process identity after restarting or cloning; Git does not carry credentials, services, native sessions or binaries"
+    "dsh_live_calls_this_iteration": 0,
+    "skills_installed": [
+      "proj_multihandoff",
+      "hallmark"
+    ],
+    "skill_root": "C:/Users/water/.codex/skills",
+    "verification_report": "outputs/VERIFICATION-skills-2026-11-10.md",
+    "failed_prior_runtime_check": "Node22/old v0.2.0 bridge 45 passed, 8 failed due Windows dev mismatch; protection not weakened",
+    "supported_runtime_check": "Node24/current v0.3.0 bridge 256 passed, 0 failed/skipped",
+    "observation_only": "Earlier service/DSH/EXE reports refer to previous dated checkouts; credentials and binaries do not transfer through Git"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -176,5 +168,57 @@
       "desktop_zip_sha256": "004df2f81d0ac847986032eb9729d546a2bb9e381a94b8fa55794c685189c3e9",
       "automatic_binding_entry": "workspace/bridge/connect-installed.ps1"
     }
-  }
+  },
+  "checkout_history": [
+    {
+      "source_commit": "a0e9de1deb0c6ec40bdd73c4302d26343ce6247d",
+      "scope": "Previous remote checkout snapshot; not the current machine",
+      "stage": "published-local-super-agent-ready",
+      "verified": [
+        "26 Python tests",
+        "256 Node tests in the final cold worktree; source/index unchanged",
+        "16 isolated Windows startup orchestration checks",
+        "Three real native code-worker sessions and four invocations: concurrent work, same-session next-step input and separate remote tools",
+        "Two real read-only Router sessions and one semantic Watchdog session; synthetic stall evidence explicitly labelled",
+        "Actual trusted-test GitDelivery exact-head merge of PR #1; release built from its confirmed merge",
+        "Windows PE/manifest 0.3.0; ASAR nine-entry allowlist, six source byte comparisons; complete ZIP CRC and all file hashes",
+        "Published annotated v0.3.0 and assets verified against GitHub SHA256 digests",
+        "Local IM, bound DSH and independent Watchdog ready; duplicate startup reuses verified processes"
+      ],
+      "current_checkout": {
+        "date": "2026-11-09",
+        "service_version": "0.3.0",
+        "bridge_version": "0.3.0",
+        "desktop_version": "0.3.0",
+        "python": "3.12.15",
+        "node": "24.19.0",
+        "dsh_cli_version": "0.2.2-rc.1",
+        "local_url": "http://127.0.0.1:18200",
+        "service_started": true,
+        "local_chat_listener_running": true,
+        "listener_mode": "super-agent",
+        "task_status_observed": "ready",
+        "listener_scope": "One bound local synthetic manual-test group and three authorized test members; credentials/data ignored",
+        "max_workers": 2,
+        "worker_timeout_ms": 7200000,
+        "classification_timeout_ms": 120000,
+        "auto_merge": true,
+        "merge_policy": "verified-tests",
+        "proactive_enabled": true,
+        "versioning_enabled": true,
+        "publish_release": true,
+        "worker_native_sessions": 3,
+        "worker_invocations": 4,
+        "readonly_router_sessions": 2,
+        "readonly_watchdog_sessions": 1,
+        "desktop_built": true,
+        "native_desktop_window_verified_this_iteration": false,
+        "desktop_zip": "outputs/TeamRelay-v0.3.0-portable.zip",
+        "desktop_zip_sha256": "58f7e07e06ad47065e645ea89a959dd8a3b742ed9df3ea6f81894282e7614012",
+        "verification_report": "outputs/VERIFICATION-v0.3.0.md",
+        "docker_or_production_revalidated": false,
+        "observation_only": "Recheck process identity after restarting or cloning; Git does not carry credentials, services, native sessions or binaries"
+      }
+    }
+  ]
 }

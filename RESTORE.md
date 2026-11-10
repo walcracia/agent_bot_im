@@ -6,7 +6,7 @@
 
 新模式每任务独立worktree/session，支持最多配置数量的并行、运行中补充/停止、原生消费回执、跨PR反馈、上下文引用续读、独立监督和已确认合并后的构建发布。静默主动核查须同时配置proactive及可信交付验证。迁移保留旧账本并继承确定游标；旧未完成任务先处理，不清锁换会话。实际本机运行与远端状态按HANDOFF最新条目、state及实查确认；下方v0.2历史说明不覆盖v0.3。
 
-项目根为本文件所在的 Git 仓库目录，可用 `git rev-parse --show-toplevel` 确认；不依赖旧电脑盘符。当前本机入口为 `D:\Work\CodexProjects\agent-bot-im`。
+项目根为本文件所在的 Git 仓库目录，以 `git rev-parse --show-toplevel` 确认，不依赖旧电脑盘符。历史记录中的 `D:\Work\CodexProjects\agent-bot-im` 只是当时检出位置；本次应使用当前检出，不另建嵌套目录。
 
 1. 阅读根 `AGENTS.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`。
 2. 阅读 `workspace/docs/DESIGN.md`、`API.md`、`DECISIONS.md` 与 `PROCESS.md` 最新记录。
