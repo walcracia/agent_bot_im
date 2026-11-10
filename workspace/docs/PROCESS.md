@@ -177,3 +177,7 @@ PR #1已由可信测试策略自动合并：b8cc74166072b0f4c559426d758dd2183883
 本轮在D:/Work/CodexProjects/agent-bot-im从fd1238c接续。用户明确调用Hallmark要求几套配色/设计风格供审核，输出outputs/design-review-2026-11-10/index.html：A霁蓝、B暖砂、C石墨、D暮紫；聊天/登录可切换，四图对照或单套可操作。仅合成演示数据，真实client/desktop零改动，未切换正式主题、未重建EXE、未接触正式IM/DSH/私有数据。
 
 确认轮16截图/288检查、审核页7项功能检查通过；Hallmark渲染0 FAIL/0 REFLEX/0 WARN，两项已记录waiver。独立复核2项意见均解决。报告outputs/VERIFICATION-design-review-2026-11-10.md；构建build-design-review.mjs，重开静态审核服务preview-designs.ps1，默认http://127.0.0.1:18310/。服务运行是本次观察，重启后须实查。下一步等用户在Codex对话选A/B/C/D，再做正式落地/完整回归/App打包。
+
+## 2026-11-10 · C石墨与规则齿轮开始
+
+用户已选C并要求重做设置图标，先冻结UI-v0.1.4，再分工改语义令牌/样式/标志和共享settings路径。UI真实隔离10截图/27检查/29对比度、原13项浏览器回归及Hallmark渲染通过；全量Node首轮255/256卡在恢复后Windows登记等待，原失败保留，由独立模块复验与冷副本门禁确认。无模型调用和真实任务重启。最终交付见outputs/VERIFICATION-v0.3.1.md。

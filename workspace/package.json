@@ -1,6 +1,6 @@
 {
   "name": "team-relay",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "同频 · 小团队私有 IM Windows 客户端",
   "main": "desktop/main.cjs",

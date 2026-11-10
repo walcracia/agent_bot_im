@@ -1,6 +1,6 @@
 {
   "name": "team-relay-dsh-bridge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Authorized project-chat coding bridge for installed DSH CLI or the official SDK",

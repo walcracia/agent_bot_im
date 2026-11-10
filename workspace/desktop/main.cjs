@@ -9,7 +9,8 @@ let mainWindow;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 860, minWidth: 960, minHeight: 680,
-    title: '同频', backgroundColor: '#f3f7fd', autoHideMenuBar: true,
+    // Matches the graphite --paper token before the renderer styles have loaded.
+    title: '同频', backgroundColor: '#171a1d', autoHideMenuBar: true,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, spellcheck: false, devTools: !app.isPackaged }
   });
   mainWindow.removeMenu();
