@@ -30,3 +30,5 @@ deal：prompt-0083·2eb3fb4f·2026-11-10·r0，Console/Furrow/Dusk三张参考�
 - 独立finish review首词fix，两项视觉/文案意见已纳入集中修正。首轮与确认轮的真实结果见outputs/VERIFICATION-design-review-2026-11-10.md；不把预览动作等同真实网络发送或后台端到端验收。
 
 素材齐全，无照片占位槽。用户下一步只需在Codex对话选A/B/C/D；选定后再将方向落地到产品并做完整回归/Windows打包。
+
+用户现已选择C；本目录client副本在v0.3.1同步规则齿轮与石墨产品代码。原四套截图仍是4c35066初始审核证据，当前单套C可操作预览显示新图标；正式产品验收见VERIFICATION-v0.3.1.md。
