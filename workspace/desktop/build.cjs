@@ -43,9 +43,9 @@ const { pathToFileURL } = require('node:url');
     },
     appCopyright: 'Copyright © 2026 walcracia',
     appVersion: sourcePackage.version,
-    win32metadata: { CompanyName: 'Team Relay', FileDescription: '同频 · 小团队私有 IM', ProductName: '同频 Team Relay' },
+    win32metadata: { CompanyName: '同频TeamPlay', FileDescription: '同频TeamPlay 小团队私有 IM', ProductName: '同频TeamPlay' },
     prune: true
   });
-  await fs.writeFile(path.join(destination, 'WINDOWS-README.txt'), '同频 Team Relay Windows x64 便携客户端\r\n\r\n打开 TeamRelay-win32-x64\\TeamRelay.exe。\r\n填写服务器根地址、团队用户名和密码；账号由管理员创建。\r\n客户端只连接服务器，不需要安装 Python。\r\n每个文件严格小于 100 MB。音视频无法预览时可下载到本机播放。\r\n此包未进行代码签名。\r\n', 'utf8');
+  await fs.writeFile(path.join(destination, 'WINDOWS-README.txt'), '同频TeamPlay Windows x64 便携客户端\r\n\r\n打开 TeamRelay-win32-x64\\TeamRelay.exe。\r\n填写服务器根地址、团队用户名和密码；账号由管理员创建。\r\n客户端只连接服务器，不需要安装 Python。\r\n每个文件严格小于 100 MB。音视频无法预览时可下载到本机播放。\r\n此包未进行代码签名。\r\n', 'utf8');
   results.forEach((output) => console.log(output));
 })().catch((error) => { console.error(error); process.exitCode = 1; });

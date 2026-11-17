@@ -1,5 +1,11 @@
 # 文章与 DSH 一手资料核验
 
+## 2026-11-10 当前核对
+
+已重新读取同一微信链接的正文（附 `?scene=1`、浏览器UA，仅作只读提取），标题《Super-agent 设计探索：迈向更自主的 Agent 系统》，DeepSeek Harness团队，2026-10-31发布。文章“阅读原文”指向 `deepseek-ai/dsh-superagent-prototype`。本轮核对官方原型main提交 `8c32a9dc5d72c033816c6a8110b37f40cf94fba4` 的domain/architecture/philosophy/execution与Harness core语义；官方研究原型不等于正式产品。
+
+根[README](../README.md)保存当前v0.3.1代码判断、业务流程和来源链接；以下首版“尚未实现Router/并行/Watchdog”等仅是历史状态，不覆盖v0.3.0。原文与原始正文不整篇转载到Git。特别区分followup下一轮与steer下一步、输入入账与原生消费，以及研究模拟评测与真实模型质量。
+
 核验日期：2026-11-07（Asia/Shanghai）。微信文章用 PowerShell `Invoke-WebRequest` 读到 `activity-name` 与 `js_content`；网页检索工具打开该链接失败，不等同文章不可访问。下列为自行归纳，无整篇转载。
 
 2026-11-08再次核验：网页工具仍打不开微信链接，改用本机HTTP读取并提取完整js_content正文（原文只保留忽略目录）。同时核对官方prototype与SDK README。用户随后确认当前项目、普通讨论自动识别；v0.2.0据此完成单项目编码闭环，不宣称移植整套研究原型。实现及实际证据分别见DSH-AUTO-v0.2.0与VERIFICATION-v0.2.0。

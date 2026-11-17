@@ -1,4 +1,4 @@
-# Windows 客户端
+# 同频TeamPlay Windows 客户端
 
 UI 是 `../client/` 的原生 HTML/CSS/JS；Electron 主进程只管理窗口和文件保存，没有向渲染器开放 Node 或 IPC 执行能力。登录令牌只在内存中，localStorage 只保存服务器根地址和用户名。
 
@@ -13,7 +13,7 @@ npm start
 npm run build
 ```
 
-锁定 Electron 45.2.3、@electron/packager 20.3.0。构建输出到项目 `outputs/TeamRelay-win32-x64/TeamRelay.exe`。构建先在 `environment/build/desktop-stage-*` 复制显式白名单，仅包含 client、desktop/main.cjs 和精简 package.json，服务器、DSH SDK、凭据与运行数据不会进入客户端。
+锁定 Electron 45.2.3、@electron/packager 20.3.0。产品显示名为“同频TeamPlay”，构建输出沿用兼容路径 `outputs/TeamRelay-win32-x64/TeamRelay.exe`。构建先在 `environment/build/desktop-stage-*` 复制显式白名单，仅包含 client、desktop/main.cjs 和精简 package.json，服务器、DSH SDK、凭据与运行数据不会进入客户端。
 
 网络不能直接下载 GitHub release 时，可以在本机进程环境设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`；下载使用 electron npm 包内的官方 checksums 校验，不能关闭 TLS 或跳过校验。共享缓存可设置 `electron_config_cache=D:\Work\codexproj\_shared\caches\electron`。npm 包下载中断后若缺少 native unzip 绑定，应按锁文件重新安装该依赖，不能用错误架构的绑定替代。
 

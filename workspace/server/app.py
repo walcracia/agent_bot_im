@@ -27,7 +27,7 @@ from .db import Store, now, password_hash, password_matches, public_user, token_
 
 MAX_FILE_BYTES = 100_000_000
 MAX_UPLOAD_BODY = MAX_FILE_BYTES + 65_536
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -166,7 +166,7 @@ def create_app(data_dir: str | Path | None = None) -> FastAPI:
                 pass
         store.conn.close()
 
-    app = FastAPI(title="同频 Team Relay", version=VERSION, lifespan=lifespan)
+    app = FastAPI(title="同频TeamPlay", version=VERSION, lifespan=lifespan)
     app.state.store = store
     app.state.hub = hub
     app.add_middleware(BodyLimitMiddleware)

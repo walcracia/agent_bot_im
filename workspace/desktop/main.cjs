@@ -2,6 +2,7 @@
 const { app, BrowserWindow, session, dialog } = require('electron');
 const path = require('node:path');
 
+// Retain the internal name so existing desktop user-data directories stay in use.
 app.setName('同频');
 // Tests can override the path to keep desktop profiles isolated from real usage.
 if (process.env.TEAMRELAY_PROFILE) app.setPath('userData', path.resolve(process.env.TEAMRELAY_PROFILE));
@@ -9,7 +10,7 @@ let mainWindow;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 860, minWidth: 960, minHeight: 680,
-    title: '同频', backgroundColor: '#f3f7fd', autoHideMenuBar: true,
+    title: '同频TeamPlay', backgroundColor: '#f3f7fd', autoHideMenuBar: true,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, spellcheck: false, devTools: !app.isPackaged }
   });
   mainWindow.removeMenu();

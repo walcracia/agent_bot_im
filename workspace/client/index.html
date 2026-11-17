@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="同频，小团队的聊天与文件沟通工具。">
+  <meta name="description" content="同频TeamPlay，小团队的聊天与文件沟通工具。">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http: wss: ws:; img-src 'self' blob: https: http: data:; media-src 'self' blob: https: http:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
-  <title>同频</title>
+  <title>同频TeamPlay</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
@@ -13,7 +13,7 @@
 <body>
   <main id="login-view" class="login-view">
     <section class="login-panel">
-      <div class="brand login-brand"><img src="logo.svg" alt=""><h1>同频</h1></div>
+      <div class="brand login-brand"><img src="logo.svg" alt=""><h1>同频TeamPlay</h1></div>
       <form id="login-form" class="login-form">
         <div class="login-welcome"><h2>登录</h2></div>
         <details id="connection-settings" class="login-connection" open><summary title="连接设置" aria-label="连接设置"><span data-icon="settings"></span></summary><label for="server-url">团队地址</label><div class="input-icon"><span data-icon="server"></span><input id="server-url" name="server" type="url" required placeholder="https://im.example.com" autocomplete="url"></div></details>
@@ -27,7 +27,7 @@
 
   <main id="app-view" class="app-view" hidden>
     <nav class="rail" aria-label="主导航">
-      <div class="rail-brand"><img src="logo.svg" alt="同频"></div>
+      <div class="rail-brand"><img src="logo.svg" alt="同频TeamPlay"></div>
       <div class="rail-links"><button id="nav-chats" class="rail-button active" title="聊天" aria-label="聊天" data-icon="chat"></button><button id="nav-members" class="rail-button" title="团队成员" aria-label="团队成员" data-icon="users"></button></div>
       <div class="rail-bottom"><button id="nav-settings" class="rail-button" title="设置" aria-label="设置" data-icon="settings"></button><button id="nav-logout" class="rail-button" title="退出登录" aria-label="退出登录" data-icon="logout"></button><div id="my-avatar" class="avatar rail-avatar">我</div></div>
     </nav>

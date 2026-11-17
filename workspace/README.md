@@ -1,4 +1,6 @@
-# 同频
+# 同频TeamPlay
+
+当前产品 v0.3.1。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent 核对结论及能力边界统一见[根 README](../README.md)。本页保留开发与管理操作。
 
 支持私聊、群聊、文字、图片、音频、视频、文件。图片直接查看，音视频播放，其余文件下载。每文件上限严格小于 100,000,000 字节。音视频无法在 Chromium 播放的编码可下载后打开。
 
@@ -12,7 +14,7 @@
 .\environment\scripts\start.ps1
 ```
 
-浏览器访问 `http://127.0.0.1:18200`，或打开 `outputs/TeamRelay-win32-x64/TeamRelay.exe`。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。
+浏览器访问 `http://127.0.0.1:18200`，或打开本次构建的 `outputs/desktop-v0.3.1/TeamRelay-win32-x64/TeamRelay.exe`（Release解压后为 `TeamRelay-win32-x64/TeamRelay.exe`）。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。
 
 2026-11-07 原开发机曾显式生成隔离演示数据，随机账号放在 `environment/config/demo-accounts.json`。该文件不进仓库，干净 clone 不含演示账号或运行数据库。首次使用请按下方创建管理员；切勿用演示数据直接上线。
 
@@ -41,15 +43,17 @@ git worktree add -b codex/dsh-agent-bot-im environment/tools/dsh/worktrees/agent
 
 ```powershell
 .\environment\scripts\verify.ps1
-# 需要本机隔离演示服务、系统 Chrome：
-.\environment\venv\Scripts\python.exe .\environment\scripts\verify-ui.py
+# 自动使用临时服务/数据，需要系统 Chrome：
+.\environment\venv\Scripts\python.exe .\environment\scripts\verify-ui-v0.1.2.py
 # 官方 DSH Desktop SDK 握手，不请求模型：
 .\workspace\bridge\run-desktop.ps1 -Handshake
 cd workspace
 npm run build
 ```
 
-`verify.ps1` 检查服务器、备份与桥接可靠性、客户端语法。UI 验证创建隔离测试群并保留演示数据用于查看。`environment/config/requirements.lock.txt` 锁定本机 Python 完整依赖，workspace/package-lock.json 锁定桌面构建。Node22 可开发客户端；桥接普通 Node 运行需 Node>=24.9，官方 Desktop 路线使用发行包自带 Node。
+`verify.ps1` 检查服务器、备份与桥接可靠性、客户端语法。上述UI验证自动清理临时服务和数据，截图保留在忽略目录；旧 `verify-ui.py` 依赖历史演示服务，不用于新机器恢复。`environment/config/requirements.lock.txt` 锁定本机 Python 完整依赖，workspace/package-lock.json 锁定桌面构建。客户端工具需Node>=22.12；桥接需Node>=24.9，官方Desktop路线使用发行包自带Node。本机若默认Node较旧，按 `environment/README.md` 将项目隔离Node目录前置当前进程PATH。
+
+上方首次绑定建立旧兼容auto入口。启用每任务并行、独立监督和GitHub交付的新模式，继续按[Super-agent操作](docs/SUPER-OPERATIONS-v0.3.0.md)配置/转换；保存旧账本，不能直接清空或覆盖未完成任务。
 
 ## 服务器与备份
 
@@ -68,4 +72,4 @@ npm run build
 
 根目录脚本 `environment/scripts/publish-iteration.ps1 -Version <新标签> -Message <说明> -Files <本轮文件列表>` 可先验证再 commit/tag/push；执行前审查其暂存范围及工作树。脚本拒绝混入已有暂存内容，只推送本次指定标签，不改全局凭证配置；本机 Git 凭证管理需事先可用。必须选择未使用的新 tag，已有 v0.1.1 不可重用。GitHub 默认仓库 `walcracia/agent_bot_im`，代码中没有令牌。通用接续要求见根 AGENTS 和 `proj_multihandoff`。
 
-限制：首版没有实时音视频通话、转码、集群或端到端加密。DSH 官方 SDK 初始化/恢复与既有本地 Qwen 文本推理已验证；真实IM→Harness→本地模型→回复传输通过，但模型多输出前缀，严格答复格式断言失败，未重试。工具/媒体理解/复杂任务及用户自己的DeepSeek付费模型未验证，见 bridge/LOCAL-MODEL-TEST.md。未取得腾讯地址/SSH/域名信息，尚未远程部署。
+限制：没有实时音视频通话、转码、集群或端到端加密。早期Qwen答复格式失败保留在 bridge/LOCAL-MODEL-TEST.md；后续v0.3.0已增加真实小夹具编码、并行、原生steer与工具daemon验收，见[历史报告](../outputs/VERIFICATION-v0.3.0.md)。任意复杂任务、全部媒体理解、真正异机长期运行及腾讯部署仍未因此获得验证；本轮没有真实模型调用或正式监听启动。

@@ -1,5 +1,11 @@
 # agent-IM 恢复与接续
 
+## v0.3.1 同频TeamPlay
+
+当前源码及Windows产品名已改为“同频TeamPlay”，执行机制沿用v0.3.0。根README包含文章核对结论、团队协作/业务流程、实际能力边界与源码索引；本轮范围见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.1.md`。更名保留TeamRelay.exe/配置键/旧用户目录，旧报告和截图不覆盖。新包路径为 `outputs/desktop-v0.3.1/TeamRelay-win32-x64/TeamRelay.exe`，源码Git不含大包，下载对应Release或重建。
+
+下方“本机已启用”是历史检出的记录。本轮正式IM/DSH/Watchdog未启动、模型调用0；临时浏览器验收服务会自动清理。当前检出验证/交付结果先读最新HANDOFF/state及 `outputs/VERIFICATION-v0.3.1.md`，不要从旧在线快照推断正在运行。
+
 ## v0.3.0 当前入口
 
 用户要求的Super-agent范围见`workspace/docs/SUPERAGENT-v0.3.0.md`及各SUPER模块设计，操作见`SUPER-OPERATIONS-v0.3.0.md`。本机选择不部署腾讯。默认start仍从已绑定本机配置同时确认IM与监听；新模式另确认独立Watchdog。首次机器先按下方setup恢复、ServerOnly建账号、connect-installed绑定，再以enable-super转换；私有账号、DPAPI密文、任务/模型会话和本机工具不会随Git clone出现。

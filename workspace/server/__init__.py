@@ -1,1 +1,1 @@
-"""Team Relay single-process IM server."""
+"""同频TeamPlay single-process IM server."""

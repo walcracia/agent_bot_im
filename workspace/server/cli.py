@@ -12,7 +12,7 @@ from .db import Store, now
 
 
 def main():
-    parser = argparse.ArgumentParser(description="同频 Team Relay server administration")
+    parser = argparse.ArgumentParser(description="同频TeamPlay server administration")
     commands = parser.add_subparsers(dest="command", required=True)
     admin = commands.add_parser("init-admin")
     admin.add_argument("--data-dir")
