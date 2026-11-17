@@ -1,6 +1,12 @@
 # 本机环境
 
-## 2026-11-10 此检出的运行时复核
+## 2026-11-17 当前检出恢复
+
+本次检出为D:/Work/CodexProjects/agent-bot-im，已快进到5c5e676（同频TeamPlay0.3.2）。本机现有venv Python3.12.15和已安装Node24.19.0可直接运行`environment/scripts/verify.ps1`，不需要下方历史检出的Node目录或PATH操作。完整26 Python/256 Node/16模拟编排及语法通过，详情见`../outputs/VERIFICATION-handoff-2026-11-17.md`。依赖不随Git传递，新机器仍按setup恢复。
+
+本次没有启动正式IM/DSH/Watchdog或模型，端口18200/18202无监听。新版0.3.2 EXE未在本机下载/构建，不能把Git拉取当成客户端更新；从0.3.2 Release获取或单独构建。bridge的SDK node_modules未恢复，本轮未执行SDK握手或认证检查。此前另一检出的环境、UI、包和运行事实保留为历史，当前以state.current_checkout及HANDOFF最新条目为准。
+
+## 2026-11-10 另一检出的运行时复核（历史）
 
 本机默认Node仍为22.14，低于新版桥接要求。已在本项目忽略目录安装并按官方SHA256校验Node24.19.0，不更改系统或其他项目。当前检出在该运行时下通过26 Python/256 Node/16编排；下方其他日期的已运行服务、绑定和构建记录不能视为此次检出的状态。
 

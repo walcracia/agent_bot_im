@@ -1,15 +1,14 @@
 {
   "version": "0.3.2",
   "verified": [
-    "26 Python tests on final integrated checkout",
-    "256 Node bridge tests on isolated Node 24.19.0",
+    "26 Python tests on this checkout; one existing deprecation warning retained",
+    "256 Node bridge tests on existing Node 24.19.0",
     "16 mocked Windows startup checks; client/desktop JS syntax",
-    "Graphite real Chrome: 10 screenshots, 27 checks, 29 contrast pairs; two window sizes",
-    "Windows PE/ASAR 0.3.2 and TeamPlay branding; 9-entry ASAR allowlist; 6 source byte comparisons",
-    "ZIP 74 files, CRC and every-file SHA256 match",
-    "Published v0.3.1 reports preserved and dependency locks unchanged except root versions"
+    "Clean initial worktree safely fast-forwarded 3 commits to 5c5e676",
+    "Product v0.3.2 tag object/peeled commit and remote Release asset metadata confirmed",
+    "No project bridge/controller/watchdog Node processes and no 18200/18202 listeners after checks"
   ],
-  "desktop": "outputs/desktop-v0.3.2/TeamRelay-win32-x64/TeamRelay.exe",
+  "desktop": null,
   "project": "agent-bot-im",
   "github": {
     "repository": "https://github.com/walcracia/agent_bot_im",
@@ -34,8 +33,8 @@
     "User native Windows client/manual login acceptance",
     "Tencent or physical multi-host deployment requires separate scope; none performed this iteration"
   ],
-  "updated_at": "2026-11-17",
-  "stage": "teamplay-published-verified",
+  "updated_at": "2026-11-17T06:12:55.970991+00:00",
+  "stage": "handoff-ready-services-offline",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -67,24 +66,34 @@
   },
   "current_checkout": {
     "date": "2026-11-17",
-    "project_root": "D:/Work/codexproj/agent-IM",
-    "source_base_commit": "6e6186a2e4322d12aec99914792c58be72de48d8",
+    "project_root": "D:/Work/CodexProjects/agent-bot-im",
+    "source_base_commit": "5c5e6765e50036e79cfe5850bc06683338441adb",
     "source_version": "0.3.2",
-    "python": "3.12.16",
-    "node": "24.19.0 (project-local)",
+    "python": "3.12.15 (existing project venv)",
+    "node": "24.19.0 (existing installed Node, no global changes)",
     "service_started": false,
     "local_chat_listener_running": false,
+    "watchdog_running": false,
+    "service_health": "Unavailable; 18200/18202 not listening after isolated verification",
+    "saved_runtime_records": "Server/DSH recorded PIDs no longer alive; records and locks preserved",
+    "super_ledger_task_count": 0,
+    "super_ledger_nonterminal_count": 0,
     "dsh_live_calls_this_iteration": 0,
-    "desktop_built": true,
+    "sdk_dependencies_restored": false,
+    "dsh_authentication_verified": false,
+    "sdk_handshake_executed": false,
+    "desktop_built": false,
+    "desktop_0_3_2_present": false,
     "native_desktop_window_verified_this_iteration": false,
-    "isolated_ui_verified": true,
-    "desktop_zip": "outputs/TeamRelay-portable.zip",
-    "desktop_zip_sha256": "13c4d6fb2c936d5f8d42d59886cdd24567f8cfcb329776eb30e133c0262bd4ff",
-    "verification_report": "outputs/VERIFICATION-v0.3.2.md",
-    "security_design": "workspace/docs/CLOUD-SECURITY.md",
+    "isolated_ui_verified_this_iteration": false,
+    "verification_report": "outputs/VERIFICATION-handoff-2026-11-17.md",
+    "product_release_commit": "7df20624f6c6ece4c1720b4e7980be483236ed17",
+    "product_release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.2",
+    "remote_product_release_metadata_confirmed": true,
     "cloud_security_implemented": false,
-    "observation_only": "No formal listener/model/cloud operations performed; earlier runtime snapshots do not describe this checkout",
-    "product_release_commit": "7df20624f6c6ece4c1720b4e7980be483236ed17"
+    "tauri_migration_implemented": false,
+    "scope": "Checkout synchronization, isolated zero-model verification and handoff only; product/config/services unchanged",
+    "observation_only": "Remote release artifacts and previous checkout evidence are not local builds or currently running services"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -166,6 +175,43 @@
     }
   },
   "checkout_history": [
+    {
+      "source_commit": "5c5e6765e50036e79cfe5850bc06683338441adb",
+      "scope": "Previous TeamPlay release checkout D:/Work/codexproj/agent-IM; preserved during 2026-11-17 restoration at D:/Work/CodexProjects/agent-bot-im",
+      "version": "0.3.2",
+      "stage": "teamplay-published-verified",
+      "verified": [
+        "26 Python tests on final integrated checkout",
+        "256 Node bridge tests on isolated Node 24.19.0",
+        "16 mocked Windows startup checks; client/desktop JS syntax",
+        "Graphite real Chrome: 10 screenshots, 27 checks, 29 contrast pairs; two window sizes",
+        "Windows PE/ASAR 0.3.2 and TeamPlay branding; 9-entry ASAR allowlist; 6 source byte comparisons",
+        "ZIP 74 files, CRC and every-file SHA256 match",
+        "Published v0.3.1 reports preserved and dependency locks unchanged except root versions"
+      ],
+      "desktop": "outputs/desktop-v0.3.2/TeamRelay-win32-x64/TeamRelay.exe",
+      "current_checkout": {
+        "date": "2026-11-17",
+        "project_root": "D:/Work/codexproj/agent-IM",
+        "source_base_commit": "6e6186a2e4322d12aec99914792c58be72de48d8",
+        "source_version": "0.3.2",
+        "python": "3.12.16",
+        "node": "24.19.0 (project-local)",
+        "service_started": false,
+        "local_chat_listener_running": false,
+        "dsh_live_calls_this_iteration": 0,
+        "desktop_built": true,
+        "native_desktop_window_verified_this_iteration": false,
+        "isolated_ui_verified": true,
+        "desktop_zip": "outputs/TeamRelay-portable.zip",
+        "desktop_zip_sha256": "13c4d6fb2c936d5f8d42d59886cdd24567f8cfcb329776eb30e133c0262bd4ff",
+        "verification_report": "outputs/VERIFICATION-v0.3.2.md",
+        "security_design": "workspace/docs/CLOUD-SECURITY.md",
+        "cloud_security_implemented": false,
+        "observation_only": "No formal listener/model/cloud operations performed; earlier runtime snapshots do not describe this checkout",
+        "product_release_commit": "7df20624f6c6ece4c1720b4e7980be483236ed17"
+      }
+    },
     {
       "source_commit": "a0e9de1deb0c6ec40bdd73c4302d26343ce6247d",
       "scope": "Previous remote checkout snapshot; not the current machine",
@@ -374,5 +420,11 @@
     "runtime_observation": "IM 0.3.1 healthy; controller listening/ready; independent watchdog alive; current ledger 0 tasks; recheck after restart",
     "git_delivery": "Query remote main and annotated maintenance tag after push; audit snapshot cannot contain its own commit SHA"
   },
-  "display_name": "同频TeamPlay"
+  "display_name": "同频TeamPlay",
+  "handoff_maintenance": {
+    "date": "2026-11-17",
+    "tag": "v0.3.2-handoff.2",
+    "scope": "Restoration records only; no product release or bug fixes",
+    "remote_delivery": "Confirm main, tag object and peeled commit after push; snapshot does not contain its own commit SHA"
+  }
 }

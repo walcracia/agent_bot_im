@@ -1,5 +1,13 @@
 # 当前接续状态
 
+## 2026-11-17 · 本检出接续准备
+
+当前D:/Work/CodexProjects/agent-bot-im已从6e6186a安全快进到5c5e676（产品v0.3.2）；初始主工作树干净，保留所有其他worktree。首次fetch失败后使用Windows既有代理的单次Git参数成功，无全局网络改动。远端产品tag对象/peeled commit及Release两资产uploaded/digest已只读确认。本轮使用新维护tag v0.3.2-handoff.2，不移动产品tag或重发Release，最终上传状态以Git实查为准。
+
+本机venv Python3.12.15、已安装Node24.19.0完整verify一次通过26 Python/256 Node/16模拟Windows编排及JS语法，1条既有弃用警告保留。正式IM/DSH/Watchdog未启动；检查结束后18200/18202无监听，CIM无本项目bridge/controller/watchdog进程，旧进程记录保留。Super账本只读计数0任务。0.3.2 EXE未在当前检出下载/构建；SDK node_modules未恢复，未做认证/真实模型/UI/原生EXE/云端验证。
+
+此前state.current_checkout的D:/Work/codexproj/agent-IM完整快照已保存到checkout_history，不能混用其Python3.12.16、构建或截图证据。当前实查、网络失败和边界见outputs/VERIFICATION-handoff-2026-11-17.md；environment/README和RESTORE已明确当前/历史。只读子Agent独立确认两项P1仍在，未把常规绿灯当修复。后续先按审计设计处理A1交付期补充遗漏、A2可信验收来源，再处理其余执行/恢复缺口；仅调用接续技能不展开Tauri或云端实现。
+
 ## 2026-11-17 · 同频TeamPlay v0.3.2集成
 
 交付回执：产品commit/annotated tag为7df2062/v0.3.2，远端main、tag对象与peeled commit已核对。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.2 已于11月17日发布，ZIP及校验文本均uploaded，远端digest与本地SHA256一致。最终26 Python/256 Node/16模拟编排及语法全通过。当前额外交接记录使用新v0.3.2-handoff.1，不移动产品tag；复原时仍查询远端，运行未启动的事实不变。

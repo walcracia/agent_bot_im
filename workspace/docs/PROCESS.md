@@ -1,5 +1,13 @@
 # 过程记录（Asia/Shanghai）
 
+## 2026-11-17 · proj_multihandoff接续准备
+
+用户仅显式调用接续技能。本次范围为恢复现有项目、核验远端与本机环境、常规隔离复验及交接记录，不修产品功能、不迁移Tauri、不部署/启停正式IM或DSH、不消费真实模型。初始main=6e6186a、工作树干净；首次fetch连接失败，改用Windows已存在代理的单次Git参数后，fetch并pull --ff-only快进3提交到5c5e676，未改全局代理、未stash/reset。重新读取更新后的AGENTS/RESTORE/state/HANDOFF、根README及v0.3.2资料，保留更名范围和未修复审计结论。
+
+验收：记录实际Node/Python与依赖可用性，按verify.ps1运行零模型隔离检查，核验正式端口/项目进程身份而不相信旧ready快照，区分本机已有成品与远端Release。失败及未执行项单独记录，历史验证不当作此次通过。仅按明确维护文件清单commit、新annotated tag、push并核对远端；不重发产品Release。并行子Agent只读复核待办与证据边界。
+
+结果：本机Python3.12.15/Node24.19.0，完整verify一次退出0（26 Python/256 Node/16模拟编排及语法，1弃用警告）。检查后本项目正式bridge/controller/watchdog进程与18200/18202监听均不存在，测试临时进程已退出。没有SDK握手、真实模型、UI/EXE、云端或真实全链验收；新版EXE未在本机取得。独立复核发现state当前检出指向另一检出/路径，已完整保留其快照并记录本机，明确旧RESTORE和环境说明的历史身份。已知P1/P2只登记未修；报告outputs/VERIFICATION-handoff-2026-11-17.md，维护交付v0.3.2-handoff.2。
+
 ## 2026-11-10 · Super-agent复审与桌面包说明（范围）
 
 用户要求重新对照原始文章，并确认EXE是否联动后台、文件用途及Tauri可行性。本轮仅审计与文档交付：固定dad375d5b37023e45c6120fbc14da7841950b1c8，重新读取原文/设计/交接，三位子Agent分别核对路由与上下文、执行与监督、GitHub与发布；用隔离合成任务/临时Git/假GitHub做零模型复现。验收为每项结论有源码或可复现证据、历史与本次结果分开、包体实测、后台状态实查。不得把假GitHub当真实合并，也不改产品/策略、重启服务、调用真实DSH或提前进行Tauri迁移。最终报告及复现脚本随Git交付。
