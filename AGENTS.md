@@ -1,10 +1,12 @@
 # agent-IM 工作约定（必须先读）
 
-当前产品显示名为“同频TeamPlay”，版本v0.3.1。更名范围及兼容原则见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.1.md`；最新设计/业务流程及Super-agent符合程度见根README。TeamRelay.exe、配置键和旧Electron用户目录为兼容标识，历史报告不全局改名。本轮只核对和更名，README列出的能力缺口未修复；运行状态以最新HANDOFF/state和实查为准。
+当前产品显示名为“同频TeamPlay”，版本v0.3.2。更名范围及兼容原则见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.2.md`；最新设计/业务流程及Super-agent符合程度见根README。TeamRelay.exe、配置键和旧Electron用户目录为兼容标识，历史报告不全局改名。本轮只核对和更名，README列出的能力缺口未修复；运行状态以最新HANDOFF/state和实查为准。
 
 每次新会话、重启、恢复或上下文压缩后，先阅读本文件、`RESTORE.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`，再阅读设计与最新过程记录。不要仅凭聊天摘要继续。
 
 ## UI 最新要求（覆盖初版中的说明性界面）
+
+2026-11-10用户已选择C石墨，并要求重做设置图标。当前规格以 `workspace/docs/UI-v0.1.4.md` 覆盖下方旧蓝色配色；布局/减负原则继续适用。
 
 用户要求多图标、少文字、普通用户易懂，当前规格先读 `workspace/docs/UI-v0.1.3.md`（蓝色主题；布局与减负依据见 `UI-v0.1.2.md`），背景见 `UI-v0.1.1.md`（Impeccable）。登录为紧凑品牌与居中表单，无半屏标语；附件入口合并；消息分组但每条时间可键盘查看；联系人直接进入私聊。此前红框四处登录说明仍必须删除，不以新说明替代；普通界面不包含技术术语/架构说明/宣传性页脚。图标保留title/aria-label，必要操作和错误恢复信息仍要有。详情默认收起；高级助手连接信息按需展示。界面修改后批量看1280×860、960×680，最多一轮集中修正，避免反复细修截图。
 

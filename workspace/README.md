@@ -1,6 +1,6 @@
 # 同频TeamPlay
 
-当前产品 v0.3.1。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent 核对结论及能力边界统一见[根 README](../README.md)。本页保留开发与管理操作。
+当前产品 v0.3.2。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent 核对结论及能力边界统一见[根 README](../README.md)。本页保留开发与管理操作。
 
 支持私聊、群聊、文字、图片、音频、视频、文件。图片直接查看，音视频播放，其余文件下载。每文件上限严格小于 100,000,000 字节。音视频无法在 Chromium 播放的编码可下载后打开。
 
@@ -14,7 +14,7 @@
 .\environment\scripts\start.ps1
 ```
 
-浏览器访问 `http://127.0.0.1:18200`，或打开本次构建的 `outputs/desktop-v0.3.1/TeamRelay-win32-x64/TeamRelay.exe`（Release解压后为 `TeamRelay-win32-x64/TeamRelay.exe`）。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。
+浏览器访问 `http://127.0.0.1:18200`，或打开本次构建的 `outputs/desktop-v0.3.2/TeamRelay-win32-x64/TeamRelay.exe`（Release解压后为 `TeamRelay-win32-x64/TeamRelay.exe`）。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。
 
 2026-11-07 原开发机曾显式生成隔离演示数据，随机账号放在 `environment/config/demo-accounts.json`。该文件不进仓库，干净 clone 不含演示账号或运行数据库。首次使用请按下方创建管理员；切勿用演示数据直接上线。
 

@@ -4,7 +4,11 @@
 
 已重新读取同一微信链接的正文（附 `?scene=1`、浏览器UA，仅作只读提取），标题《Super-agent 设计探索：迈向更自主的 Agent 系统》，DeepSeek Harness团队，2026-10-31发布。文章“阅读原文”指向 `deepseek-ai/dsh-superagent-prototype`。本轮核对官方原型main提交 `8c32a9dc5d72c033816c6a8110b37f40cf94fba4` 的domain/architecture/philosophy/execution与Harness core语义；官方研究原型不等于正式产品。
 
-根[README](../README.md)保存当前v0.3.1代码判断、业务流程和来源链接；以下首版“尚未实现Router/并行/Watchdog”等仅是历史状态，不覆盖v0.3.0。原文与原始正文不整篇转载到Git。特别区分followup下一轮与steer下一步、输入入账与原生消费，以及研究模拟评测与真实模型质量。
+根[README](../README.md)保存当前v0.3.2代码判断、业务流程和来源链接，并保留下述远端正式审计的P1/P2缺口；以下首版“尚未实现Router/并行/Watchdog”等仅是历史状态，不覆盖v0.3.0。原文与原始正文不整篇转载到Git。特别区分followup下一轮与steer下一步、输入入账与原生消费，以及研究模拟评测与真实模型质量。
+
+## 2026-11-10 最新复审入口
+
+本日从用户原链接重新获取完整js_content（139段，原文仅本机忽略目录），并对照官方研究原型和当前dad375d源码。当前能力及已复现问题以`outputs/AUDIT-SUPERAGENT-v0.3.1-2026-11-10.md`为准。下文“首版/本版尚未实现”的段落描述2026-11-07/08历史，不可用来否认v0.3已增加的Router/并行/监督/GitHub模块；也不能把模块增加等同完整符合原文。研究原型本身明确并不等同文章内部实现，原型私有门槛或示例CLI不自动变成本项目要求。
 
 核验日期：2026-11-07（Asia/Shanghai）。微信文章用 PowerShell `Invoke-WebRequest` 读到 `activity-name` 与 `js_content`；网页检索工具打开该链接失败，不等同文章不可访问。下列为自行归纳，无整篇转载。
 

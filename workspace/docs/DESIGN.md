@@ -1,10 +1,14 @@
 # v0.1 设计冻结（2026-11-07，Asia/Shanghai）
 
-## 当前产品与业务流程：v0.3.1
+## 当前产品与业务流程：v0.3.2
 
-产品显示名称统一为**同频TeamPlay**，范围见[REVIEW-TEAMPLAY-v0.3.1](REVIEW-TEAMPLAY-v0.3.1.md)。根[README](../../README.md)是当前架构、角色、正常交付、补充/取消/恢复、主动核查、权限边界和Super-agent逐项核对的入口。执行机制沿用v0.3.0；上下文全局预算/摘要、老任务召回、补充附件、补充顺序及物理异机长期验收仍有缺口，本轮只如实记录。
+产品显示名称统一为**同频TeamPlay**，范围见[REVIEW-TEAMPLAY-v0.3.2](REVIEW-TEAMPLAY-v0.3.2.md)。根[README](../../README.md)是当前架构、角色、正常交付、补充/取消/恢复、主动核查、权限边界和Super-agent逐项核对的入口。执行机制沿用v0.3.0；上下文全局预算/摘要、老任务召回、补充附件、补充顺序及物理异机长期验收仍有缺口，本轮只如实记录。
 
-更名保留既有app.setName/用户目录、localStorage、协议、npm和TeamRelay.exe路径，不迁移用户资料；Windows可见页面/窗口/PE显示新名。当前主题为蓝色且界面精简；下方初版标语/绿色布局均为历史。各日期实际运行与验收以对应报告为准，本轮未启动正式监听或模型。
+更名保留既有app.setName/用户目录、localStorage、协议、npm和TeamRelay.exe路径，不迁移用户资料；Windows可见页面/窗口/PE显示新名。当前沿用远端已选石墨主题且界面精简；下方初版标语/绿色布局均为历史。各日期实际运行与验收以对应报告为准，本轮未启动正式监听或模型。
+
+## UI当前覆盖：v0.1.4
+
+用户已从四套方案选择C石墨，正式落地见UI-v0.1.4.md：深灰/琥珀、紧凑密度和规则六齿设置图标，产品交付v0.3.1。保留业务DOM/操作，单一共享settings SVG覆盖登录连接与导航。深色表面和按钮/覆盖层前景分别令牌化，不能把surface-white同时当亮色文字。下方蓝色说明为历史。
 
 ## 当前架构覆盖：v0.3.0
 
@@ -74,3 +78,5 @@ flowchart LR
 UI 的布局、减负与图标依据仍是 [UI-v0.1.2.md](UI-v0.1.2.md) 和 [UI-v0.1.1.md](UI-v0.1.1.md)：用户要求删除解释性技术文字，默认收起详情，多图标、必要操作文字与无障碍标签。
 
 DSH实际接缝为官方 `@deepseek-ai/dsh-sdk-client@0.2.2-rc.1` 的stdio JSON-RPC，使用官方签名Desktop内置CLI，不调用未公开的Desktop HTTP接口。按会话恢复session、双白名单、结果缓存与幂等回复；执行中断必须人工决定重试或跳过，不声称分布式exactly-once。真实本地模型文本实验及格式失败边界见 bridge/LOCAL-MODEL-TEST.md。部署运行时依赖也已完整锁定在requirements.lock.txt。
+
+当前待审核的独立风格方案见UI-REVIEW-2026-11-10.md；正式App仍沿用UI-v0.1.3，用户选择后再实施。

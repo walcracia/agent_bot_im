@@ -1,10 +1,18 @@
 # 验收计划
 
-## v0.3.1 更名与文档核对
+## 2026-11-17 · v0.3.2最终集成
 
-设计及标准先冻结在 REVIEW-TEAMPLAY-v0.3.1.md；实际结果见 outputs/VERIFICATION-v0.3.1.md。11月10日完整26 Python/256 Node/16模拟Windows编排与语法通过，真实Chrome在1280×860与960×680检查新名/登录/聊天，7图和15组对比度通过，单批视觉检查无需修正。Windows0.3.1实际构建，ASAR9条目白名单/6源码字节、PE品牌版本、ZIP74文件CRC/每文件哈希通过。
+基于origin/main=6e6186a保留石墨与正式审计，重新完整verify：26 Python/256 Node/16模拟Windows编排及语法通过。石墨Chrome双尺寸10图/27检查/29对比度通过；Windows0.3.2已构建，ASAR9条目/6源码字节、PE新名、ZIP74文件CRC/逐文件哈希通过。根README链接、两份锁依赖不变及已发布v0.3.1报告保留另核验。详细证据outputs/VERIFICATION-v0.3.2.md；模型/正式监听/原生人工登录/腾讯/安全隔离均未执行。审计探针不计入通过门槛，已复现P1未修。
+
+## 11月10日本地蓝色更名候选（未发布，最终以v0.3.2复验为准）
+
+设计及标准先冻结在 REVIEW-TEAMPLAY-v0.3.1.md；候选结果见 outputs/VERIFICATION-teamplay-candidate-20261110.md。11月10日完整26 Python/256 Node/16模拟Windows编排与语法通过，真实Chrome在1280×860与960×680检查新名/登录/聊天，7图和15组对比度通过，单批视觉检查无需修正。Windows0.3.1实际构建，ASAR9条目白名单/6源码字节、PE品牌版本、ZIP74文件CRC/每文件哈希通过。
 
 最后三处服务帮助/模块说明/桥接品牌prompt修改后，于11月17日补跑26 Python及11个bridge核心测试、Python编译通过。常规/浏览器使用隔离数据；本轮没有模型调用、正式监听、腾讯部署或原生EXE人工登录。11月17日追加的云端安全方案仅设计，不把它记为已实施或安全验收。
+
+## 2026-11-10 · v0.3.1复审证据（已知缺口，非通过门槛）
+
+报告`outputs/AUDIT-SUPERAGENT-v0.3.1-2026-11-10.md`覆盖原文比对、启动链/包体与历史证据边界。35项现有协调/集成/主动性测试通过；三份`environment/scripts/audit-super-v0.3.1/*.mjs`为固定dad375d基线复现器，根复跑5+3+2项均确认报告问题/能力边界（发布恢复重复交叉核验）。运行命令见报告，只写忽略verification，GitHub完全模拟、DSH零调用。脚本成功代表问题仍存在，不能纳入绿色产品验收冒称功能通过；修复后应转成相反预期的正式回归。全量26/256/16及真实模型/PR发布保留历史范围，本轮不重复算通过；普通IM到真实业务修改再完整发布/恢复尚缺连续实证。
 
 ## v0.3.0 新增验收
 
@@ -44,3 +52,21 @@
 规格见UI-v0.1.3.md。用真实 Chrome 在临时隔离服务上检查登录页和聊天主界面在1280×860、960×680的整体配色与不溢出；从源码移除旧绿色十六进制/令牌名，从 computed style 确认无绿色族可见颜色；主蓝、深蓝导航、亮蓝强调、蓝调表面都来自 `tokens.css`。对比度用计算值检查：正文/次要文字/未读白字≥4.5:1，控件边界/焦点环≥3:1；同时重跑既有v0.1.2真实浏览器流程，证明布局、文案和功能未回退。
 
 验收脚本为 `environment/scripts/verify-ui-v0.1.2.py`（全流程回归）与 `environment/scripts/verify-ui-theme.py`（蓝色角色/旧色/对比度）。Windows包重建和原生窗口不在本轮自动范围；未重建时必须明确记录安装包仍是旧配色。实际结果见outputs/VERIFICATION-ui-v0.1.3.md。
+
+## 2026-11-10 · 四套风格审核待用户选择
+
+本轮在D:/Work/CodexProjects/agent-bot-im从fd1238c接续。用户明确调用Hallmark要求几套配色/设计风格供审核，输出outputs/design-review-2026-11-10/index.html：A霁蓝、B暖砂、C石墨、D暮紫；聊天/登录可切换，四图对照或单套可操作。仅合成演示数据，真实client/desktop零改动，未切换正式主题、未重建EXE、未接触正式IM/DSH/私有数据。
+
+确认轮16截图/288检查、审核页7项功能检查通过；Hallmark渲染0 FAIL/0 REFLEX/0 WARN，两项已记录waiver。独立复核2项意见均解决。报告outputs/VERIFICATION-design-review-2026-11-10.md；构建build-design-review.mjs，重开静态审核服务preview-designs.ps1，默认http://127.0.0.1:18310/。服务运行是本次观察，重启后须实查。下一步等用户在Codex对话选A/B/C/D，再做正式落地/完整回归/App打包。
+
+## 2026-11-10 · C石墨与规则齿轮开始
+
+用户已选C并要求重做设置图标，先冻结UI-v0.1.4，再分工改语义令牌/样式/标志和共享settings路径。UI真实隔离10截图/27检查/29对比度、原13项浏览器回归及Hallmark渲染通过；全量Node首轮255/256卡在恢复后Windows登记等待，原失败保留，由独立模块复验与冷副本门禁确认。无模型调用和真实任务重启。最终交付见outputs/VERIFICATION-v0.3.1.md。
+
+## 2026-11-10 · v0.3.1 实际交付
+
+用户已选C石墨，规则六齿设置图标与生产主题落地。独立冷副本26 Python/256 Node及语法通过，16启动编排、原UI13项回归、石墨10截图/27检查/29对比度通过。最低文字6.140、边界4.220、rail焦点9.756。独立齿轮复核ship，Hallmark渲染0 FAIL/REFLEX/WARN。原255/256等待失败保留，targeted3/3和冷副本通过，未改测试或归因成已知原因。
+
+PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907；在该merge的独立checkout构建并发布https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.1，新annotated v0.3.1与两资产远端digest已核验。ZIP 74文件/162326214字节，SHA256 5f350874756a1bcdf0011b4d9034c27fd48e5efc069784c4abeee624f6438aa8，CRC/每文件hash、ASAR9条目/6源文件字节、PE/manifest 0.3.1均通过。发布初次创建draft后即时API尚未确认，随后只读确认既有owned draft，原账本继续上传；没有重建或重复创建Release。
+
+此前18200未在线且账本0活动任务，本轮默认start恢复已有绑定，当前IM v0.3.1、DSH listening/ready及独立Watchdog身份实查通过；没有重启/中断真实worker。只更新本项目失效代理引用到当前系统已有回环端口，不改全局网络。新App可用原账号连接http://127.0.0.1:18200。实际运行须接续时重查，不把Git当成账号/服务/二进制恢复。

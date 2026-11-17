@@ -1,11 +1,9 @@
-# 同频TeamPlay v0.3.1
+# v0.3.1 · 石墨与规则设置图标
 
-- 产品显示名统一为“同频TeamPlay”，保留原有登录资料和内部兼容路径；Windows包已重建。
-- README补充Super-agent符合程度、团队/IM/DSH/代码项目协作、设计与业务流程、恢复和交付，以及明确能力边界。
-- 新增云端DSH密钥保护设计建议，尚未实施；当前版本不能仅靠工作副本或环境变量配置保证密钥对编码工具不可读。
+按用户选定C落地深灰/琥珀、紧凑密度和小圆角，登录/聊天/成员/设置/附件/媒体/错误与焦点统一。设置图标重新绘制为同心、对称的六齿齿轮，登录连接设置与导航共用。IM/DSH业务协议不变。
 
-下载完整TeamRelay-portable.zip并解压，运行TeamRelay-win32-x64/TeamRelay.exe；请保留全部文件。TeamRelay是兼容文件名，页面/窗口/产品属性显示新名称。客户端不附带服务器、DSH或账号，需要连接自己的服务。
+下载完整TeamRelay-portable.zip，解压后打开TeamRelay-win32-x64/TeamRelay.exe，保留整个文件夹。原账号连接http://127.0.0.1:18200。旧包保留，新包不含账号/聊天/DSH。
 
-验证：26 Python、256 Node、16模拟Windows编排、JS语法；最后品牌文字修改后另26 Python/11核心桥接；真实Chrome双尺寸及对比度；ASAR/PE/完整ZIP一致性通过。未重新做真实模型、原生窗口人工登录或腾讯部署。
-
-ZIP SHA256：`c8943950d0c26ae37749ac4b6577a345618be180221ebfc2c86f9e1a28bb4050`，162,325,706字节。未签名。详细范围与失败保留见VERIFICATION-v0.3.1.md。
+Release：https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.1
+ZIP SHA256：5f350874756a1bcdf0011b4d9034c27fd48e5efc069784c4abeee624f6438aa8
+验证、原失败和边界见VERIFICATION-v0.3.1.md。

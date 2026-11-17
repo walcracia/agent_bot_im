@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart LR
-  IM[IM 服务] --> Controller[聊天控制器：只持IM助手身份]
+  IM[IM 服务] --> Controller[聊天控制器：IM助手及任务控制身份]
   Controller --> Worker[受限DSH与代码执行环境]
   Worker -->|项目范围凭据与受限模型请求| Gateway[独立模型调用代理：配额与审计]
   Secrets[凭据管理：只授权指定凭据读取] -->|真正的模型API key| Gateway

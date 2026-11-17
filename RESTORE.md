@@ -1,12 +1,18 @@
 # agent-IM 恢复与接续
 
-## v0.3.1 同频TeamPlay
+## v0.3.2 同频TeamPlay
 
-当前源码及Windows产品名已改为“同频TeamPlay”，执行机制沿用v0.3.0。根README包含文章核对结论、团队协作/业务流程、实际能力边界与源码索引；本轮范围见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.1.md`。更名保留TeamRelay.exe/配置键/旧用户目录，旧报告和截图不覆盖。新包路径为 `outputs/desktop-v0.3.1/TeamRelay-win32-x64/TeamRelay.exe`，源码Git不含大包，下载对应Release或重建。
+当前源码及Windows产品名已改为“同频TeamPlay”，执行机制沿用v0.3.0。根README包含文章核对结论、团队协作/业务流程、实际能力边界与源码索引；本轮范围见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.2.md`。更名保留TeamRelay.exe/配置键/旧用户目录，旧报告和截图不覆盖。新包路径为 `outputs/desktop-v0.3.2/TeamRelay-win32-x64/TeamRelay.exe`，源码Git不含大包，下载对应Release或重建。
 
-下方“本机已启用”是历史检出的记录。本轮正式IM/DSH/Watchdog未启动、模型调用0；临时浏览器验收服务会自动清理。当前检出验证/交付结果先读最新HANDOFF/state及 `outputs/VERIFICATION-v0.3.1.md`，不要从旧在线快照推断正在运行。
+下方“本机已启用”是历史检出的记录。本轮正式IM/DSH/Watchdog未启动、模型调用0；临时浏览器验收服务会自动清理。当前检出验证/交付结果先读最新HANDOFF/state及 `outputs/VERIFICATION-v0.3.2.md`，不要从旧在线快照推断正在运行。
 
 ## v0.3.0 当前入口
+
+## 2026-11-10 审计更正
+
+接续先读`outputs/AUDIT-SUPERAGENT-v0.3.1-2026-11-10.md`及HANDOFF最新条目。v0.3.1具备核心Super-agent框架，但仍有交付期输入遗漏、可信测试来源、发布恢复等已复现缺口，不可再宣称全部符合原文。当前桌面为Electron；EXE不启动后台，只有start.ps1统一确认IM/已绑定DSH/独立监督。Tauri尚未迁移。本轮仅审计记录与合成探针，现有产品/Release/配置不变。
+
+## v0.3.1 当前入口
 
 用户要求的Super-agent范围见`workspace/docs/SUPERAGENT-v0.3.0.md`及各SUPER模块设计，操作见`SUPER-OPERATIONS-v0.3.0.md`。本机选择不部署腾讯。默认start仍从已绑定本机配置同时确认IM与监听；新模式另确认独立Watchdog。首次机器先按下方setup恢复、ServerOnly建账号、connect-installed绑定，再以enable-super转换；私有账号、DPAPI密文、任务/模型会话和本机工具不会随Git clone出现。
 
@@ -37,10 +43,13 @@ uv 未加入 PATH 时用 `setup.ps1 -UvCommand 'uv.exe的实际路径'`；仅恢
 
 常规验收不需要演示账号或模型密钥。首次启动/建管理员见 `workspace/README.md`；真实模型与腾讯部署另有前提。Git 不含账号/聊天/附件/venv/DSH/桌面二进制；Windows 成品从对应版本 Release 获取或按锁文件构建。历史通过项不能当作本机复验通过。
 
-当前源码 UI 为 v0.1.3 蓝色主题，规格见 `workspace/docs/UI-v0.1.3.md`；布局与减负依据仍是 `workspace/docs/UI-v0.1.2.md`。完整浏览器回归运行 `environment/scripts/verify-ui-v0.1.2.py`，蓝色主题与对比度检查运行 `environment/scripts/verify-ui-theme.py`；两者都自动管理临时数据/服务，无需旧演示账号。v0.1.2 源码预览仍保留在 `outputs/design-preview-v0.1.2/index.html`，其截图是旧绿色主题的历史快照。
+当前源码UI为v0.1.4石墨主题，规格见workspace/docs/UI-v0.1.4.md；布局减负依据仍是UI-v0.1.2。真实浏览器回归用environment/scripts/verify-ui-v0.1.2.py，当前主题/对比度用verify-ui-graphite.py；均用隔离数据/服务。旧verify-ui-theme.py只适用于v0.1.3蓝色历史快照，不作为当前验收入口。绿色/四风格初审截图保留为历史；当前C预览中的设置图标已更新。
 
 通用接续流程及独立安装方法见 [.agents/skills/proj_multihandoff/SKILL.md](.agents/skills/proj_multihandoff/SKILL.md)。
 
 历史v0.2交付记录（不代表当前运行）：服务/桥接当时为v0.2.2，桌面客户端v0.2.3已构建并包含v0.1.3蓝色主题；完整目录/ZIP见outputs或v0.2.3 Release，交付验证见`outputs/VERIFICATION-desktop-v0.2.3.md`。接续自动编码先读 `workspace/docs/DSH-AUTO-v0.2.0.md`、`workspace/docs/STARTUP-v0.2.1.md`、`workspace/docs/DSH-RECOVERY-v0.2.2.md`、`workspace/bridge/README.md` 与本轮验收报告。默认 `environment/scripts/start.ps1` 同时启动或复用IM和已绑定DSH；首次绑定前用 `-ServerOnly`。绑定时 `connect-installed.ps1 -EnableStartup` 保存当前Windows用户加密的IM助手码，后续无需重复输入。真实团队的连接码/群绑定不在Git中，也不能跨Windows用户搬运密文；不要从测试日志推断监听已启动，不自动重做uncertain或routing_failed事件。2小时代码任务中断后监听保持在线，在原群明确发送“继续修正”接续原会话，发送“取消任务”结束等待；旧状态/改动/会话映射保留。
 
 当前v0.3.0已发布并在本机启用，下载/验收见HANDOFF和outputs/VERIFICATION-v0.3.0.md。自动合并策略按用户选择为verified-tests；新机器须配置自己的可信工具与绑定，不能仅clone后推断已在线。
+
+风格审核入口：outputs/design-review-2026-11-10/index.html。使用environment/scripts/preview-designs.ps1重开独立静态预览（默认18310），不启动正式IM/DSH；规格与报告见UI-REVIEW-2026-11-10和outputs/VERIFICATION-design-review-2026-11-10.md。等待用户选择后才落地App。
+当前产品v0.3.1/UI-v0.1.4为用户选定C石墨与规则设置齿轮，覆盖旧蓝色描述。Windows包见outputs/TeamRelay-v0.3.1-portable.zip或v0.3.1 Release；本机默认start仍同时恢复IM/已绑定DSH，接续须实查运行状态。

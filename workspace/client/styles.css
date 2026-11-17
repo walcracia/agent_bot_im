@@ -1,14 +1,15 @@
-/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · scope: app · redesign: full · v2.0.0
- * pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, existing chat shell retained for familiar daily work; removed slogan panel and repeated composer chrome
- * finish-review: subagent · ship · 0 findings · gap: none · floor: 0 FAIL · reflex: 0 · render: verified
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Console graphite (C, by request) · scope: app · redesign: restyle · v2.0.0
+ * nav: kept icon rail · signature: compact team conversation · states: existing loading, empty, full and error recovery · copy: verbatim
+ * axes: dark/grotesk-sans/chromatic-amber · posture: restrained · typography: system face retained for Chinese app work
  */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 · weakest: E, graphite surface and primary foreground are distinct tokens across every menu and overlay */
 /* Hallmark · dropped "让想法相遇， 让协作发生。" · user requested a compact login without the half-screen promotional panel */
 /* Hallmark · dropped visible conversation-count and keyboard-hint · user requested fewer persistent labels; original hooks remain available to assistive technology */
 @import url("tokens.css");
 :root {
   font-family:var(--font-body);
   color:var(--ink);
-  font-size:14px;
+  font-size:16px;
   font-synthesis:none;
 }
 * {
@@ -71,7 +72,7 @@ time,.conversation-time,.file-size {
   justify-content:center;
   gap:8px;
   background:var(--primary);
-  color:var(--surface-white);
+  color:var(--primary-ink);
   border-radius:8px;
   padding:12px 16px;
   font-weight:600;
@@ -244,7 +245,7 @@ time,.conversation-time,.file-size {
   align-items:center;
   width:64px;
   flex-shrink:0;
-  background:var(--primary-deep);
+  background:var(--rail-bg);
   padding:24px 0 16px;
   color:var(--rail-ink);
 }
@@ -440,7 +441,7 @@ time,.conversation-time,.file-size {
 }
 .unread {
   background:var(--accent);
-  color:var(--surface-white);
+  color:var(--primary-ink);
   border-radius:6px;
   font-size:12px;
   min-width:17px;
@@ -886,6 +887,7 @@ time,.conversation-time,.file-size {
   width:246px;
   flex-shrink:0;
   background:var(--surface);
+  color:var(--ink);
   border-left:1px solid var(--line);
   overflow:auto;
 }
@@ -1130,7 +1132,7 @@ time,.conversation-time,.file-size {
   display:flex;
   align-items:center;
   justify-content:center;
-  color:var(--surface-white);
+  color:var(--primary-ink);
 }
 .selection-mark svg {
   width:12px;
@@ -1253,7 +1255,7 @@ time,.conversation-time,.file-size {
   left:50%;
   transform:translateX(-50%);
   background:var(--toast-surface);
-  color:var(--inverse-ink);
+  color:var(--toast-ink);
   box-shadow:0 8px 35px var(--shadow);
   padding:12px 16px;
   border-radius:8px;
@@ -1432,7 +1434,7 @@ button[aria-busy="true"] { cursor:progress;
 }
 .secondary:active,.icon-button:active,.settings-action:active,.user-option:active { background:var(--surface-pressed);
 }
-.rail-button:focus-visible { outline-color:var(--inverse-ink);
+.rail-button:focus-visible { outline-color:var(--focus);
 }
 .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%)!important; white-space:nowrap!important; border:0!important;
 }
@@ -1491,6 +1493,39 @@ button[aria-busy="true"] { cursor:progress;
 @media(max-width:800px) { .composer { padding:12px 16px; gap:8px;
 } .message-content { max-width:calc(100% - 76px);
 } }
+
+/* User-selected C: one graphite system across login, conversation and utility surfaces. */
+:root { color-scheme:dark; }
+.app-view { max-width:1680px; margin-inline:auto; min-height:0; height:100dvh; }
+.rail { background:var(--rail-bg); color:var(--rail-ink); border-right:1px solid var(--line); width:72px; }
+.rail-button:hover,.rail-button.active { background:var(--surface-selected); color:var(--primary); }
+.rail-button.active { box-shadow:inset 2px 0 var(--primary); }
+.rail-button,.icon-button,.primary,.secondary,.input-icon,.search-box,.conversation,.attachment-options,.modal { border-radius:var(--radius-control); }
+.sidebar { width:var(--sidebar-width); background:var(--surface-white); }
+.conversation { padding:12px 16px; }
+.conversation-name { font-size:15px; }
+.conversation-summary p { font-size:13px; }
+.avatar { border-radius:var(--radius-control); }
+.bubble { font-size:16px; line-height:1.7; border:0; border-radius:var(--radius-bubble); background:var(--surface-white); }
+.message.own .bubble { background:var(--own-bubble); color:var(--ink); }
+.message.group-follow .bubble { border-radius:var(--radius-bubble); }
+.message,.message.group-end { margin-bottom:16px; }
+.message-author,.message-time { color:var(--muted); }
+.messages { padding:28px 32px; }
+.chat-heading,.composer,.details-panel,.modal { background:var(--surface-white); color:var(--ink); }
+.chat-heading h2 { font-size:20px; }
+.composer textarea { font-size:16px; }
+.message-timestamp time { background:var(--surface-white); color:var(--ink); }
+.login-panel { max-width:352px; }
+.login-brand { margin-bottom:40px; }
+.login-form label,.input-icon input { font-size:16px; }
+.rail-brand img { width:36px; height:36px; }
+.search-box { min-height:44px; padding-block:0; }
+.search-box input { min-height:32px; }
+.toast { color:var(--toast-ink); }
+.image-close { color:var(--overlay-ink); background:var(--surface-soft); }
+@media(max-width:1000px) { .sidebar { width:250px; } .messages { padding:24px; } }
+@media(max-width:600px) { .rail { width:52px; } .sidebar { width:180px; } .messages { padding:12px; } }
 @media(max-width:620px) { .login-view { padding:32px 24px;
 } .login-brand { margin-bottom:24px;
 } .composer { padding:12px; gap:8px;

@@ -1,8 +1,8 @@
 # DSH 异机桥接
 
-## 当前入口：v0.3.1 同频TeamPlay
+## 当前入口：v0.3.2 同频TeamPlay
 
-当前Super-agent模式的设计/业务流程与边界见[根README](../../README.md)，启用和管理见[SUPER-OPERATIONS-v0.3.0](../docs/SUPER-OPERATIONS-v0.3.0.md)。v0.3.1只更名和整理核对，不改执行机制。下文v0.2及更早说明保留为兼容路线；“没有实时取消/并行”等不适用于新模式。新模式需要独立配置和账本，不覆盖旧未完成任务；异机媒体与长期运行不得仅凭接缝存在称为已验收。
+当前Super-agent模式的设计/业务流程与边界见[根README](../../README.md)，启用和管理见[SUPER-OPERATIONS-v0.3.0](../docs/SUPER-OPERATIONS-v0.3.0.md)。v0.3.2只更名和整理核对，不改执行机制。下文v0.2及更早说明保留为兼容路线；“没有实时取消/并行”等不适用于新模式。新模式需要独立配置和账本，不覆盖旧未完成任务；异机媒体与长期运行不得仅凭接缝存在称为已验收。
 
 先读根 `AGENTS.md`、`RESTORE.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`。详细设计见本目录 `DESIGN.md`，一手来源和文章摘要见 `references/DSH-SOURCES.md`。
 
