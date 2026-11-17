@@ -30,3 +30,7 @@ ZIP：`outputs/TeamRelay-portable.zip`；SHA256：`13c4d6fb2c936d5f8d42d59886cdd
 交付时发现原本地Git的URL专用代理仍指旧端口，普通http.proxy参数未覆盖它。核对当前Windows已配置代理后只更新本仓库原URL专用条目，fetch成功；未改全局/系统代理或Git身份。远端已有v0.3.1，所以使用新v0.3.2，不移动已发布tag/资产。
 
 未运行真实模型、正式IM/DSH/Watchdog、原生EXE窗口或人工登录、Docker/腾讯/真正异机部署，也未修复或重验正式审计缺陷。常规测试通过不推翻已复现P1，不是普通讨论到完整可信发布的真实业务整链证据。云端安全设计为建议，不能作为现成部署保证。
+
+## 实际远端回执
+
+产品源码7df2062、annotated v0.3.2的对象与peeled commit、远端main已核对。2026-11-17 Release已发布且isDraft=false；TeamRelay-portable.zip为162326276字节、远端digest与上述SHA256一致，校验文本digest为63bb82e6172a0c1cdeeb566e166ceae6d94b3cc56fc7011a6bbac9f321fcd9b0，两资产uploaded。额外交接提交不更改产品tag和包；其远端回执按v0.3.2-handoff.1查询。

@@ -17,9 +17,12 @@
     "source_version": "0.3.2",
     "release_tag": "v0.3.2",
     "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.2",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Pre-delivery snapshot; query remote branch, annotated tag peel and assets; final receipt to follow"
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "Product main/tag object/peeled commit and published asset digests confirmed; handoff receipt does not move product tag",
+    "release_commit": "7df20624f6c6ece4c1720b4e7980be483236ed17",
+    "handoff_tag": "v0.3.2-handoff.1",
+    "windows_zip_sha256": "13c4d6fb2c936d5f8d42d59886cdd24567f8cfcb329776eb30e133c0262bd4ff"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry",
@@ -32,7 +35,7 @@
     "Tencent or physical multi-host deployment requires separate scope; none performed this iteration"
   ],
   "updated_at": "2026-11-17",
-  "stage": "teamplay-integrated-verified-pre-delivery",
+  "stage": "teamplay-published-verified",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -80,7 +83,8 @@
     "verification_report": "outputs/VERIFICATION-v0.3.2.md",
     "security_design": "workspace/docs/CLOUD-SECURITY.md",
     "cloud_security_implemented": false,
-    "observation_only": "No formal listener/model/cloud operations performed; earlier runtime snapshots do not describe this checkout"
+    "observation_only": "No formal listener/model/cloud operations performed; earlier runtime snapshots do not describe this checkout",
+    "product_release_commit": "7df20624f6c6ece4c1720b4e7980be483236ed17"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",

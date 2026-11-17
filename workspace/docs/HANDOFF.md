@@ -2,6 +2,8 @@
 
 ## 2026-11-17 · 同频TeamPlay v0.3.2集成
 
+交付回执：产品commit/annotated tag为7df2062/v0.3.2，远端main、tag对象与peeled commit已核对。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.2 已于11月17日发布，ZIP及校验文本均uploaded，远端digest与本地SHA256一致。最终26 Python/256 Node/16模拟编排及语法全通过。当前额外交接记录使用新v0.3.2-handoff.1，不移动产品tag；复原时仍查询远端，运行未启动的事实不变。
+
 先读根README、REVIEW-TEAMPLAY-v0.3.2.md、CLOUD-SECURITY.md和本轮VERIFICATION-v0.3.2。当前改名保持TeamRelay.exe/存储键/旧app.setName用户目录，保留远端C石墨主题与规则齿轮；不是重设计或Tauri迁移。用户云端密钥问题已写为建议方案，未实施、未部署；当前广权限Worker仍可能读取同身份凭据，不能称已安全隔离。
 
 原本本地蓝色0.3.1候选未发布。交付前安全fetch发现远端已发布0.3.1并追加P1/P2审计；先保存本地草稿6e2802a，再合入main=6e6186a，保留双方记录和远端旧报告。新版本改为0.3.2，禁止移动旧tag或替换0.3.1资产。候选报告另存teamplay-candidate-20261110。
