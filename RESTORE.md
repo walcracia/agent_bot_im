@@ -1,5 +1,11 @@
 # agent-IM 恢复与接续
 
+## v0.3.3 托盘与QA日志设计
+
+Windows客户端最小化留任务栏、关闭收托盘，继续收消息；点击图标恢复，右键“退出”退出客户端。后台不自动标读，前台只读当前会话；保留旧用户目录/TeamRelay路径。规范DESKTOP-TRAY-v0.3.3，当前包outputs/desktop-v0.3.3/TeamRelay-win32-x64/TeamRelay.exe，或下载v0.3.3 Release；从Git恢复需重建而非假定EXE存在。
+
+用户明确要求QA新增Bug按Super-agent Trigger+Route进入专用只读日志任务，群贴编号可重分析。流程与本地插件实际接缝见workspace/docs/QA-TRIGGER-ROUTE.md和references/QA-TRIAGE-SOURCES.md；目前只设计，不能称自动分析已启用。没有修改DSH安装、读取业务日志或调用真实模型。新增浏览器与原生验证使用临时IM、合成账号和隔离profile，过程/失败/实际交付以VERIFICATION-v0.3.3及最新HANDOFF/state为准。
+
 ## 2026-11-17 本检出接续
 
 当前D:/Work/CodexProjects/agent-bot-im已同步到5c5e676（产品v0.3.2）；本机Python3.12.15/Node24.19.0常规26/256/16及语法通过。正式IM/DSH/监督未启动，0.3.2 EXE未在本机取得/构建，认证和SDK握手未验证。报告见`outputs/VERIFICATION-handoff-2026-11-17.md`，实际状态见state.current_checkout及HANDOFF最新条目。下方其他检出及旧版本在线/构建记录均属历史，不代表本机当前状态。

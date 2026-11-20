@@ -7,6 +7,8 @@ try {
   if ($LASTEXITCODE) { throw '服务器测试未通过。' }
   npm.cmd run check
   if ($LASTEXITCODE) { throw '客户端语法检查未通过。' }
+  npm.cmd run test:desktop
+  if ($LASTEXITCODE) { throw '桌面托盘与权限测试未通过。' }
   node --test bridge/test/*.test.mjs
   if ($LASTEXITCODE) { throw '桥接可靠性测试未通过。' }
   if ($IsWindows) {

@@ -1,5 +1,9 @@
 # v0.1 设计冻结（2026-11-07，Asia/Shanghai）
 
+## v0.3.3 当前新增范围
+
+[DESKTOP-TRAY-v0.3.3](DESKTOP-TRAY-v0.3.3.md)先冻结再实现Windows托盘、窗口关闭/最小化及后台未读提醒；不迁移外壳或改变石墨布局。QA新Bug按用户要求的Trigger→Router→typed日志Worker→Outbox设计，见[QA-TRIGGER-ROUTE](QA-TRIGGER-ROUTE.md)。本轮日志部分仅设计与本机插件核对，不启用真实来源/批量分析；typed路由不能复用现有code new冒充已实现。安全与已知P1边界继续有效。
+
 ## 当前产品与业务流程：v0.3.2
 
 产品显示名称统一为**同频TeamPlay**，范围见[REVIEW-TEAMPLAY-v0.3.2](REVIEW-TEAMPLAY-v0.3.2.md)。根[README](../../README.md)是当前架构、角色、正常交付、补充/取消/恢复、主动核查、权限边界和Super-agent逐项核对的入口。执行机制沿用v0.3.0；上下文全局预算/摘要、老任务召回、补充附件、补充顺序及物理异机长期验收仍有缺口，本轮只如实记录。

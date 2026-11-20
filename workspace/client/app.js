@@ -42,6 +42,28 @@ function uuid() { return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()
 function readPreference(key) { try { return localStorage.getItem(key); } catch { return ''; } }
 function savePreference(key, value) { try { localStorage.setItem(key, value); } catch { /* Preferences are optional. */ } }
 const S = { base: '', token: null, me: null, conversations: [], users: [], selected: null, messages: [], pending: new Map(), uploads: new Map(), socket: null, reconnect: null, ping: null, refresh: null, retry: 0, epoch: 0, details: false, hasMore: false, historyBusy: false, loadingConversation: null, historyRequest: 0, scrollIntent: 0, composing: false, requests: new Set() };
+// The desktop bridge carries counts and foreground state, never chat content or credentials.
+const desktop = window.teamplayDesktop;
+let desktopForeground = desktop ? false : null;
+let unreadBaseline = false, conversationRequest = 0;
+const lastNotifiedMessage = new Map(), readAcknowledged = new Map(), readPending = new Map();
+function readingCurrentChat() {
+  return !!(S.token && S.selected && !document.hidden && document.hasFocus()
+    && desktopForeground !== false && !$('app-view').hidden && !$('active-chat').hidden);
+}
+function syncDesktopUnread() {
+  let count = 0, notify = false;
+  for (const c of S.conversations) {
+    const total = Number.isSafeInteger(c.unread_count) && c.unread_count > 0 ? c.unread_count : 0;
+    count = Math.min(999999, count + total);
+    const id = c.last_message?.id || 0;
+    if (unreadBaseline && total > 0 && id > (lastNotifiedMessage.get(c.id) || 0)
+      && c.last_message?.sender.id !== S.me?.id) notify = true;
+    lastNotifiedMessage.set(c.id, Math.max(id, lastNotifiedMessage.get(c.id) || 0));
+  }
+  unreadBaseline = true;
+  desktop?.updateUnread(count, notify);
+}
 let toastTimer;
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4300); }
 function normalizeBase(value) {
@@ -110,7 +132,12 @@ function renderConversations() {
   }
   if (!list.children.length) list.append(el('p', 'list-empty', query ? '没有找到聊天' : '还没有聊天'));
 }
-async function refreshConversations() { const epoch = S.epoch; const cs = await api('/api/conversations'); if (S.epoch !== epoch) return; S.conversations = cs; renderConversations(); if (S.selected) renderChatHeading(); }
+async function refreshConversations() {
+  const epoch = S.epoch, request = ++conversationRequest;
+  const cs = await api('/api/conversations');
+  if (S.epoch !== epoch || request !== conversationRequest) return;
+  S.conversations = cs; syncDesktopUnread(); renderConversations(); if (S.selected) renderChatHeading();
+}
 function renderChatHeading() {
   const c = current(); if (!c) return;
   $('chat-title').textContent = titleFor(c); $('chat-subtitle').textContent = c.is_direct ? (peer(c).is_bot ? '' : peer(c).username) : `${c.members.length} 人`;
@@ -138,7 +165,19 @@ async function loadMessages(older = false) {
   } finally { if (request === S.historyRequest) { S.historyBusy = false; S.loadingConversation = null; $('load-history').disabled = false; } }
 }
 function scrollBottom() { $('messages').scrollTop = $('messages').scrollHeight; requestAnimationFrame(() => { $('messages').scrollTop = $('messages').scrollHeight; }); }
-async function markRead() { const id = S.selected; const last = S.messages.at(-1); if (!id || !last) return; const c = current(); if (c) { c.unread_count = 0; renderConversations(); } try { await post(`/api/conversations/${encodeURIComponent(id)}/read`, { message_id: last.id }); } catch { /* Recovered on next refresh. */ } }
+async function markRead() {
+  const id = S.selected, last = S.messages.at(-1), epoch = S.epoch;
+  if (!readingCurrentChat() || !last || last.id <= (readAcknowledged.get(id) || 0) || last.id <= (readPending.get(id) || 0)) return;
+  readPending.set(id, last.id);
+  try {
+    await post(`/api/conversations/${encodeURIComponent(id)}/read`, { message_id: last.id });
+    if (epoch !== S.epoch) return;
+    readAcknowledged.set(id, Math.max(last.id, readAcknowledged.get(id) || 0));
+    // Refresh authoritative counts; a failed read or a newer message must not be hidden optimistically.
+    await refreshConversations();
+  } catch { /* Retry on the next foreground/history refresh without erasing unread state. */ }
+  finally { if (epoch === S.epoch && readPending.get(id) === last.id) readPending.delete(id); }
+}
 function renderMessages() {
   $('load-history').hidden = !S.hasMore;
   const box = $('message-items'), existing = new Map([...box.querySelectorAll(':scope > [data-key]')].map((n) => [n.dataset.key, n]));
@@ -270,6 +309,8 @@ function scheduleReconnect() { clearInterval(S.ping); connection('offline'); cle
 function logoutLocal() {
   closeAttachmentMenu();
   S.epoch++; S.token = null; S.me = null; S.details = false; clearTimeout(S.reconnect); clearInterval(S.ping); clearInterval(S.refresh);
+  conversationRequest++; unreadBaseline = false; lastNotifiedMessage.clear(); readAcknowledged.clear(); readPending.clear();
+  desktop?.updateUnread(0, false);
   if (S.socket) { S.socket.onclose = null; S.socket.close(); S.socket = null; } S.requests.forEach((c) => c.abort()); S.uploads.forEach((i) => i.xhr?.abort()); S.conversations = []; S.users = []; S.messages = []; S.pending.clear(); S.uploads.clear(); S.selected = null; S.historyBusy = false;
   $('app-view').hidden = true; $('login-view').hidden = false; $('active-chat').hidden = true; $('empty-chat').hidden = false; $('details-panel').hidden = true; $('message-items').replaceChildren(); $('upload-list').replaceChildren(); $('password').value = ''; $('modal').close(); $('image-modal').close(); $('conversation-search').value = '';
 }
@@ -279,6 +320,7 @@ $('login-form').addEventListener('submit', async (e) => {
     S.base = normalizeBase($('server-url').value.trim()); const result = await post('/api/login', { username: $('username').value.trim(), password: $('password').value }); S.epoch++; S.token = result.token; S.me = result.user; S.retry = 0;
     savePreference('teamrelay.server', S.base); savePreference('teamrelay.username', $('username').value.trim()); $('password').value = '';
     [S.conversations, S.users] = await Promise.all([api('/api/conversations'), api('/api/users')]); $('my-avatar').textContent = (S.me.display_name || S.me.username).slice(0, 1); $('my-avatar').title = S.me.display_name;
+    unreadBaseline = false; lastNotifiedMessage.clear(); readAcknowledged.clear(); readPending.clear(); syncDesktopUnread();
     $('login-view').hidden = true; $('app-view').hidden = false; renderConversations(); connectSocket();
     S.refresh = setInterval(() => { if (S.token && !document.hidden) refreshConversations().catch(() => {}); }, 30000);
   } catch (error) { if (S.token) logoutLocal(); if (/地址/.test(errorText(error))) $('connection-settings').open = true; $('login-error').textContent = errorText(error); $('login-error').hidden = false; }
@@ -374,6 +416,18 @@ $('chat-area').addEventListener('dragenter', (e) => { if (!e.dataTransfer.types.
 window.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }); window.addEventListener('drop', (e) => e.preventDefault());
 $('close-image').addEventListener('click', () => $('image-modal').close()); $('image-modal').addEventListener('click', (e) => { if (e.target === $('image-modal')) $('image-modal').close(); }); $('image-modal').addEventListener('close', () => { $('preview-image').src = 'logo.svg'; }); $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').close(); }); $('modal').addEventListener('close', () => { if (!$('modal').open) $('modal-content').replaceChildren(); });
 window.addEventListener('resize', updateCounter);
-window.addEventListener('online', () => { if (S.token) connectSocket(); }); document.addEventListener('visibilitychange', () => { if (!document.hidden && S.token) { refreshConversations().catch(() => {}); if (S.socket?.readyState !== WebSocket.OPEN) connectSocket(); } });
+async function returnedToWindow() {
+  if (!S.token || document.hidden || !document.hasFocus() || desktopForeground === false) return;
+  const epoch = S.epoch;
+  try {
+    await refreshConversations();
+    if (epoch === S.epoch && readingCurrentChat() && !S.historyBusy) await loadMessages(false);
+  } catch { /* The connection indicator and next refresh handle recovery. */ }
+  if (S.token && S.socket?.readyState !== WebSocket.OPEN) connectSocket();
+}
+window.addEventListener('focus', returnedToWindow);
+desktop?.onWindowState((value) => { desktopForeground = value; if (value) returnedToWindow(); });
+window.addEventListener('online', () => { if (S.token) connectSocket(); });
+document.addEventListener('visibilitychange', returnedToWindow);
 $('server-url').value = readPreference('teamrelay.server') || (['http:', 'https:'].includes(location.protocol) ? location.origin : 'http://127.0.0.1:18200'); $('username').value = readPreference('teamrelay.username');
 $('connection-settings').open = !readPreference('teamrelay.server');

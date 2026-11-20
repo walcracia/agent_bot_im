@@ -1,6 +1,6 @@
 # agent-IM 工作约定（必须先读）
 
-当前产品显示名为“同频TeamPlay”，版本v0.3.2。更名范围及兼容原则见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.2.md`；最新设计/业务流程及Super-agent符合程度见根README。TeamRelay.exe、配置键和旧Electron用户目录为兼容标识，历史报告不全局改名。本轮只核对和更名，README列出的能力缺口未修复；运行状态以最新HANDOFF/state和实查为准。
+当前产品显示名为“同频TeamPlay”，版本v0.3.3。更名兼容原则见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.2.md`，托盘/前台已读见 `workspace/docs/DESKTOP-TRAY-v0.3.3.md`；最新设计/业务流程及Super-agent符合程度见根README。TeamRelay.exe、配置键和旧Electron用户目录为兼容标识，历史报告不全局改名。QA新Bug的Trigger→Router→typed日志Worker流程见 `workspace/docs/QA-TRIGGER-ROUTE.md`，本轮仅设计，未启用真实自动分析；已有A1/A2等执行缺口未修复。运行状态以最新HANDOFF/state和实查为准。
 
 每次新会话、重启、恢复或上下文压缩后，先阅读本文件、`RESTORE.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`，再阅读设计与最新过程记录。不要仅凭聊天摘要继续。
 

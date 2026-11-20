@@ -2,7 +2,37 @@
 
 小团队私有聊天工具：Windows 客户端，支持私聊、群聊、文字、图片、音频、视频和文件。每个附件严格小于 **100,000,000 字节**。团队可以在授权群里讨论需求，让 DeepSeek Harness（DSH）在指定代码项目中执行、测试，再把结果送回聊天与 GitHub。
 
-当前产品版本 **v0.3.2**。本版统一显示名称并整理设计与业务流程，执行架构沿用 v0.3.0。Windows 下载见 [v0.3.2 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.2)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+当前产品版本 **v0.3.3**。Windows 客户端增加托盘与新消息提醒；QA 日志分析本轮完成 Trigger + Route 设计，尚未启用自动监听。Windows 下载见 [v0.3.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+
+## Windows 托盘与新消息
+
+最小化仍留在任务栏；关闭窗口后收到托盘，继续接收消息。点击托盘图标回到聊天，右键可“打开同频TeamPlay”或“退出”。后台新消息让托盘未读标记交替闪动，并请求Windows任务栏闪烁；回到窗口停止闪烁，其他聊天的未读继续保留。首次登录历史未读、自发及重复消息不重复提醒。实际图标位置/任务栏动画由Windows控制。
+
+窗口在后台、最小化或托盘时，当前聊天也不会被自动标为已读。退出聊天账号会清除桌面提醒；退出客户端不停止独立服务器/DSH。规格与验证见[托盘设计](workspace/docs/DESKTOP-TRAY-v0.3.3.md)和[v0.3.3报告](outputs/VERIFICATION-v0.3.3.md)。
+
+## QA 新 Bug 的 Trigger + Route 设计
+
+用户选择的来源是 **QA 系统新增缺陷**，并支持授权群里贴编号重分析。[完整流程设计](workspace/docs/QA-TRIGGER-ROUTE.md)和[本机插件/技能核对](references/QA-TRIAGE-SOURCES.md)已持久记录；下面均为待实施范围，不是当前已运行的监听功能。
+
+```mermaid
+flowchart LR
+  QA[QA Source：新增缺陷或新日志] --> Trigger[持久 Trigger 与来源准入]
+  Chat[IM Source：编号重分析或补充] --> Trigger
+  Trigger --> Route[统一只读 Router：新建、关联、补充或忽略]
+  Route -->|创建或续接| Task[统一任务号与缺陷 Thread]
+  Route -->|忽略或拒绝| Record[只记录判断]
+  Task --> Worker[专用日志 Worker：受控解析与证据复核]
+  Worker --> Save[保存报告与输入版本]
+  Save --> Gate[输入版本与群权限门禁]
+  Gate --> Outbox[Outbox：固定结果与发送去重]
+  Outbox --> IM[绑定聊天：结论、依据、待补充与建议]
+```
+
+QA Source可用有界增量轮询发现变化；扫描只生成Trigger，不在定时器里直接调用模型。Router把新缺陷、同一缺陷的新日志、群补充和取消关联起来，按任务类型分发。日志任务只读，不能进入代码自动修改/PR/合并/发布通路，也不伪装成人类IM消息。
+
+第一轮先建立历史基线，之后只处理明确绑定项目；缺日志或日期/时区有歧义时等待补充，新附件进入原任务的新输入版本。结果先保存再回传，发送失败只重发同一报告；解析、分析和回传期间的新增要求必须进入本轮或可追踪后续轮，避免沿用现有A1窗口。原始日志、附件地址与认证不提交Git、不直接贴入群。
+
+已在本机找到截图的`@local/chery-qa`插件：它当前是手动UI流程，Desktop内部路由不能当作后台公开API。目标技能为发布站1.3.2，本机内嵌1.2.0，需先锁定版本和验证时间行为；QA MCP所见接口没有已验证的webhook/事件cursor，稳定分页与详细正文能力仍需专项验收。本轮未修改DSH安装、下载业务日志或运行真实分析。
 
 ## 是否符合文章的 Super-agent 概念
 

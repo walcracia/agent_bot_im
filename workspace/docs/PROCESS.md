@@ -220,3 +220,15 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 最终26 Python/256 Node/16编排及语法通过；真实Chrome石墨10图/27检查/29对比度，批看两个尺寸登录/聊天无需修正；版本化Windows0.3.2、ASAR9条目/6源码字节、PE新名及ZIP74文件CRC/逐文件hash均通过。用户目录/内部标识不改，锁文件仅根版本不同。零真实模型、零正式监听/云部署，不做未授权任务修复。Git按新annotated v0.3.2和完整包Release交付，远端实际回执在HANDOFF/state后续追加。
 
 实际交付：7df2062与annotated v0.3.2已推至main并核对远端分支/tag对象/peel。Release先draft上传，逐资产size/digest/state核对后发布，最终isDraft=false，两资产hash一致。旧v0.3.1及其报告/资产保留；本次仅交接回执追加v0.3.2-handoff.1，未新增模型或部署动作。
+
+## 2026-11-20 · v0.3.3 托盘实现与QA Trigger/Route设计开始
+
+干净检出先读取恢复文件并安全ff到0529feb，保留其他检出历史。用户确认最小化留任务栏、关闭收托盘；QA新增缺陷自动来源及群贴编号重分析，本轮先设计不启用批量分析，并明确必须按Super-agent Trigger→Router→Worker。先冻结DESKTOP-TRAY-v0.3.3，再启动桌面代理实现；两位只读代理核对本地DSH插件/公开skill/内网registry与typed Trigger架构。Impeccable context成功，按现有石墨与有限桥接增强，不重设计。版本统一0.3.3，保持账号/配置/旧用户目录；日志设计与来源脱敏记录，不复制业务日志或真实凭据。验收分常规、浏览器、生命周期mock、实际Windows托盘/打包，真实模型与正式QA监听本轮均不启动。
+
+## 2026-11-20 · v0.3.3 实施与验证结果
+
+桌面代理完成shell/preload/图标/未读初版及9单测，主代理接续集成验证与文档。QA来源/架构代理分别完成脱敏来源记录与typed Trigger/Route设计，并补Thread/订阅及忽略分流；不安装skill、不更新DSH、不读业务日志。实现前范围与用户两项选择已持久化，普通界面不新增技术说明。
+
+最终常规26 Python/256桥接/9桌面/16模拟编排与5入口语法通过；隔离Chrome未读9项（桥接模拟/焦点注入）与真实打包Electron/Tray/IPC7项（程序驱动事件）通过，4张实际双尺寸窗口集中看图无需修正，Impeccable detect=[]。最终包ASAR16条目/12源码资产字节、PE0.3.3、ZIP74文件CRC/逐文件hash通过，SHA256 135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35。仅最终便携说明补充托盘操作，应用代码与原生验收一致。
+
+失败记录保留：CSP夹具eval被拒后改测试端有界poll，不改产品CSP；一次driver连接失败未确证原因；headless失焦假设改明确故障注入且另有真窗口覆盖；最小化isVisible假设改user32只读样式核对；ASAR多层路径改平台join。均区分夹具与产品，未反复美化截图或重复模型。完整报告VERIFICATION-v0.3.3，正式服务/模型/QA监听未启动。下一阶段仅按新v0.3.3提交/推送及Release资产核验，远端回执更新HANDOFF/state。

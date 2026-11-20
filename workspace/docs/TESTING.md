@@ -1,5 +1,11 @@
 # 验收计划
 
+## v0.3.3 托盘与未读
+
+标准先冻结DESKTOP-TRAY-v0.3.3；实际结果见outputs/VERIFICATION-v0.3.3。完整verify为26 Python/256桥接/9桌面/16模拟启动及5入口语法通过。verify-desktop-tray-ui.py为9项真实HTTP/Chrome、模拟桌面桥及焦点注入；verify-desktop-native.py/.mjs为7项实际打包Electron/Tray/IPC/IM、合成账号与隔离profile，原生事件程序驱动非人工托盘点选。4张实际窗口双尺寸批量检查，无修正；Impeccable detect=[]。
+
+verify-desktop-asar.mjs检查16条目/12源码与资产字节；verify-desktop-zip.py检查74文件CRC/清单/逐文件hash。QA来源只做用户指定插件/skill/MCP的只读实现核对和架构设计，尚无实际自动分析运行测试。CSP/driver/headless焦点/最小化API假设与ASAR路径夹具失败保留，详见本轮报告；未放宽产品安全策略。
+
 ## 2026-11-17 · v0.3.2最终集成
 
 基于origin/main=6e6186a保留石墨与正式审计，重新完整verify：26 Python/256 Node/16模拟Windows编排及语法通过。石墨Chrome双尺寸10图/27检查/29对比度通过；Windows0.3.2已构建，ASAR9条目/6源码字节、PE新名、ZIP74文件CRC/逐文件哈希通过。根README链接、两份锁依赖不变及已发布v0.3.1报告保留另核验。详细证据outputs/VERIFICATION-v0.3.2.md；模型/正式监听/原生人工登录/腾讯/安全隔离均未执行。审计探针不计入通过门槛，已复现P1未修。

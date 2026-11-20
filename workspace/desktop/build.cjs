@@ -27,7 +27,11 @@ const { pathToFileURL } = require('node:url');
   const stage = await fs.mkdtemp(path.join(buildRoot, 'desktop-stage-'));
   await fs.cp(path.join(root, 'client'), path.join(stage, 'client'), { recursive: true });
   await fs.mkdir(path.join(stage, 'desktop'));
-  await fs.copyFile(path.join(root, 'desktop', 'main.cjs'), path.join(stage, 'desktop', 'main.cjs'));
+  for (const file of ['main.cjs', 'shell.cjs', 'preload.cjs'])
+    await fs.copyFile(path.join(root, 'desktop', file), path.join(stage, 'desktop', file));
+  await fs.mkdir(path.join(stage, 'desktop', 'assets'));
+  for (const file of ['app.ico', 'app.png', 'tray.png', 'tray-unread.png'])
+    await fs.copyFile(path.join(root, 'desktop', 'assets', file), path.join(stage, 'desktop', 'assets', file));
   await fs.writeFile(path.join(stage, 'package.json'), JSON.stringify({
     name: sourcePackage.name, version: sourcePackage.version,
     description: sourcePackage.description, main: sourcePackage.main,
@@ -36,6 +40,7 @@ const { pathToFileURL } = require('node:url');
   const results = await packager({
     dir: stage, out: destination, name: 'TeamRelay', executableName: 'TeamRelay',
     platform: 'win32', arch: 'x64', overwrite: true, asar: true,
+    icon: path.join(root, 'desktop', 'assets', 'app.ico'),
     electronVersion: dependencyRequire('electron/package.json').version,
     download: {
       cacheRoot: process.env.electron_config_cache,
@@ -46,6 +51,6 @@ const { pathToFileURL } = require('node:url');
     win32metadata: { CompanyName: '同频TeamPlay', FileDescription: '同频TeamPlay 小团队私有 IM', ProductName: '同频TeamPlay' },
     prune: true
   });
-  await fs.writeFile(path.join(destination, 'WINDOWS-README.txt'), '同频TeamPlay Windows x64 便携客户端\r\n\r\n打开 TeamRelay-win32-x64\\TeamRelay.exe。\r\n填写服务器根地址、团队用户名和密码；账号由管理员创建。\r\n客户端只连接服务器，不需要安装 Python。\r\n每个文件严格小于 100 MB。音视频无法预览时可下载到本机播放。\r\n此包未进行代码签名。\r\n', 'utf8');
+  await fs.writeFile(path.join(destination, 'WINDOWS-README.txt'), '同频TeamPlay Windows x64 便携客户端\r\n\r\n打开 TeamRelay-win32-x64\\TeamRelay.exe。\r\n填写团队地址、账号和密码；账号由管理员创建。\r\n最小化保留任务栏；关闭窗口收进托盘，继续接收消息。\r\n点击托盘图标打开聊天；右键选择“退出”退出客户端。\r\n后台新消息闪烁提醒；回到聊天停止闪烁。\r\n客户端只连接服务器，不需要安装 Python。\r\n每个文件严格小于 100 MB。音视频无法预览时可下载到本机播放。\r\n此包未进行代码签名。\r\n', 'utf8');
   results.forEach((output) => console.log(output));
 })().catch((error) => { console.error(error); process.exitCode = 1; });

@@ -1,5 +1,13 @@
 # 决策记录
 
+## ADR-015：托盘生命周期与前台已读
+
+2026-11-20。用户明确选最小化留任务栏、关闭藏托盘。退出由托盘菜单明确执行；第二实例恢复同用户目录原窗口。未读由服务器计数，前台、可见和实际打开的聊天共同决定自动已读；不因后台WebSocket更新就清空计数。桌面桥只传数量与前台状态，保留sandbox/来源校验，不把聊天内容/凭据交给主进程。
+
+## ADR-016：QA采用统一Trigger/Route与typed只读分析任务
+
+用户明确要求Super-agent架构。QA Source与IM重分析入口都先生成持久Trigger，经确定规则和只读Router再调度；本轮只设计，不以轮询直调模型或Desktop私有HTTP作为实现。QA使用授权服务主体，不伪造人类IM消息；kind=log-triage与代码执行/自动交付权限隔离。输入revision贯穿报告和发送门禁，Outbox重试不重复付费分析。技能/来源版本及保密范围见QA-TRIGGER-ROUTE与references/QA-TRIAGE-SOURCES。
+
 ## ADR-013：显示品牌与工程兼容标识分离
 
 2026-11-17，v0.3.2。依用户改名为精确的“同频TeamPlay”，当前页面/窗口和Windows产品属性统一；保留TeamRelay.exe、npm/环境配置/存储键和旧Electron app.setName('同频')，避免重置既有用户目录及自动交付产物路径。不做无关的布局重设计，不改历史报告。

@@ -1,5 +1,15 @@
 # 当前接续状态
 
+## 2026-11-20 · v0.3.3 托盘与QA流程设计
+
+当前D:/Work/codexproj/agent-IM已先安全同步0529feb后实施。先读DESKTOP-TRAY-v0.3.3、QA-TRIGGER-ROUTE、references/QA-TRIAGE-SOURCES及VERIFICATION-v0.3.3。Windows最小化留任务栏、关闭收托盘，后台当前会话不自动已读，点击恢复/右键退出，新消息低频标记与任务栏提醒；保留石墨/旧用户目录/TeamRelay兼容标识。新增preload只传数量与前台状态，未开放通用IPC/Node。
+
+QA部分按用户明确要求为统一Source→Trigger→Router→typed日志Worker→Outbox设计，新增缺陷与群贴编号重分析共同归属Thread。当前截图插件只是手动UI流程，不能调用Desktop私有路由冒充后台API；本机skill1.2.0与目标1.3.2不同，精确来源已脱敏记录。日志运行模块/监听尚未实现，也没安装/升级DSH、查询真实缺陷、下载业务日志或调用模型。已有A1/A2等代码任务缺口仍在，不因新设计门禁而声称已修。
+
+验证通过：26 Python/256桥接/9桌面/16模拟编排及五入口语法；9项真实Chrome/HTTP但模拟桌面桥的未读测试；7项实际打包Electron/Tray/IPC/HTTP（程序驱动原生事件，非人工系统托盘点击）；4张实际窗口1280×860/960×680批量检查；Impeccable detect=[]。打包ASAR16条目/12源码资产字节、PE0.3.3、ZIP74文件CRC/逐文件hash通过。ZIP162325631字节，SHA256 135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35。最终生成器仅补充便携说明，已验收的app/shell/preload来源字节保持一致。
+
+CSP/driver连接/无头焦点/最小化API假设/ASAR路径等夹具失败与更正保留在报告和忽略日志，未放宽产品安全。正式服务/DSH/Watchdog未启动，测试夹具已清理；0.3.3测试EXE与18200/18202未见存活。当前源码/新annotated v0.3.3及完整包按既有授权交付，最终远端回执随后记录，不能从提交前快照推定已上传。
+
 ## 2026-11-17 · 本检出接续准备
 
 当前D:/Work/CodexProjects/agent-bot-im已从6e6186a安全快进到5c5e676（产品v0.3.2）；初始主工作树干净，保留所有其他worktree。首次fetch失败后使用Windows既有代理的单次Git参数成功，无全局网络改动。远端产品tag对象/peeled commit及Release两资产uploaded/digest已只读确认。本轮使用新维护tag v0.3.2-handoff.2，不移动产品tag或重发Release，最终上传状态以Git实查为准。
