@@ -2,6 +2,8 @@
 
 ## 2026-11-20 · v0.3.3 托盘与QA流程设计
 
+实际交付回执：产品源码4dce522与新annotated v0.3.3已推送并核对远端branch/tag对象/peel；Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3 已发布、isDraft=false。ZIP162325631字节和校验文本两资产均uploaded，远端digest与本地一致。交接回执另用v0.3.3-handoff.1，不移动产品tag；QA自动分析仍未启用，正式服务/模型未启动的事实不变。
+
 当前D:/Work/codexproj/agent-IM已先安全同步0529feb后实施。先读DESKTOP-TRAY-v0.3.3、QA-TRIGGER-ROUTE、references/QA-TRIAGE-SOURCES及VERIFICATION-v0.3.3。Windows最小化留任务栏、关闭收托盘，后台当前会话不自动已读，点击恢复/右键退出，新消息低频标记与任务栏提醒；保留石墨/旧用户目录/TeamRelay兼容标识。新增preload只传数量与前台状态，未开放通用IPC/Node。
 
 QA部分按用户明确要求为统一Source→Trigger→Router→typed日志Worker→Outbox设计，新增缺陷与群贴编号重分析共同归属Thread。当前截图插件只是手动UI流程，不能调用Desktop私有路由冒充后台API；本机skill1.2.0与目标1.3.2不同，精确来源已脱敏记录。日志运行模块/监听尚未实现，也没安装/升级DSH、查询真实缺陷、下载业务日志或调用模型。已有A1/A2等代码任务缺口仍在，不因新设计门禁而声称已修。

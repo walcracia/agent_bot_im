@@ -17,9 +17,12 @@
     "source_version": "0.3.3",
     "release_tag": "v0.3.3",
     "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Pre-delivery snapshot; verify remote branch/tag peel and Release assets"
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "Product branch/tag object/peel and published Release asset sizes/states/digests confirmed; receipt does not move product tag",
+    "release_commit": "4dce522c58863f811bced060fe85f1f57aac2105",
+    "handoff_tag": "v0.3.3-handoff.1",
+    "windows_zip_sha256": "135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35"
   },
   "known_failures": [
     "Local model IM exact-match response had extra @dsh prefix; no retry",
@@ -32,7 +35,7 @@
     "Manual OS tray clicks, multi-monitor and long sleep/resume validation not executed"
   ],
   "updated_at": "2026-11-20",
-  "stage": "tray-verified-qa-design-pre-delivery",
+  "stage": "tray-published-qa-flow-designed",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -85,7 +88,8 @@
     "desktop_zip": "outputs/TeamRelay-portable.zip",
     "desktop_zip_sha256": "135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35",
     "verification_report": "outputs/VERIFICATION-v0.3.3.md",
-    "observation_only": "Temporary synthetic IM/profile fixtures stopped; prior other-checkout services are historical"
+    "observation_only": "Temporary synthetic IM/profile fixtures stopped; prior other-checkout services are historical",
+    "product_release_commit": "4dce522c58863f811bced060fe85f1f57aac2105"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",

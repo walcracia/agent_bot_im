@@ -232,3 +232,5 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 最终常规26 Python/256桥接/9桌面/16模拟编排与5入口语法通过；隔离Chrome未读9项（桥接模拟/焦点注入）与真实打包Electron/Tray/IPC7项（程序驱动事件）通过，4张实际双尺寸窗口集中看图无需修正，Impeccable detect=[]。最终包ASAR16条目/12源码资产字节、PE0.3.3、ZIP74文件CRC/逐文件hash通过，SHA256 135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35。仅最终便携说明补充托盘操作，应用代码与原生验收一致。
 
 失败记录保留：CSP夹具eval被拒后改测试端有界poll，不改产品CSP；一次driver连接失败未确证原因；headless失焦假设改明确故障注入且另有真窗口覆盖；最小化isVisible假设改user32只读样式核对；ASAR多层路径改平台join。均区分夹具与产品，未反复美化截图或重复模型。完整报告VERIFICATION-v0.3.3，正式服务/模型/QA监听未启动。下一阶段仅按新v0.3.3提交/推送及Release资产核验，远端回执更新HANDOFF/state。
+
+实际Git交付：4dce522及annotated v0.3.3已上传main，远端branch/tag对象/peel核对通过。Release先draft上传两资产，核对state/size/SHA256后正式发布，isDraft=false；ZIP与校验文本digest均一致。旧版本/tag/资产未移动。交接回执追加v0.3.3-handoff.1，QA设计未变为已启用，也未新增任何模型/业务数据操作。
