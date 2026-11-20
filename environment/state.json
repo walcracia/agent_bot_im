@@ -17,9 +17,13 @@
     "branch": "main",
     "source_version": "0.4.0",
     "release_tag": "v0.4.0",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Prepared; confirm branch and new annotated tag object/peel after push. Existing v0.3.3 desktop asset remains compatible."
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "Product branch/tag object/peel and published source-only Release confirmed remotely; handoff receipt uses separate tag, never moves product tag.",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.4.0",
+    "release_commit": "adde11e527ac37b4a8fd3992d998e3d73943f8fa",
+    "annotated_tag_object": "74a203ef24dfb2298aed77e820bb1dfa437965ae",
+    "handoff_tag": "v0.4.0-handoff.1"
   },
   "known_failures": [
     "MCP modern discovery/legacy restart incompatibility fixed before provider access",
@@ -32,11 +36,10 @@
     "A completed real model report under the new configurable policy has not been validated; current pilot is explicitly partial",
     "Pi/Hermes/OpenCode concrete adapters are not installed or validated; only trusted registration protocol exists",
     "Existing coding A1/A2 defects, OS sandbox/secret proxy, Tencent and long-running multi-host validation remain outside this iteration",
-    "QA has no reliable event cursor; same-ID attachment replacement needs explicit reanalysis",
-    "Git product/tag/receipt push awaiting confirmation below"
+    "QA has no reliable event cursor; same-ID attachment replacement needs explicit reanalysis"
   ],
   "updated_at": "2026-11-20",
-  "stage": "qa-skill-worker-implemented-partial-pilot-verified-awaiting-git",
+  "stage": "qa-skill-worker-published-real-partial",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -99,7 +102,10 @@
     "desktop_built": false,
     "desktop_compatible_version": "0.3.3",
     "verification_report": "outputs/VERIFICATION-v0.4.0.md",
-    "observation_only": "Service/control identities checked live; reread runtime/processes after restart. Private credentials, sessions and data do not clone."
+    "observation_only": "Service/control identities checked live; reread runtime/processes after restart. Private credentials, sessions and data do not clone.",
+    "product_release_commit": "adde11e527ac37b4a8fd3992d998e3d73943f8fa",
+    "default_startup_bound": true,
+    "source_pushed": true
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",

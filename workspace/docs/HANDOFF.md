@@ -2,6 +2,8 @@
 
 ## 2026-11-20 · v0.4.0 QA日志Worker与skill适配
 
+远端产品回执：源码adde11e527ac37b4a8fd3992d998e3d73943f8fa已推main；annotated v0.4.0对象74a203ef24dfb2298aed77e820bb1dfa437965ae及peel到该源码已用ls-remote核对。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.4.0 已公开，isDraft=false/isPrerelease=false；本轮仅源码Release，assets为空，v0.3.3 Windows资产保留。当前接续回执另用新v0.4.0-handoff.1，不移动产品tag；其自身SHA按Git查询，推送后再核对。
+
 先读QA-IMPLEMENTATION-v0.4.0、QA-OPERATIONS-v0.4.0与outputs/VERIFICATION-v0.4.0。用户最终角色定义：业务平台就是日志分析Worker，Worker经统一Trigger/Router接任务，把skill ID/参数/文件交执行适配服务，由本机Agent加载skill/日志工具，再校验JSON与产物、回传聊天。当前真实后端DSH，Pi/Hermes/OpenCode仅注册协议；时间可选、缺失仍初排，旧code A1/A2不宣称修复。
 
 实现Source/MCP完整基线、typed task/引用与订阅、管理员聊天跟踪、输入revision/按kind调度、固定skill1.3.2、下载/解包/行证据、实际Agent工具/额度、JSON与2报告产物、Outbox/认证附件、取消/恢复/partial。完整26 Python/409桥接/9桌面/16模拟编排及语法通过；真实隔离IM8流程、实际parser/stdio/文件/上传下载验收见报告，不算真实模型。
