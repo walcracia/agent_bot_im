@@ -1,5 +1,11 @@
 # 本机环境
 
+## v0.4.0 本检出
+
+当前源码v0.4.0，检出D:/Work/codexproj/agent-IM。本机Python3.12.16与隔离Node24.19.0，最终26 Python/409桥接/9桌面/16模拟启动及语法通过。运行前按本文件下方方式将environment/tools/node-v24.19.0-win-x64前置到本次进程PATH。默认start.ps1确认本机服务及当前DPAPI绑定的QA日志Super-agent；真实配置/数据/认证不随Git。
+
+日志业务角色/skill执行与配置见workspace/docs/QA-OPERATIONS-v0.4.0。skill安装脚本将固定1.3.2放忽略tools；不修改原DSH。需明确modelSelection时只配置本机选定模型标识，认证仍由DSH保存。当前单Bug试点额度1已用完，真实结果是partial程序初排与2报告，不是模型终稿；新默认读取/额度仅零模型回归，见outputs/VERIFICATION-v0.4.0。没有重打Windows包，现有v0.3.3客户端兼容。下方其他检出路径/运行事实为历史。
+
 ## 2026-11-17 当前检出恢复
 
 本次检出为D:/Work/CodexProjects/agent-bot-im，已快进到5c5e676（同频TeamPlay0.3.2）。本机现有venv Python3.12.15和已安装Node24.19.0可直接运行`environment/scripts/verify.ps1`，不需要下方历史检出的Node目录或PATH操作。完整26 Python/256 Node/16模拟编排及语法通过，详情见`../outputs/VERIFICATION-handoff-2026-11-17.md`。依赖不随Git传递，新机器仍按setup恢复。

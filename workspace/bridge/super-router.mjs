@@ -1,4 +1,5 @@
 import { isAutoCandidate } from './auto-router.mjs';
+import { routeTriageTriggers } from './triage-route.mjs';
 
 const ACTIONS = new Set(['ignore', 'new', 'speculate', 'followup', 'stop', 'status', 'resume']);
 const ACTIVE = new Set(['queued', 'preparing', 'running', 'interrupting', 'paused', 'ready', 'delivering']);
@@ -42,6 +43,7 @@ export function parseRoutes(raw, events, tasks, { allowProactive = false } = {})
 
 export class SuperRouter {
   constructor({ classify, projectId, allowProactive = false }) { Object.assign(this, { classify, projectId }); this.allowProactive = allowProactive === true; }
+  routeTriggers(triggers, context) { return routeTriageTriggers(triggers, context); }
   async route(events, { tasks, context }) {
     const decisions = [], candidates = [];
     for (const event of events) {

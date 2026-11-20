@@ -147,3 +147,7 @@ Remove-Item -LiteralPath .\environment\data\bridge\state.json.lock
 `node --test workspace/bridge/test/bridge.test.mjs` 验证过滤、游标、重发幂等、崩溃不自动重跑、锁与附件校验。其中 executor 是明确的测试替身，不能作为真实模型成功证据。真实官方握手命令如上。模型端到端验收需发送 `@dsh 请在任务目录写入 hello.txt，内容 bridge-ok，并汇报`，确认文件、会话轨迹、聊天结果均存在，再重启桥接验证结果不重复；此步骤会调用操作者配置的模型。
 
 本机已有Ollama的额外真实文字实验见 `LOCAL-MODEL-TEST.md`：纯SDK精确回复通过，真实IM回路返回了模型文字但多了@dsh前缀，严格exact-match失败后停止。`run-local-model-smoke.ps1` 可显式复现，使用本地CPU，不加入默认测试、不下载模型、不调用付费API。工具写文件验收仍未执行。
+
+## v0.4.0 日志分析 Worker
+
+QA与聊天来源进入统一Trigger/Router，业务Worker调用skill执行适配层、本机DSH实际加载skill与日志工具，核验JSON与报告文件后回传。配置与执行协议见 ../docs/QA-OPERATIONS-v0.4.0.md；当前设计见 ../docs/QA-IMPLEMENTATION-v0.4.0.md。时间可选，缺失照样初排；只有明确绑定项目/聊天及额度才启用。Pi/Hermes/OpenCode适配接口保留，当前默认仅DSH。

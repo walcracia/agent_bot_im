@@ -60,3 +60,10 @@ JSON 接口 `/api`，时间为 UTC ISO-8601（UI 按用户本地时区）；ID �
 - 回复仍使用 `/messages`。适配器自行按 @dsh 或私聊筛选、调用真实 Harness；client_id=`dsh-{event_id}`。接口不是无鉴权管理后门。
 
 静态客户端由服务器 `/` 托管，同时 Electron 用打包的本地 UI 连接指定 HTTP(S) 服务器；CORS 仅允许本地桌面来源/null（无 cookie auth），同源 web。真实 DSH 专用 channel 扩展若需要修改合同，先更新此文档并记录决策。
+# v0.4.0 日志执行内部协议
+
+本轮HTTP聊天/附件协议不变，新增Worker与执行适配层的本机协议，不提供未认证的日志HTTP服务。请求字段为taskId、inputRevision、固定skillId、parameters、inputFiles与私有executionContext；来源/项目/聊天由协调账本授权，不由模型提供。
+
+SkillExecutionService返回schemaVersion、taskId、inputRevision、skillId、backend、status(completed/partial)、result(严格8字段报告)、files(报告名/MIME/字节/SHA256/私有路径)、execution(会话数、生成/工具计数、技能与证明、可选可信limits)。私有路径只供执行/上传器，图引用和普通消息删除该字段。报告通过原附件上传、消息attachment_id与成员认证ticket提供下载。
+
+DSH任务MCP只暴露load_skill/list_inputs/read_evidence/run_parser四个日志工具；工具参数不能改命令、认证、工作目录、项目、limits或输出路径。实际预算由执行器配置，重复证据/相同解析范围缓存。status=partial表示预算终止后的可核验程序初排，并非模型终稿；未知终态、凭据或输入校验失败仍拒绝。完整契约/启用见QA-OPERATIONS-v0.4.0。

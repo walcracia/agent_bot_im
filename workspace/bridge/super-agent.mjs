@@ -13,6 +13,7 @@ import { SuperStore } from './super-store.mjs';
 import { SuperRouter } from './super-router.mjs';
 import { SuperCoordinator } from './super-coordinator.mjs';
 import { controlSecret, recoverManagedRuntime, reusableWatchdog, stopWatchdog } from './super-lifecycle.mjs';
+import { normalizeTriageConfig } from './triage-config.mjs';
 
 function sameSecret(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length < 24 || b.length < 24) return false;
@@ -63,6 +64,8 @@ export function normalizeConfig(config, configPath) {
     for (const [field, fallback] of [['repositoryPath', superConfig.repositoryPath], ['worktreesPath', '../build/super-releases'], ['statePath', '../data/super-agent/releases.json']]) superConfig.release[field] = resolve(base, superConfig.release[field] ?? fallback);
   }
   superConfig.projectId ??= 'agent-bot-im'; superConfig.maxWorkers ??= 2;
+  if (superConfig.codeEnabled !== undefined && typeof superConfig.codeEnabled !== 'boolean') throw new Error('Coding policy must be boolean.');
+  superConfig.triage = normalizeTriageConfig(superConfig.triage, base, config);
   if (superConfig.proactive?.enabled !== undefined && typeof superConfig.proactive.enabled !== 'boolean') throw new Error('Proactive policy must be explicitly boolean.');
   if (superConfig.initialCursor !== undefined && (!Number.isSafeInteger(superConfig.initialCursor) || superConfig.initialCursor < 0)) throw new Error('Invalid migration cursor.');
   if (!/^[A-Za-z0-9_.-]{1,80}$/u.test(superConfig.projectId) || !Number.isSafeInteger(superConfig.maxWorkers) || superConfig.maxWorkers < 1 || superConfig.maxWorkers > 8) throw new Error('Invalid project/concurrency configuration.');
@@ -92,7 +95,7 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
   if (!bot.is_bot || bot.username !== config.botUsername) throw new Error('IM assistant identity mismatch.');
   await validateManagedBinding(api, bot, config);
   const store = new SuperStore(config.statePath);
-  let coordinator, control, classifier, watchdog, watchdogOwnerPath, launchWatchdog, watchdogIdentity, runtime, runtimeStarted = false, stopping = false, failed = false, heartbeatTimer, routingJob, githubJob, inspectJob, inputJob;
+  let coordinator, control, classifier, watchdog, watchdogOwnerPath, launchWatchdog, watchdogIdentity, runtime, runtimeStarted = false, stopping = false, failed = false, heartbeatTimer, routingJob, githubJob, inspectJob, inputJob, qaJob, triageRuntime;
   let watchdogRestarts = 0, nextWatchdogCheck = 0, managedRecovered = false, watchdogPid = null;
   const secret = await controlSecret(join(dirname(config.statePath), 'controller.secret'), process.env.SUPER_AGENT_CONTROL_TOKEN);
   const taskTokenFor = id => typeof id === 'string' && /^T\d{6,}$/u.test(id) ? createHmac('sha256', secret).update(id).digest('hex') : '';
@@ -127,8 +130,10 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
     const delivery = options.github?.enabled ? (options.executionMode === 'remote-tools' || options.executionMode === 'remote-native' ? { deliver: task => pool.deliver(task), sync: task => pool.deliver(task) } : new GitDelivery(githubOptions)) : null;
     const release = options.release?.enabled ? new (await import('./super-release.mjs')).ReleasePipeline({ ...options.release,
       diagnosticsPath: join(options.runsPath, 'release-commands'), secretEnvNames: privateNames }) : null;
+    if (options.triage) triageRuntime = await (await import('./triage-runtime.mjs')).createTriageRuntime(options.triage, config.harness);
     coordinator = new SuperCoordinator({ state, store, config: { ...config, ...options }, api, bot,
-      router: new SuperRouter({ projectId: options.projectId, allowProactive: options.proactive?.enabled === true && Boolean(delivery), classify: prompt => classifier.classify(prompt) }), pool, delivery, release });
+      router: new SuperRouter({ projectId: options.projectId, allowProactive: options.proactive?.enabled === true && Boolean(delivery), classify: prompt => classifier.classify(prompt) }), pool, delivery, release,
+      ...(triageRuntime ? { triage: { ...triageRuntime, options: options.triage } } : {}) });
     if (!state.superAgent && options.initialCursor !== undefined) state.cursor = Math.max(state.cursor, options.initialCursor);
     if (!state.superAgent && options.initialCursor === undefined && options.processExistingMessages !== true) {
       const conversations = await api.request('/api/conversations');
@@ -186,7 +191,7 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
         '-RuntimeFile', runtime.path, '-InstanceId', runtime.record.instanceId], { windowsHide: true, timeout: 15000, maxBuffer: 16384 });
     }
     heartbeatTimer = setInterval(() => { coordinator.heartbeat().then(publish).catch(error => { console.error(JSON.stringify({ status: 'heartbeat-warning', error: error.message })); }); }, 5000);
-    let githubPolling = false, lastGithub = 0, lastInspection = 0;
+    let githubPolling = false, qaPolling = false, lastQa = 0, lastGithub = 0, lastInspection = 0;
     while (!stopping) {
       if (runtime) await runtime.checkStop();
       if (stopping) break;
@@ -200,6 +205,11 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
       } catch (error) { await coordinator.heartbeat('im', 'error', error.message); }
       if (!coordinator.routing) routingJob = coordinator.routePending().catch(error => console.error(JSON.stringify({ status: 'router-warning', error: error.message })));
       coordinator.kick();
+      if (coordinator.triage && !qaPolling && Date.now() - lastQa >= options.triage.pollMilliseconds) {
+        qaPolling = true; lastQa = Date.now();
+        qaJob = coordinator.triage.pollSources().catch(() => coordinator.heartbeat('qa', 'error', '问题系统暂时无法连接，检查点已保留。'))
+          .finally(() => { qaPolling = false; });
+      }
       if (launchWatchdog && Date.now() >= nextWatchdogCheck && !stopping) {
         nextWatchdogCheck = Date.now() + 30000;
         try {
@@ -226,12 +236,14 @@ export async function runSuperAgent({ config, configPath, values = {} }) {
   } catch (error) { failed = true; throw error; }
   finally {
     stopping = true; clearInterval(heartbeatTimer);
+    triageRuntime?.stopSources();
     // Watchdog owns only read-only invocations; allow its signal handler to reap them.
     if (!failed && watchdogOwnerPath && !await stopWatchdog(watchdogOwnerPath, watchdog)) console.error('Watchdog shutdown not confirmed; preserve its lease for inspection.');
     if (failed && watchdog?.connected) watchdog.disconnect(); // The independent recovery loop must survive a controller failure.
     if (coordinator) coordinator.stopping = true;
-    await classifier?.close(); await Promise.allSettled([routingJob, githubJob, inspectJob, inputJob]);
+    await classifier?.close(); await Promise.allSettled([routingJob, githubJob, inspectJob, inputJob, qaJob]);
     await coordinator?.close(); await control?.close(); await store.unlock();
+    await triageRuntime?.close();
     if (runtimeStarted) await runtime.finish(failed);
     process.off('SIGINT', stop); process.off('SIGTERM', stop);
   }

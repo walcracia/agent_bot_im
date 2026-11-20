@@ -1,5 +1,9 @@
 # v0.1 设计冻结（2026-11-07，Asia/Shanghai）
 
+## v0.4.0 当前QA日志范围
+
+[QA-IMPLEMENTATION-v0.4.0](QA-IMPLEMENTATION-v0.4.0.md)覆盖下方v0.3.3的QA待实现阶段。日志分析Worker就是业务平台角色，统一Trigger/Router按类型调度；Worker调用skill执行适配服务，由本机DSH Agent实际加载固定skill/日志工具，返回经校验JSON与报告附件，再由统一Outbox回聊天。Pi/Hermes/OpenCode保持可注册协议，未实现的后端如实列出。故障时间可选，缺失仍有界初排；真实/模拟与运行状态按最新HANDOFF/state/报告区分。
+
 ## v0.3.3 当前新增范围
 
 [DESKTOP-TRAY-v0.3.3](DESKTOP-TRAY-v0.3.3.md)先冻结再实现Windows托盘、窗口关闭/最小化及后台未读提醒；不迁移外壳或改变石墨布局。QA新Bug按用户要求的Trigger→Router→typed日志Worker→Outbox设计，见[QA-TRIGGER-ROUTE](QA-TRIGGER-ROUTE.md)。本轮日志部分仅设计与本机插件核对，不启用真实来源/批量分析；typed路由不能复用现有code new冒充已实现。安全与已知P1边界继续有效。

@@ -1,5 +1,13 @@
 # 验收计划
 
+## v0.4.0 QA日志与本机skill执行
+
+冻结标准见QA-IMPLEMENTATION-v0.4.0；生产路径为typed日志Worker→SkillExecutionService→DSH Agent实际load_skill/list_inputs/read_evidence/run_parser→校验JSON/产物→Outbox/认证附件。常规verify仅合成QA/假模型，新增实际stdio/固定parser/HTTP/SQLite/文件hash与安全压缩包测试，不算真实模型。
+
+environment/scripts/verify-qa-flow.py覆盖真实隔离IM/持久StateStore/基线/统一T号/ACK丢失与重启幂等/跨群403/取消/409/撤权8流程，临时服务和库自动清理。triage-attachments专项实际FastAPI multipart与中文文件/哈希/固定client_id，model0。
+
+真实DSH预检使用合成文件，llm/stream在provider前阻断，核对4工具/2400输出预算，不得记作已完成分析。真实单Bug需独立试点，初基线不跑历史，手动历史请求明确标识，最多1个Agent分析会话；旧真实试点内部上限6/12；交付默认12/32及缓存/批量读取只做零模型新回归，不能冒称新默认已生成真实终稿。预处理容量/OOM/协议接缝失败按实记录；模型0与真实模型必须区分。结果与剩余项见outputs/VERIFICATION-v0.4.0及HANDOFF/state。
+
 ## v0.3.3 托盘与未读
 
 标准先冻结DESKTOP-TRAY-v0.3.3；实际结果见outputs/VERIFICATION-v0.3.3。完整verify为26 Python/256桥接/9桌面/16模拟启动及5入口语法通过。verify-desktop-tray-ui.py为9项真实HTTP/Chrome、模拟桌面桥及焦点注入；verify-desktop-native.py/.mjs为7项实际打包Electron/Tray/IPC/IM、合成账号与隔离profile，原生事件程序驱动非人工托盘点选。4张实际窗口双尺寸批量检查，无修正；Impeccable detect=[]。

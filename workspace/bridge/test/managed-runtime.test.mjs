@@ -77,10 +77,11 @@ test('a permanent publish error rejects that call without poisoning subsequent p
     return rename(from, to);
   }, async () => {
     await assert.rejects(runtime.publish('listening', { taskStatus: 'ready' }), { code: 'EIO' });
+    assert.equal(attempts, 1, 'A permanent EIO must reject without retrying that publication.');
     assert.deepEqual(await json(path), before);
     await runtime.publish('listening', { taskStatus: 'paused' });
   });
-  assert.equal(attempts, 2, 'EIO should not be retried, and the next publication must run.');
+  assert.ok(attempts >= 2, 'The following publication must run; its own Windows sharing retries are allowed.');
   const after = await json(path);
   assert.equal(after.instanceId, before.instanceId);
   assert.equal(after.pid, before.pid);

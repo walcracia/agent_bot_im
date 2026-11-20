@@ -1,5 +1,11 @@
 # agent-IM 恢复与接续
 
+## v0.4.0 QA日志业务Worker
+
+先读QA-IMPLEMENTATION-v0.4.0、QA-OPERATIONS-v0.4.0、最新HANDOFF/state与验收报告。用户最终澄清：业务平台具体是Super-agent日志分析Worker；它提交skill ID/参数/文件给执行适配服务，由本机Agent加载skill和工具排查，再交Worker/Outbox回聊天。当前首适配器DSH，其他后端只有注册协议。故障时间可选，缺失仍初排，不猜时区/确定因果。
+
+真实绑定/账号/日志/SSO缓存/DPAPI/运行账本不在Git，克隆后不能假定监听在线。固定skill使用environment/scripts/install-triage-skill.py安装1.3.2及24文件hash；不要把原Desktop手动插件私有路由当后台API。原代码A1/A2仍未修。本轮Windows界面/托盘不变，v0.3.3客户端兼容v0.4.0服务/桥接，未因改源码就声称新EXE已构建。
+
 ## v0.3.3 托盘与QA日志设计
 
 Windows客户端最小化留任务栏、关闭收托盘，继续收消息；点击图标恢复，右键“退出”退出客户端。后台不自动标读，前台只读当前会话；保留旧用户目录/TeamRelay路径。规范DESKTOP-TRAY-v0.3.3，当前包outputs/desktop-v0.3.3/TeamRelay-win32-x64/TeamRelay.exe，或下载v0.3.3 Release；从Git恢复需重建而非假定EXE存在。

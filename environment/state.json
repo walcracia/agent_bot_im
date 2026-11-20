@@ -1,41 +1,42 @@
 {
-  "version": "0.3.3",
+  "version": "0.4.0",
   "verified": [
-    "26 Python, 256 bridge Node, 9 desktop lifecycle/IPC and 16 mocked startup checks; five JS syntax entries",
-    "9 isolated real Chrome/HTTP unread checks with mocked desktop bridge and explicit document-focus fault injection",
-    "7 real packaged Electron/Tray/IPC/temporary IM checks; programmatic native events, not manual OS tray clicks",
-    "Four native screenshots at 1280x860 and 960x680; Impeccable detector []",
-    "ASAR 16-entry allowlist and 12 exact source/asset byte comparisons; PE 0.3.3 branding",
-    "Full ZIP 74 files, CRC and every-file SHA256 matched",
-    "Local QA plugin and public skill/registry metadata read-only inspected; typed Trigger/Route design documented, not enabled"
+    "26 Python, 409 bridge Node, 9 desktop IPC/lifecycle and 16 mocked startup checks; five syntax entries",
+    "115 final targeted policy/skill/triage tests; actual pinned parser and stdio with synthetic data, no additional model calls",
+    "8 real isolated IM/SQLite/StateStore flows including lost ACK, restart, 409, revocation and zero duplicate client IDs",
+    "One authorized real QA project: 230 historical issues baselined, zero historical tasks",
+    "One actual DSH analysis with pinned skill, parser and 42 read evidence lines; 6 provider requests and 11 task tool calls under the prior policy",
+    "Real analysis stopped at prior reading limit; original terminated attempt recovered as explicit partial, not a completed model diagnosis",
+    "Two report files sent once and authenticated downloads checked for exact size/SHA256; recovery added zero model calls",
+    "New configurable 12/32 policy and batched/cached evidence/parser verified without another real model"
   ],
   "desktop": "outputs/desktop-v0.3.3/TeamRelay-win32-x64/TeamRelay.exe",
   "project": "agent-bot-im",
   "github": {
     "repository": "https://github.com/walcracia/agent_bot_im",
     "branch": "main",
-    "source_version": "0.3.3",
-    "release_tag": "v0.3.3",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3",
-    "source_pushed": true,
-    "release_published": true,
-    "delivery_status": "Product branch/tag object/peel and published Release asset sizes/states/digests confirmed; receipt does not move product tag",
-    "release_commit": "4dce522c58863f811bced060fe85f1f57aac2105",
-    "handoff_tag": "v0.3.3-handoff.1",
-    "windows_zip_sha256": "135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35"
+    "source_version": "0.4.0",
+    "release_tag": "v0.4.0",
+    "source_pushed": false,
+    "release_published": false,
+    "delivery_status": "Prepared; confirm branch and new annotated tag object/peel after push. Existing v0.3.3 desktop asset remains compatible."
   },
   "known_failures": [
-    "Local model IM exact-match response had extra @dsh prefix; no retry",
-    "One Windows managed-CIM registration wait timed out in initial 255/256 run; unchanged targeted 3/3 and cold full 256/256 passed; cause unconfirmed"
+    "MCP modern discovery/legacy restart incompatibility fixed before provider access",
+    "128MB expanded-input denial, full-directory 512MB parser OOM, archive/leaf mismatch and default model credential rejection retained and corrected; no real provider request for these setup failures",
+    "Prior 6/12/64k reading policy stopped the real analysis; published explicit partial and kept the failure/limits record, no extra model call",
+    "One full 386/387 run exposed an old permanent-EIO test counting legitimate retries of its later publication; per-call assertion sharpened, final 409/409 passed",
+    "Private raw failures and fixture corrections are preserved under ignored verification/logs; see sanitized report"
   ],
   "pending": [
-    "Implement the designed unified QA Trigger/Route/typed log-triage pipeline and authorize a project-to-chat binding plus bounded real acceptance",
-    "Existing A1/A2 coding delivery defects remain; QA design does not fix them",
-    "Cloud secret proxy/execution isolation and Tencent deployment remain outside this iteration",
-    "Manual OS tray clicks, multi-monitor and long sleep/resume validation not executed"
+    "A completed real model report under the new configurable policy has not been validated; current pilot is explicitly partial",
+    "Pi/Hermes/OpenCode concrete adapters are not installed or validated; only trusted registration protocol exists",
+    "Existing coding A1/A2 defects, OS sandbox/secret proxy, Tencent and long-running multi-host validation remain outside this iteration",
+    "QA has no reliable event cursor; same-ID attachment replacement needs explicit reanalysis",
+    "Git product/tag/receipt push awaiting confirmation below"
   ],
   "updated_at": "2026-11-20",
-  "stage": "tray-published-qa-flow-designed",
+  "stage": "qa-skill-worker-implemented-partial-pilot-verified-awaiting-git",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -68,28 +69,37 @@
   "current_checkout": {
     "date": "2026-11-20",
     "project_root": "D:/Work/codexproj/agent-IM",
-    "source_base_commit": "0529febd30a436b82303cc17596ba5bb502d24ef",
-    "source_version": "0.3.3",
+    "source_base_commit": "bb6598736d6d78ea114c1bdb3ba535634e6a288d",
+    "source_version": "0.4.0",
     "python": "3.12.16",
     "node": "24.19.0 project-local",
-    "service_started": false,
-    "local_chat_listener_running": false,
+    "service_started": true,
+    "local_chat_listener_running": true,
     "formal_watchdog_started": false,
-    "dsh_live_calls_this_iteration": 0,
-    "desktop_built": true,
-    "native_desktop_window_verified_this_iteration": true,
-    "native_scope": "Real packaged Electron/Tray/window/IPC driven by Playwright; no manual OS tray click",
-    "isolated_ui_verified_this_iteration": true,
-    "qa_trigger_route_implemented": false,
-    "qa_auto_analysis_enabled": false,
-    "qa_business_data_queried": false,
+    "coding_enabled_in_pilot": false,
+    "qa_trigger_route_implemented": true,
+    "qa_auto_source_enabled": true,
+    "qa_business_data_queried": true,
+    "qa_project_binding": "One user-selected project/chat; exact mapping ignored locally",
+    "qa_baseline_issues": 230,
+    "qa_live_analysis_budget_total": 1,
+    "qa_live_analysis_budget_used": 1,
+    "qa_live_result_status": "partial",
+    "qa_real_completed_model_report": false,
+    "qa_agent_sessions": 1,
+    "qa_real_provider_requests": 6,
+    "qa_real_task_tool_calls": 11,
+    "qa_evidence_lines_read": 42,
+    "qa_artifacts_sent": 2,
+    "qa_artifacts_authenticated_downloads_verified": true,
+    "qa_recovery_extra_model_requests": 0,
+    "new_policy_real_model_validated": false,
     "dsh_installation_modified": false,
     "cloud_security_implemented": false,
-    "desktop_zip": "outputs/TeamRelay-portable.zip",
-    "desktop_zip_sha256": "135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35",
-    "verification_report": "outputs/VERIFICATION-v0.3.3.md",
-    "observation_only": "Temporary synthetic IM/profile fixtures stopped; prior other-checkout services are historical",
-    "product_release_commit": "4dce522c58863f811bced060fe85f1f57aac2105"
+    "desktop_built": false,
+    "desktop_compatible_version": "0.3.3",
+    "verification_report": "outputs/VERIFICATION-v0.4.0.md",
+    "observation_only": "Service/control identities checked live; reread runtime/processes after restart. Private credentials, sessions and data do not clone."
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -478,5 +488,60 @@
     "tag": "v0.3.2-handoff.2",
     "scope": "Restoration records only; no product release or bug fixes",
     "remote_delivery": "Confirm main, tag object and peeled commit after push; snapshot does not contain its own commit SHA"
-  }
+  },
+  "iteration_history": [
+    {
+      "version": "0.3.3",
+      "updated_at": "2026-11-20",
+      "stage": "tray-published-qa-flow-designed",
+      "verified": [
+        "26 Python, 256 bridge Node, 9 desktop lifecycle/IPC and 16 mocked startup checks; five JS syntax entries",
+        "9 isolated real Chrome/HTTP unread checks with mocked desktop bridge and explicit document-focus fault injection",
+        "7 real packaged Electron/Tray/IPC/temporary IM checks; programmatic native events, not manual OS tray clicks",
+        "Four native screenshots at 1280x860 and 960x680; Impeccable detector []",
+        "ASAR 16-entry allowlist and 12 exact source/asset byte comparisons; PE 0.3.3 branding",
+        "Full ZIP 74 files, CRC and every-file SHA256 matched",
+        "Local QA plugin and public skill/registry metadata read-only inspected; typed Trigger/Route design documented, not enabled"
+      ],
+      "github": {
+        "repository": "https://github.com/walcracia/agent_bot_im",
+        "branch": "main",
+        "source_version": "0.3.3",
+        "release_tag": "v0.3.3",
+        "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3",
+        "source_pushed": true,
+        "release_published": true,
+        "delivery_status": "Product branch/tag object/peel and published Release asset sizes/states/digests confirmed; receipt does not move product tag",
+        "release_commit": "4dce522c58863f811bced060fe85f1f57aac2105",
+        "handoff_tag": "v0.3.3-handoff.1",
+        "windows_zip_sha256": "135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35"
+      },
+      "current_checkout": {
+        "date": "2026-11-20",
+        "project_root": "D:/Work/codexproj/agent-IM",
+        "source_base_commit": "0529febd30a436b82303cc17596ba5bb502d24ef",
+        "source_version": "0.3.3",
+        "python": "3.12.16",
+        "node": "24.19.0 project-local",
+        "service_started": false,
+        "local_chat_listener_running": false,
+        "formal_watchdog_started": false,
+        "dsh_live_calls_this_iteration": 0,
+        "desktop_built": true,
+        "native_desktop_window_verified_this_iteration": true,
+        "native_scope": "Real packaged Electron/Tray/window/IPC driven by Playwright; no manual OS tray click",
+        "isolated_ui_verified_this_iteration": true,
+        "qa_trigger_route_implemented": false,
+        "qa_auto_analysis_enabled": false,
+        "qa_business_data_queried": false,
+        "dsh_installation_modified": false,
+        "cloud_security_implemented": false,
+        "desktop_zip": "outputs/TeamRelay-portable.zip",
+        "desktop_zip_sha256": "135e0a477329513c18a183926301e4c5a463005709465530821449a0ed2ffe35",
+        "verification_report": "outputs/VERIFICATION-v0.3.3.md",
+        "observation_only": "Temporary synthetic IM/profile fixtures stopped; prior other-checkout services are historical",
+        "product_release_commit": "4dce522c58863f811bced060fe85f1f57aac2105"
+      }
+    }
+  ]
 }

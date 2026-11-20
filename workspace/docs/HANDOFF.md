@@ -1,5 +1,17 @@
 # 当前接续状态
 
+## 2026-11-20 · v0.4.0 QA日志Worker与skill适配
+
+先读QA-IMPLEMENTATION-v0.4.0、QA-OPERATIONS-v0.4.0与outputs/VERIFICATION-v0.4.0。用户最终角色定义：业务平台就是日志分析Worker，Worker经统一Trigger/Router接任务，把skill ID/参数/文件交执行适配服务，由本机Agent加载skill/日志工具，再校验JSON与产物、回传聊天。当前真实后端DSH，Pi/Hermes/OpenCode仅注册协议；时间可选、缺失仍初排，旧code A1/A2不宣称修复。
+
+实现Source/MCP完整基线、typed task/引用与订阅、管理员聊天跟踪、输入revision/按kind调度、固定skill1.3.2、下载/解包/行证据、实际Agent工具/额度、JSON与2报告产物、Outbox/认证附件、取消/恢复/partial。完整26 Python/409桥接/9桌面/16模拟编排及语法通过；真实隔离IM8流程、实际parser/stdio/文件/上传下载验收见报告，不算真实模型。
+
+真实单项目230问题基线0历史任务；1个有日志的历史Bug明确手动触发。实际DSH旧6轮/11工具加载skill、解析并读42证据，但到阅读上限未形成终稿。原生进程/收据终态核对后零追加模型收集原attempt为partial，2报告已发送且成员认证下载SHA/唯一消息核对通过；保留原failure/预算，不标completed诊断。新默认12轮/32工具、批量60、去重证据/解析缓存与可信可配置limits是在用户追问后修正，只做隔离回归，没有追加真实模型终稿。
+
+真实预处理容量/OOM、SDK探测重启、中间archive清单、默认headless缺凭据、旧Windows测试计数等失败全部在报告记录；未知/已发生模型调用不得用未发送预算的人工纠正流程自动重做。只有确定预算终止且证明齐全才可partial。真实项目/聊天/凭据/日志/原生记录只在忽略配置/数据，不能进Git。
+
+本机默认start已绑定单独日志助手和结果聊天；18200服务与18202控制器实际运行状态须实查。试点总/日额度仍1且已用完，新默认没有自动增次数；Watchdog/代码在本机试点配置关闭。源码v0.4.0，Windows界面不变，v0.3.3客户端兼容；未重打EXE/部署腾讯。Git新tag/push最终回执随后追加，不从本条提交前快照推定已上传。
+
 ## 2026-11-20 · v0.3.3 托盘与QA流程设计
 
 实际交付回执：产品源码4dce522与新annotated v0.3.3已推送并核对远端branch/tag对象/peel；Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3 已发布、isDraft=false。ZIP162325631字节和校验文本两资产均uploaded，远端digest与本地一致。交接回执另用v0.3.3-handoff.1，不移动产品tag；QA自动分析仍未启用，正式服务/模型未启动的事实不变。
