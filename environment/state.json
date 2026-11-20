@@ -18,13 +18,14 @@
     "branch": "main",
     "source_version": "0.4.1",
     "release_tag": "v0.4.1",
-    "source_pushed": false,
+    "source_pushed": true,
     "release_published": false,
-    "delivery_status": "Local verification complete; product commit/tag/push pending live remote verification. No new Release or EXE.",
+    "delivery_status": "Product main/tag object/peel confirmed remotely. Source-only tag; no new Release/EXE. Separate handoff receipt never moves the product tag.",
     "release_url": null,
-    "release_commit": null,
-    "annotated_tag_object": null,
-    "handoff_tag": "v0.4.1-handoff.1"
+    "release_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
+    "annotated_tag_object": "1f0815f2e9cb4d132436a076f9e605570c703901",
+    "handoff_tag": "v0.4.1-handoff.1",
+    "source_commit": "5cf6b093868e2c197880f1181f8081766a24c65a"
   },
   "known_failures": [
     "Preflight string file ID rejected before model; sampling success-code crowding corrected using actual logs before execution",
@@ -38,11 +39,10 @@
     "QA pilot cumulative real analysis allowance is exhausted; normal scans and report download remain available, further model work requires new trusted allowance",
     "Pi/Hermes/OpenCode concrete adapters remain uninstalled and unvalidated",
     "Existing coding A1/A2 defects, OS sandbox/secret proxy, Tencent and long-running multi-host verification remain outside this iteration",
-    "QA source has no reliable event cursor; same-ID attachment replacement needs explicit reanalysis",
-    "Final source commit, new annotated product tag and push to be verified remotely before marking delivered"
+    "QA source has no reliable event cursor; same-ID attachment replacement needs explicit reanalysis"
   ],
   "updated_at": "2026-11-20",
-  "stage": "qa-skill-native-completed-im-download-verified-git-pending",
+  "stage": "qa-skill-native-completed-im-download-verified-published",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -106,9 +106,9 @@
     "desktop_compatible_version": "0.3.3",
     "verification_report": "outputs/VERIFICATION-v0.4.1.md",
     "observation_only": true,
-    "product_release_commit": null,
+    "product_release_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
     "default_startup_bound": true,
-    "source_pushed": false,
+    "source_pushed": true,
     "qa_real_provider_requests_total_this_iteration": 15,
     "qa_report_evidence_references": 37
   },
@@ -495,10 +495,10 @@
   },
   "display_name": "同频TeamPlay",
   "handoff_maintenance": {
-    "date": "2026-11-17",
-    "tag": "v0.3.2-handoff.2",
-    "scope": "Restoration records only; no product release or bug fixes",
-    "remote_delivery": "Confirm main, tag object and peeled commit after push; snapshot does not contain its own commit SHA"
+    "date": "2026-11-20",
+    "tag": "v0.4.1-handoff.1",
+    "source_product_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
+    "scope": "Published product remote receipt and final passed validation metadata; own commit is queried from Git."
   },
   "iteration_history": [
     {

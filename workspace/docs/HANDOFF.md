@@ -2,6 +2,8 @@
 
 ## 2026-11-20 · v0.4.1 skill直出与真实全程
 
+实际Git回执：产品源码5cf6b093868e2c197880f1181f8081766a24c65a已推main；新annotated v0.4.1对象1f0815f2e9cb4d132436a076f9e605570c703901及peel到产品源码均由ls-remote核对。只交付源码tag，未新增GitHub Release或Windows包。接续回执另用新v0.4.1-handoff.1，其自身SHA按Git查询，禁止移动v0.4.1。本段记录的是已经查询成功的产品回执，不推定回执提交自身已上传。
+
 先读QA-ACCEPTANCE-v0.4.1、outputs/VERIFICATION-v0.4.1及PROCESS最新段。用户要求直接调用skill、直接交付其结论，不添加解释现象等额外要求，不以partial/paused算完成。默认QA编号分析不自动注入整段标题/描述，明确聊天问题说明才传symptom。报告保留模型判断及其自身缺口；缺时间不强制降可信度/责任方。
 
 取证修复：小批固定parser定位、实际清单行及上下文、文件/类型平衡、失败高于成功码，安全服务主机/接口保留，隐藏密钥/下载参数。流式扫描与回读2M行/320M字符，Agent仍最多60条/48k，四工具不增权限。可信reasoningEffort可与原插件对齐，本机off仅写任务自身patch。
