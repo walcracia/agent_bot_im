@@ -50,7 +50,7 @@ test('missing logs wait; missing description/timezone/date stays preliminary and
   const noDate = snapshot({ window: { from: '10:00', to: '10:01', timeZone: 'Asia/Shanghai' } }); noDate.issue.openedAt = '2026-11-20T02:00:00Z';
   const preliminary = await f.worker.run(noDate);
   assert.equal(preliminary.status, 'completed'); assert.equal(preliminary.report.mode, 'preliminary');
-  assert.equal(preliminary.report.window.date, null); assert.match(preliminary.text, /日志初排/);
+  assert.equal(preliminary.report.window.date, null); assert.match(preliminary.text, /日志分析/);
   const noDescription = snapshot(); delete noDescription.issue.description;
   assert.equal((await f.worker.run(noDescription)).status, 'completed');
   assert.equal(inspectTriageInputs(snapshot({ window: { date: '2026-02-30', from: '10:00', to: '10:01', timeZone: 'UTC' } })).status, 'waiting_input');
@@ -66,7 +66,7 @@ test('synthetic parser path: exact revision, windowed numbered evidence, redacti
   assert.equal(evidence.length, 1); assert.equal(evidence[0].line, 2); assert.equal(evidence[0].time, '2026-11-20T02:00:00.000Z');
   assert.match(evidence[0].text, /已隐藏/); assert.ok(!JSON.stringify(f.seen()).includes('private-token'));
   assert.ok(!JSON.stringify(f.seen()).includes('private.example')); assert.equal(f.seen().issue.no, 'DEMO-42');
-  assert.match(result.text, /初步判断/); assert.match(result.text, /com.carota.log:2/); assert.equal(result.manifest.attachments[0].bytes, Buffer.byteLength(LOG));
+  assert.match(result.text, /日志分析/); assert.match(result.text, /com.carota.log:2/); assert.equal(result.manifest.attachments[0].bytes, Buffer.byteLength(LOG));
   assert.match(result.manifest.attachments[0].sha256, /^[a-f0-9]{64}$/);
 });
 
@@ -321,15 +321,14 @@ test('opaque attachments still return an honest zero-model preliminary report; s
   assert.equal(inspectTriageInputs(snapshot({ window: { timeZone: 'not-a-zone' } })).status, 'waiting_input');
 });
 
-async function serviceResult(request, { partial = false } = {}) {
+async function serviceResult(request, { partial = false, judgement = {} } = {}) {
   const payload = request.executionContext.payload;
-  const result = validateModelReport(modelReport(payload), payload);
+  const result = validateModelReport({ ...modelReport(payload), ...judgement }, payload);
   if (partial) {
     result.conclusion = '助手未完成完整判断，当前只提供已核对的日志线索，根因待验证。';
     result.confidence = 'low'; result.responsibility = '待验证';
     result.limitations.push('达到阅读上限，未形成完整判断，本次未追加模型调用。');
   }
-  if (payload.mode === 'preliminary') { result.confidence = 'low'; result.responsibility = '待验证'; }
   const files = [];
   for (const [name, mime, content] of [['report.json', 'application/json', JSON.stringify(result, null, 2)],
     ['报告.txt', 'text/plain', renderReport(result, payload)]]) {
@@ -378,14 +377,28 @@ test('partial status cannot bypass strict report references, artifact hashes or 
   }
 });
 
-test('skill execution skips the full-directory pre-parser and receives pinned skill/actual inputs once after the durable guard', async t => {
-  const f = await fixture(t, { parserSource: "require('node:fs').writeFileSync('unexpected-preparser.txt', 'ran'); throw new Error('full-directory pre-parser must not run');" }), order = [];
+const PREPARATION_PARSER = String.raw`
+const fs = require('node:fs'), path = require('node:path'), root = process.argv[2], files = [];
+function walk(directory) { for (const item of fs.readdirSync(directory, { withFileTypes: true })) { const name=path.join(directory,item.name); if(item.isDirectory())walk(name); else files.push(name); } }
+walk(root);
+if(files.length>3 || files.reduce((sum,file)=>sum+fs.statSync(file).size,0)>16000000 || !process.execArgv.includes('--max-old-space-size=512')) throw Error('Unbounded preparation');
+const findings=files.map(file=>({summary:'Synthetic parser-located evidence',evidence:[{file,line:fs.readFileSync(file,'utf8').split('\n').findIndex(line=>line.includes('ERROR'))+1}]}));
+console.log(JSON.stringify({findings,filesUsed:files.map(file=>({file,type:'synthetic'}))}));
+`;
+
+test('skill execution prepares bounded parser evidence then receives pinned skill/actual inputs after the durable guard', async t => {
+  const f = await fixture(t, { parserSource: PREPARATION_PARSER }), order = [];
   let runDirectory;
   f.worker.executionService = { async execute(request, { signal, beforeExecute }) {
     order.push('validate'); assert.equal(signal.aborted, false);
     runDirectory = dirname(request.executionContext.directory);
-    assert.equal(existsSync(join(runDirectory, 'unexpected-preparser.txt')), false);
-    assert.deepEqual(request.executionContext.payload.parserSummary, []);
+    const manifest = JSON.parse(await readFile(join(runDirectory, 'manifest.json'), 'utf8'));
+    assert.equal(manifest.preparation.agentProof, false); assert.equal(manifest.preparation.parserBatches.length, 1);
+    assert.equal(manifest.preparation.parserBatches[0].status, 'completed');
+    assert.equal(manifest.preparation.findingCount, 1);
+    assert.equal(request.executionContext.payload.parserSummary.length, 1);
+    const cited = request.executionContext.payload.parserSummary[0].evidenceIds;
+    assert.ok(cited.some(id => request.executionContext.payload.evidence.find(item => item.id === id)?.line === 2));
     assert.ok(request.executionContext.payload.limitations.some(text => text.includes('由助手选择有限日志解析')));
     assert.equal(request.skillId, 'ota-log-triage@1.3.2'); assert.equal(request.taskId, 'T000001'); assert.equal(request.inputRevision, 2);
     assert.equal(request.parameters.mode, 'windowed'); assert.equal(request.parameters.window.timeZone, 'Asia/Shanghai');
@@ -403,8 +416,47 @@ test('skill execution skips the full-directory pre-parser and receives pinned sk
   assert.equal(result.files.length, 2); assert.equal(result.manifest.outputs.length, 2);
   assert.ok(result.manifest.outputs.every(file => !Object.hasOwn(file, 'pathPrivate')));
   assert.ok(!result.text.includes('providerRequests') && !result.text.includes('skillLoaded'));
-  assert.match(result.text, /未覆盖全部材料/);
-  assert.equal(existsSync(join(runDirectory, 'unexpected-preparser.txt')), false);
+  assert.match(result.text, /现有证据不足以确认最终根因/); assert.equal(result.manifest.preparation.coverage, 'partial');
+});
+
+test('preparation balances OTA/slave/QNX/DE files across no more than four small batches and keeps original relative names and hashes', async t => {
+  const entries = [];
+  for (let index = 0; index < 4; index++) for (const [kind, name, marker] of [
+    ['ota', 'com.carota.log', 'CloudTransmitter'], ['slave', 'slave-da.log', 'Starting slave-da'],
+    ['qnx', 'tp_client.log', 'tpclient_main.c'], ['de', 'de.log', 'guds_ssmgr.c'],
+  ]) entries.push([`${kind}-${index}/${name}`, `2026-11-20 10:00:00 ${marker} ERROR synthetic evidence ${index}\n`]);
+  const original = new Map(entries.map(([name, text]) => [name, createHash('sha256').update(text).digest('hex')]));
+  const f = await fixture(t, { name: 'logs.zip', data: zip(entries), parserSource: PREPARATION_PARSER });
+  f.worker.executionService = { async execute(request, { beforeExecute }) {
+    const manifest = JSON.parse(await readFile(join(dirname(request.executionContext.directory), 'manifest.json'), 'utf8'));
+    const preparation = manifest.preparation;
+    assert.equal(preparation.parserBatches.length, 4); assert.equal(preparation.selectedFiles, 12); assert.equal(preparation.omittedFiles, 4);
+    assert.equal(preparation.agentProof, false); assert.equal(preparation.coverage, 'partial');
+    const selected = preparation.parserBatches.flatMap(batch => batch.files);
+    for (const batch of preparation.parserBatches) { assert.ok(batch.files.length <= 3); assert.ok(batch.bytes <= 16000000); assert.equal(batch.status, 'completed'); }
+    for (const kind of ['ota', 'slave', 'qnx', 'de']) assert.equal(selected.filter(file => file.path.includes('/' + kind + '-')).length, 3);
+    for (const file of selected) {
+      const originalName = [...original.keys()].find(name => file.path.endsWith('/' + name));
+      assert.equal(file.sha256, original.get(originalName));
+      assert.equal(createHash('sha256').update(await readFile(join(request.executionContext.directory, file.path))).digest('hex'), file.sha256);
+    }
+    assert.ok(request.executionContext.payload.parserSummary.length > 0);
+    await beforeExecute(); return serviceResult(request);
+  } };
+  const result = await f.worker.run(snapshot());
+  assert.equal(result.status, 'completed'); assert.equal(f.calls(), 0); assert.equal(result.manifest.preparation.parserBatches.length, 4);
+});
+
+test('missing fault time preserves an evidence-based model judgement in legacy and verified service reports', async t => {
+  const judgement = { confidence: 'medium', responsibility: '服务端返回码需优先核对' };
+  const legacy = await fixture(t, { model: payload => ({ ...modelReport(payload), ...judgement }) });
+  const direct = await legacy.worker.run(snapshot({ window: undefined }));
+  assert.equal(direct.report.mode, 'preliminary'); assert.equal(direct.report.confidence, 'medium'); assert.equal(direct.report.responsibility, judgement.responsibility);
+  const service = await fixture(t);
+  service.worker.executionService = { async execute(request, { beforeExecute }) { await beforeExecute(); return serviceResult(request, { judgement }); } };
+  const result = await service.worker.run(snapshot({ window: undefined }));
+  assert.equal(result.status, 'completed'); assert.equal(result.report.mode, 'preliminary'); assert.equal(result.report.confidence, 'medium');
+  assert.equal(result.report.responsibility, judgement.responsibility); assert.equal(result.files.length, 2);
 });
 
 test('unverified or excessive skill execution proof and out-of-scope artifacts prevent completion', async t => {

@@ -18,9 +18,9 @@ const normalizeZone = text => /^(?:UTC\+08:00|UTC\+8|GMT\+08:00)$/iu.test(text) 
 const CLOCK_TYPES = new Set(['ota', 'slave', 'qnx-uds', 'de', 'other']);
 const validZone = value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { return false; } };
 const record = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-function validPartial(result) {
+function validRecovered(result) {
   try { validateExecutionProof(result?.execution, result?.execution?.backend); } catch { return false; }
-  return result?.status === 'partial' && result.modelCalls === 1 && typeof result.text === 'string' && result.text.length > 0
+  return ['completed', 'partial'].includes(result?.status) && result.modelCalls === 1 && typeof result.text === 'string' && result.text.length > 0
     && record(result.report) && record(result.manifest) && Array.isArray(result.files) && result.files.length === 2
     && new Set(result.files.map(file => file?.name)).size === 2
     && result.files.every(file => record(file) && ['report.json', '报告.txt'].includes(file.name)
@@ -424,7 +424,7 @@ export class SuperTriage {
   /** Local operator recovery only; this is deliberately absent from HTTP/chat controls. */
   async publishRecovered(id, result, { attempt, inputRevision, processTreeStopped } = {}) {
     if (processTreeStopped !== true || !Number.isSafeInteger(attempt) || attempt < 1 || !Number.isSafeInteger(inputRevision) || inputRevision < 1
-      || result?.inputRevision !== inputRevision || !validPartial(result)) throw fail('TRIAGE_RECOVERY_INVALID');
+      || result?.inputRevision !== inputRevision || !validRecovered(result)) throw fail('TRIAGE_RECOVERY_INVALID');
     result = structuredClone(result);
     result.execution = validateExecutionProof(result.execution, result.execution.backend);
     const conversations = await this.c.api.request('/api/conversations'); this.c.conversations = structuredClone(conversations);
@@ -437,7 +437,7 @@ export class SuperTriage {
         || reservation.void || reservation.voided || reservation.voidedAt || /^void/iu.test(reservation.status ?? '')) throw fail('TRIAGE_RECOVERY_RESERVATION');
       if (!this.authorized(task, conversations)) throw fail('TRIAGE_AUTH_REVOKED');
       task.lastRunStopped = true; task.uncertain = false;
-      task.recovery = { attempt, inputRevision, processTreeStopped: true, status: 'partial', at: this.now() };
+      task.recovery = { attempt, inputRevision, processTreeStopped: true, status: result.status, at: this.now() };
       this.#storeResult(data, task, { attempt, inputRevision }, result);
     });
   }
@@ -474,7 +474,7 @@ export class SuperTriage {
       };
       const result = await this.worker.run(snapshot, { signal: run.controller.signal, beforeModel });
       if (!result || !['completed', 'partial', 'waiting_input', 'waiting_log'].includes(result.status) || result.inputRevision !== snapshot.inputRevision) throw fail('TRIAGE_INVALID_RESULT');
-      if (result.status === 'partial' && (!run.modelReserved || !validPartial(result))) throw fail('TRIAGE_INVALID_PARTIAL');
+      if (result.status === 'partial' && (!run.modelReserved || !validRecovered(result))) throw fail('TRIAGE_INVALID_PARTIAL');
       if (result.status === 'completed' && !run.modelReserved
         && !(result.modelCalls === 0 && result.report?.mode === 'preliminary' && result.manifest && typeof result.manifest === 'object')) throw fail('TRIAGE_UNRESERVED_MODEL');
       if (result.modelCalls !== undefined && (!Number.isSafeInteger(result.modelCalls) || result.modelCalls < 0 || result.modelCalls > 1)) throw fail('TRIAGE_INVALID_RESULT');

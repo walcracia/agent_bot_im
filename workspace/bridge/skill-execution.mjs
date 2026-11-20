@@ -8,7 +8,7 @@ import { validateModelReport, renderReport, redact } from './triage-report.mjs';
 export const TRIAGE_SKILL_ID = 'ota-log-triage@1.3.2';
 const BACKENDS = new Set(['dsh', 'pi', 'hermes', 'opencode']);
 const LIMITS = Object.freeze({ files: 800, fileBytes: 64000000, totalBytes: 320000000, payloadCharacters: 100000,
-  parameterCharacters: 16000, reportBytes: 200000, evidence: 200, scanLines: 200000, scanCharacters: 16000000 });
+  parameterCharacters: 16000, reportBytes: 200000, evidence: 200, scanLines: 2000000, scanCharacters: 320000000 });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const contained = (root, path) => { const rest = relative(root, path); return rest && !isAbsolute(rest) && rest !== '..' && !rest.startsWith('..' + sep); };
 const equalIdentity = (a, b) => ['dev', 'ino', 'size', 'mtimeNs', 'ctimeNs'].every(key => a[key] === b[key]);
@@ -189,7 +189,7 @@ export class SkillExecutionService {
       for (const file of files) await safeFile(directory, file, signal);
       await evidenceProof(snapshot.executionContext.payload, files, directory, signal);
       const result = validateModelReport(raw?.result, snapshot.executionContext.payload);
-      if (context.payload.mode === 'preliminary' || status === 'partial') { result.confidence = 'low'; result.responsibility = '待验证'; }
+      if (status === 'partial') { result.confidence = 'low'; result.responsibility = '待验证'; }
       if (status === 'partial' && !result.limitations.some(text => text.includes('非模型终稿')))
         result.limitations = ['执行已达到预算上限；以下为程序初排，并非模型终稿。', ...result.limitations].slice(0, 12);
       // Only the service creates these two artifacts; runner/model file paths are never collected.

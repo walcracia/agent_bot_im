@@ -1,5 +1,11 @@
 # v0.4.0 QA 日志排查配置与执行协议
 
+## v0.4.1 更新
+
+当前标准见QA-ACCEPTANCE-v0.4.1。modelSelection可增加可信reasoningEffort（例如本机模型实际支持的off），只影响任务自己的Agent。原插件选择模型支持的第一档，而headless默认可能是high；须核对安装实际支持的档位，不能只对齐模型名称。流式扫描/证据核验为2M行/320M字符，模型仍最多60条/48k字符。预处理最多4批、每批3文件/16MB，Agent仍独立加载skill/使用工具。直接回传skill生成的结论、可信度及责任倾向，不自动降级或追加程序诊断。下文v0.4.0真实partial记录保留为历史。
+
+默认编号分析相当于原插件的现象输入留空：QA标题/描述保存在来源账本，不自动作为skill现象。聊天明确补充“问题说明”才作为symptom参数传入；日期/窗口仍按显式参数。这样调用方不会额外要求skill证明QA流程文字或限定其判断。
+
 日志分析 Worker 是业务调用方。生产 runtime 使用 SkillExecutionService → DshSkillRunner → 固定 skill/四个日志工具，不是无工具的一次模型摘要。Pi/Hermes/OpenCode只有同协议注册扩展点，当前默认仅DSH。
 
 1. 先运行 `environment/scripts/install-triage-skill.py`，安装固定1.3.2及24文件完整性清单到忽略tools；原DSH不变。

@@ -1,9 +1,9 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { lstat, mkdir, open, readFile, realpath, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, open, readFile, realpath, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectTriageInputs, collectEvidence, parserHints, buildModelPayload, validateModelReport, renderReport, redact, reportHash } from './triage-report.mjs';
+import { inspectTriageInputs, collectEvidence, logType, parserHints, buildModelPayload, validateModelReport, renderReport, redact, reportHash } from './triage-report.mjs';
 
 export { inspectTriageInputs } from './triage-report.mjs';
 export const SKILL_ARCHIVE_SHA256 = '3be41e8de6d60ace8f22c99469854023bc8ed4622d212998eea2be9b5f057e17';
@@ -12,7 +12,7 @@ const EXTRACTOR = fileURLToPath(new URL('./triage-extract.py', import.meta.url))
 const DEFAULTS = Object.freeze({ maxAttachments: 8, maxFileBytes: 99999999, maxDownloadBytes: 160000000, downloadTimeoutMs: 60000,
   maxExpandedBytes: 320000000, maxExpandedFileBytes: 64000000, maxExtractedFiles: 800, maxArchiveDepth: 3, maxCompressionRatio: 150,
   parserTimeoutMs: 60000, extractionTimeoutMs: 60000, runTimeoutMs: 900000, maxProcessOutputBytes: 2000000,
-  maxScanLines: 200000, maxScanCharacters: 16000000, maxEvidenceCandidates: 1200, maxEvidence: 60, maxLineCharacters: 600,
+  maxScanLines: 2000000, maxScanCharacters: 320000000, maxEvidenceCandidates: 1200, maxEvidence: 60, maxLineCharacters: 600,
   maxInputCharacters: 48000, maxReportCharacters: 24000, terminationGraceMs: 4000 });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const contained = (root, path) => { const rest = relative(root, path); return rest && !isAbsolute(rest) && rest !== '..' && !rest.startsWith('..' + sep); };
@@ -153,6 +153,64 @@ async function processJSON(executable, args, { cwd, timeoutMs, maxBytes, signal,
   });
 }
 
+/** Read-only preparation locates useful lines before evidence is frozen. It is
+ * deliberately separate from the Agent's required skill/tool execution proof. */
+async function prepareParserEvidence({ directory, extracted, files, skill, limits, signal }) {
+  const types = ['ota', 'slave', 'qnx-uds', 'de', 'other'], queues = new Map(types.map(type => [type, []]));
+  for (const file of files) {
+    signal.throwIfAborted();
+    if (!/\.(?:log(?:\.\d+)?|txt|json)$/iu.test(file.path) || file.bytes > 16000000) continue;
+    const source = await independentFile(extracted, file.path), handle = await open(source, 'r');
+    let head;
+    try { const buffer = Buffer.alloc(8192), result = await handle.read(buffer, 0, buffer.length, 0); head = buffer.toString('utf8', 0, result.bytesRead); }
+    finally { await handle.close(); }
+    queues.get(logType(file.path, head)).push(file);
+  }
+  for (const queue of queues.values()) queue.sort((a, b) => a.path.localeCompare(b.path));
+  const ordered = [];
+  while (types.some(type => queues.get(type).length)) for (const type of types) if (queues.get(type).length) ordered.push(queues.get(type).shift());
+  const batches = [];
+  for (const file of ordered) {
+    let batch = batches.at(-1);
+    if (!batch || batch.files.length === 3 || batch.bytes + file.bytes > 16000000) {
+      if (batches.length === 4) break;
+      batches.push(batch = { files: [], bytes: 0, status: 'pending', findingCount: 0 });
+    }
+    batch.files.push({ path: file.path, bytes: file.bytes, sha256: file.sha256 }); batch.bytes += file.bytes;
+  }
+  const findings = [], limitations = [];
+  for (const batch of batches) {
+    signal.throwIfAborted();
+    const stage = await mkdtemp(join(directory, 'preparation-'));
+    for (const file of batch.files) {
+      const source = await independentFile(extracted, file.path), target = join(stage, file.path);
+      await mkdir(dirname(target), { recursive: true, mode: 0o700 }); await copyFile(source, target);
+      if ((await lstat(target)).size !== file.bytes || digest(await readFile(target)) !== file.sha256) throw new Error('Preparation input hash changed.');
+    }
+    try {
+      const parser = await processJSON(process.execPath, ['--max-old-space-size=512', skill.parser, stage, '--effort', 'low', '--json'], {
+        cwd: stage, timeoutMs: limits.parserTimeoutMs, maxBytes: limits.maxProcessOutputBytes, signal, phase: 'preparation', graceMs: limits.terminationGraceMs });
+      for (const finding of (Array.isArray(parser?.findings) ? parser.findings : []).slice(0, 1000 - findings.length)) {
+        const evidence = [];
+        for (const ref of (Array.isArray(finding?.evidence) ? finding.evidence : []).slice(0, 50)) {
+          if (typeof ref?.file !== 'string' || !Number.isSafeInteger(ref.line) || ref.line < 1) continue;
+          const name = relative(stage, resolve(stage, ref.file)).split(sep).join('/');
+          if (batch.files.some(file => file.path === name)) evidence.push({ file: join(extracted, name), line: ref.line });
+        }
+        if (evidence.length) { findings.push({ summary: redact(finding.summary ?? '').slice(0, 300), evidence }); batch.findingCount++; }
+      }
+      batch.status = 'completed';
+    } catch (cause) {
+      if (signal.aborted || cause.processTreeStopped !== true) throw cause;
+      batch.status = 'failed'; batch.failure = cause.kind;
+      limitations.push('部分日志的取证解析未完成，仍需结合已取得的原始记录核对。');
+    }
+  }
+  const selected = batches.reduce((sum, batch) => sum + batch.files.length, 0);
+  return { findings, limitations: [...new Set(limitations)], manifest: { kind: 'read-only-evidence', agentProof: false, coverage: 'partial',
+    parserBatches: batches, selectedFiles: selected, omittedFiles: files.length - selected, findingCount: findings.length } };
+}
+
 export class LogTriageWorker {
   constructor({ adapter, root, skillRoot, model, executionService, limits, now = () => new Date().toISOString(), python, downloadOrigins = [], fetch: fetcher = globalThis.fetch,
     verifySkill: skillVerifier = verifySkill }) {
@@ -243,9 +301,15 @@ export class LogTriageWorker {
       const extraction = await processJSON(this.python, [EXTRACTOR, '--request', requestPath], { cwd: directory, timeoutMs: this.limits.extractionTimeoutMs,
         maxBytes: this.limits.maxProcessOutputBytes, signal: combined, phase, graceMs: this.limits.terminationGraceMs });
       manifest.files = extraction.files; manifest.expandedBytes = extraction.expandedBytes;
+      let preparation = null;
+      if (this.executionService) {
+        phase = 'preparation';
+        preparation = await prepareParserEvidence({ directory, extracted, files: extraction.files, skill, limits: this.limits, signal: combined });
+        manifest.preparation = preparation.manifest;
+      }
       phase = 'evidence';
       const collected = await collectEvidence({ directory: extracted, files: extraction.files, window: input.window,
-        clockDomains: snapshot.clockDomains, limits: this.limits, signal: combined });
+        clockDomains: snapshot.clockDomains, limits: this.limits, signal: combined, parserFindings: preparation?.findings ?? [] });
       manifest.mode = !collected.recognized || !collected.evidence.length || input.window.mode === 'preliminary'
         || collected.evidence.some(item => !item.aligned) ? 'preliminary' : 'windowed';
       await writeFile(join(directory, 'manifest.json'), JSON.stringify(manifest, null, 2), { flag: 'wx', mode: 0o600 });
@@ -262,10 +326,11 @@ export class LogTriageWorker {
         return { status: 'completed', text, report, manifest, inputRevision: snapshot.inputRevision, modelCalls: 0 };
       }
       if (typeof this.executionService?.execute !== 'function' && typeof this.model !== 'function') throw new Error('A skill execution service is not configured.');
-      const limitations = [...input.limitations, ...collected.limitations];
+      const limitations = [...input.limitations, ...collected.limitations, ...(preparation?.limitations ?? [])];
       let parserSummary = [];
       if (this.executionService) {
-        limitations.push('本次先提取部分日志线索，再由助手选择有限日志解析；未覆盖全部材料。');
+        parserSummary = parserHints({ findings: preparation.findings }, collected.evidence);
+        limitations.push('本次按日志类型选取部分记录核对，再由助手选择有限日志解析；未覆盖全部材料。');
       } else {
         // Legacy model-only compatibility keeps the fixed pre-parser. Production skill
         // execution selects its bounded parser inputs through the controlled Agent tool.
@@ -300,7 +365,8 @@ export class LogTriageWorker {
       try {
         const invoke = () => this.executionService ? this.executionService.execute({
           taskId: snapshot.id, inputRevision: snapshot.inputRevision, skillId: 'ota-log-triage@1.3.2',
-          parameters: { mode: payload.mode, window: input.window, clockDomains: snapshot.clockDomains ?? {} },
+          parameters: { mode: payload.mode, window: input.window, clockDomains: snapshot.clockDomains ?? {},
+            ...(snapshot.descriptionOverride ? { symptom: redact(snapshot.descriptionOverride).slice(0, 4000) } : {}) },
           inputFiles: extraction.files, executionContext: { directory: extracted, outputDirectory: artifactDirectory, skillRoot: this.skillRoot, payload }
         }, { signal: combined, beforeExecute: admitModel }) : this.model(payload, { signal: combined });
         raw = await Promise.race([Promise.resolve().then(invoke), aborted]);
@@ -316,7 +382,6 @@ export class LogTriageWorker {
         raw = executionResult.result;
       }
       const validated = validateModelReport(raw, payload);
-      if (payload.mode === 'preliminary') { validated.confidence = 'low'; validated.responsibility = '待验证'; }
       const text = renderReport(validated, payload);
       if (text.length > this.limits.maxReportCharacters) throw new Error('Rendered report exceeds budget.');
       const { files, execution } = executionResult ? await executionArtifacts(this.executionService, executionResult, artifactDirectory, validated, payload, text)

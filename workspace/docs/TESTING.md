@@ -1,5 +1,13 @@
 # 验收计划
 
+## v0.4.1 正向全程
+
+标准见QA-ACCEPTANCE-v0.4.1。常规verify已通过26 Python/418桥接/9桌面/16模拟编排及语法；新增正向取证回归和最终参数后，完整桥接419/419通过。原插件模型档位与自动QA描述注入差异分别修正，相关策略/配置/取证验证仅使用合成材料，不算真实模型。
+
+真实验收从IM授权消息发起，经QA/Router/Worker/本机DSH使用固定skill与日志工具，到原Outbox发布和成员认证下载。只使用用户指定单个历史问题，保留真实会话失败及两次参数区别；不宣称是自动新增事件实测。最终会话数、下载大小/SHA和发布结果见outputs/VERIFICATION-v0.4.1及最新HANDOFF/state。已完成一次真实模型5生成/6工具及双产物下载，最终按插件相同空现象参数的复验独立记录，不能用前一次结果代替。
+
+最终相同参数Agent4生成/4工具原生completed，57条实读证据/37条引用/11条时间线；修正原20条校验到本任务60条后，原终稿复验/同次reservation恢复零新增模型。6条Outbox消息唯一且ACK，两报告成员下载字节/SHA/JSON与原终稿一致通过。相关最后123项回归记录与所有失败见v0.4.1报告及忽略验证目录。
+
 ## v0.4.0 QA日志与本机skill执行
 
 冻结标准见QA-IMPLEMENTATION-v0.4.0；生产路径为typed日志Worker→SkillExecutionService→DSH Agent实际load_skill/list_inputs/read_evidence/run_parser→校验JSON/产物→Outbox/认证附件。常规verify仅合成QA/假模型，新增实际stdio/固定parser/HTTP/SQLite/文件hash与安全压缩包测试，不算真实模型。

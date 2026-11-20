@@ -29,6 +29,8 @@ test('QA is disabled by default and enabled config resolves explicit scope with 
   assert.deepEqual(result.bindings, [{ sourceId: 'qa-demo', projectId: '7', projectCode: 'DEMO', conversationId: 'chat-demo' }]);
   for (const field of ['root', 'skillRoot', 'python']) assert.ok(isAbsolute(result[field]));
   assert.equal(input.bindings[0].projectCode, 'demo');
+  input.modelSelection = { provider: 'selected', model: 'model', reasoningEffort: 'off' };
+  assert.deepEqual(normalizeTriageConfig(input, tmpdir(), authorization).modelSelection, input.modelSelection);
 });
 
 test('skill execution policy is configurable through trusted config and cannot exceed finite hard bounds', () => {

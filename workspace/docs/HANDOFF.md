@@ -1,5 +1,17 @@
 # 当前接续状态
 
+## 2026-11-20 · v0.4.1 skill直出与真实全程
+
+先读QA-ACCEPTANCE-v0.4.1、outputs/VERIFICATION-v0.4.1及PROCESS最新段。用户要求直接调用skill、直接交付其结论，不添加解释现象等额外要求，不以partial/paused算完成。默认QA编号分析不自动注入整段标题/描述，明确聊天问题说明才传symptom。报告保留模型判断及其自身缺口；缺时间不强制降可信度/责任方。
+
+取证修复：小批固定parser定位、实际清单行及上下文、文件/类型平衡、失败高于成功码，安全服务主机/接口保留，隐藏密钥/下载参数。流式扫描与回读2M行/320M字符，Agent仍最多60条/48k，四工具不增权限。可信reasoningEffort可与原插件对齐，本机off仅写任务自身patch。
+
+真实一个历史问题共3个新Agent会话：6生成无终稿、5生成/6工具完成、最终相同空现象参数4生成/4工具原生completed。最终回读57条、37条引用/11条时间线。37条原被20条格式上限拒绝，修正至60后用原终稿/收据/冻结输入重验，经相同服务及原reservation/attempt/revision/Outbox发送，零新增模型；不是程序partial。最终6消息唯一且ACK，成员下载JSON12241B/文本14210B及SHA/内容与模型原文一致。实际数据/模型报告只在忽略目录。
+
+26 Python/418桥接/9桌面/16模拟启动及语法通过，新增正向后全桥接419通过，最终123相关回归与结果见报告。旧断言、PATH/退出竞态、过期QA登录、格式上限等失败保留。用户标准SSO刷新成功，实际授权接口读取核验；旧token临时配置已撤回，匿名文件可下载不能作为登录证据。
+
+本机正常start及重复复用已核验，QA轮询已恢复；只读日志试点累计额度已用完，未擅自开放批量真实模型。source扫描/报告下载仍可用，后续分析需配置新额度。源码v0.4.1，未构建新EXE，v0.3.3客户端兼容；Pi/Hermes/OpenCode与原代码A1/A2仍未实施。本轮Git新v0.4.1及接续回执按下方后续实际查询记录，不从本段提交前快照声称已上传。
+
 ## 2026-11-20 · v0.4.0 QA日志Worker与skill适配
 
 远端产品回执：源码adde11e527ac37b4a8fd3992d998e3d73943f8fa已推main；annotated v0.4.0对象74a203ef24dfb2298aed77e820bb1dfa437965ae及peel到该源码已用ls-remote核对。Release https://github.com/walcracia/agent_bot_im/releases/tag/v0.4.0 已公开，isDraft=false/isPrerelease=false；本轮仅源码Release，assets为空，v0.3.3 Windows资产保留。当前接续回执另用新v0.4.0-handoff.1，不移动产品tag；其自身SHA按Git查询，推送后再核对。

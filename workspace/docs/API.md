@@ -1,5 +1,7 @@
 # v0.1 接口合同
 
+v0.4.1沿用v0.4.0请求/八字段JSON结果/两报告产物协议及IM认证附件接口。completed结果不因preliminary输入模式改写confidence或responsibility，展示不再追加宿主诊断句。原始输入范围、预解析范围及限制仍保留payload/manifest。partial仍显式为非模型终稿。具体执行与验收见QA-ACCEPTANCE-v0.4.1。
+
 v0.3.3不改IM HTTP/媒体协议。桌面新增本地preload有限桥（未读数量、前台状态回调），主进程核验本地页面/main frame，不提供通用IPC/执行接口；QA Trigger/Route为待实施设计，没有新增可调用的后台QA接口。QA MCP接口与Desktop插件内部路由必须区分。
 
 v0.3.2只统一同频TeamPlay显示品牌、版本及文档，不变更API/认证/媒体/DSH协议。云端密钥代理等为未实施建议，不存在新增安全接口可供调用；已知交付/恢复缺口见根README与正式审计。

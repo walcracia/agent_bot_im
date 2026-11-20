@@ -1,5 +1,11 @@
 # agent-IM 恢复与接续
 
+## v0.4.1 skill直接输出与正向验收
+
+先读QA-ACCEPTANCE-v0.4.1及最新HANDOFF/state。用户要求真实正向完成并直接回传skill结论，不能以partial/paused作为完成；缺关键输入直接询问。默认不把整段QA描述自动当作skill现象，显式聊天“问题说明”才映射symptom。结论/可信度/责任方不因缺时间被程序改写，显示不追加宿主诊断句。
+
+正常大附件先有界分批解析，再流式回读/平衡取证；2M行/320M字符，Agent上下文仍最多60条。DSH模型还需对齐reasoningEffort：原插件用模型支持的首档，本机为off，headless默认high曾耗尽4096输出且无终稿。配置仅影响任务自己的Agent，不改DSH安装或全局设置。QA缓存可能过期；以实际授权接口读成功为准，匿名文件可下载不代表登录有效，过期应请求完成标准登录，不伪造缓存时效。账号/日志/登录记录只在忽略目录。
+
 ## v0.4.0 QA日志业务Worker
 
 先读QA-IMPLEMENTATION-v0.4.0、QA-OPERATIONS-v0.4.0、最新HANDOFF/state与验收报告。用户最终澄清：业务平台具体是Super-agent日志分析Worker；它提交skill ID/参数/文件给执行适配服务，由本机Agent加载skill和工具排查，再交Worker/Outbox回聊天。当前首适配器DSH，其他后端只有注册协议。故障时间可选，缺失仍初排，不猜时区/确定因果。

@@ -64,7 +64,7 @@ async function loadContext(contextFile) {
   for (const item of context.payload.evidence) {
     const file = context.files.find(file => file.path === item?.file);
     if (!item || !/^E[0-9]{4,6}$/u.test(item.id) || evidenceIds.has(item.id) || !file || item.sha256 !== file.sha256
-      || !Number.isSafeInteger(item.line) || item.line <= 0 || item.line > 200000 || typeof item.text !== 'string' || !item.text.length || item.text.length > 2000) throw fail('TRIAGE_TOOL_EVIDENCE');
+      || !Number.isSafeInteger(item.line) || item.line <= 0 || item.line > 2000000 || typeof item.text !== 'string' || !item.text.length || item.text.length > 2000) throw fail('TRIAGE_TOOL_EVIDENCE');
     evidenceIds.add(item.id);
   }
   context.payload.evidence = context.payload.evidence.map(item => Object.fromEntries(['id', 'file', 'line', 'time', 'rawTime', 'timeZone', 'unknownZone', 'timestampSourceLine', 'aligned', 'inRequestedWindow', 'text', 'sha256']
@@ -111,7 +111,7 @@ async function verifyEvidence(context) {
     try {
       for await (const text of lines) {
         line++; scanned++; characters += text.length;
-        if (characters > 16000000 || scanned > 200000) throw fail('TRIAGE_TOOL_EVIDENCE_LIMIT');
+        if (characters > 320000000 || scanned > 2000000) throw fail('TRIAGE_TOOL_EVIDENCE_LIMIT');
         const items = wanted.get(line);
         if (items) {
           if (items.some(item => redact(text).slice(0, item.text.length) !== item.text)) throw fail('TRIAGE_TOOL_EVIDENCE_CHANGED');

@@ -297,6 +297,17 @@ test('local recovered partial uses original attempt and revision, preserves fail
   await assert.rejects(f.t.publishRecovered('T000001', partialResult(1), { attempt: 1, inputRevision: 1, processTreeStopped: true }), { code: 'TRIAGE_RECOVERY_STATE' });
 });
 
+test('an already completed native skill report publishes on its original reservation without another execution', async () => {
+  const f = await recoverableFixture(), budget = structuredClone(f.c.data.triage.budget);
+  const result = { ...partialResult(1), status: 'completed', text: '模型的完整报告。', report: { conclusion: '模型原有判断。', confidence: 'medium', responsibility: '模型原有倾向' } };
+  await f.t.publishRecovered('T000001', result, { attempt: 1, inputRevision: 1, processTreeStopped: true });
+  const task = f.c.data.tasks.T000001;
+  assert.equal(task.status, 'completed'); assert.equal(task.recovery.status, 'completed');
+  assert.deepEqual(task.report, result.report); assert.deepEqual(f.c.data.triage.budget, budget);
+  assert.equal(task.attempt, 1); assert.equal(task.reportRevision, 1);
+  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'artifact').length, 2);
+});
+
 test('recovered publishing refuses fake proof, wrong revision, missing or void reservation and live execution', async () => {
   for (const variation of ['proof', 'skill', 'providers', 'tools', 'result-status', 'no-files', 'wrong-revision', 'wrong-attempt', 'no-stop', 'no-reservation', 'void', 'void-status', 'not-reserved', 'active', 'runs', 'revoked']) {
     const f = await recoverableFixture(), result = partialResult(1), options = { attempt: 1, inputRevision: 1, processTreeStopped: true };
@@ -304,7 +315,7 @@ test('recovered publishing refuses fake proof, wrong revision, missing or void r
     if (variation === 'skill') result.execution.skillLoaded = false;
     if (variation === 'providers') result.execution.providerRequests = 33;
     if (variation === 'tools') result.execution.toolCalls = 97;
-    if (variation === 'result-status') result.status = 'completed';
+    if (variation === 'result-status') result.status = 'invented';
     if (variation === 'no-files') result.files = [];
     if (variation === 'wrong-revision') { options.inputRevision = 2; result.inputRevision = 2; }
     if (variation === 'wrong-attempt') options.attempt = 2;

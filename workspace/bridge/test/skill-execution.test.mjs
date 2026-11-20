@@ -35,7 +35,7 @@ test('one real adapter contract produces only two service-owned, exact-hash repo
   const result = await f.service.execute(f.request, { beforeExecute: () => { admission++; } });
   assert.equal(admission, 1); assert.equal(f.calls(), 1); assert.equal(result.schemaVersion, 1); assert.equal(result.backend, 'dsh');
   assert.equal(result.taskId, 'T000001'); assert.equal(result.inputRevision, 2); assert.equal(result.skillId, TRIAGE_SKILL_ID);
-  assert.equal(result.result.confidence, 'low'); assert.equal(result.result.responsibility, '待验证');
+  assert.equal(result.result.confidence, 'high'); assert.equal(result.result.responsibility, '网络环境');
   assert.deepEqual(result.execution, { backend: 'dsh', ...proof });
   assert.deepEqual(result.files.map(file => file.name), ['report.json', '报告.txt']);
   for (const file of result.files) {

@@ -54,7 +54,7 @@ const request = () => ({ taskId: 'T000001', inputRevision: 1, skillId: 'ota-log-
 test('DSH runner must prove actual skill/parser/evidence calls and unread references cannot pass', async t => {
   const f = await fixture(t);
   let invalid = false, seen;
-  const runner = new DshSkillRunner({ root: f.root, harness: { cliPath: '/trusted/cli', env: { GH_TOKEN: 'excluded' }, modelSelection: { provider: 'selected-provider', model: 'selected-model' } },
+  const runner = new DshSkillRunner({ root: f.root, harness: { cliPath: '/trusted/cli', env: { GH_TOKEN: 'excluded' }, modelSelection: { provider: 'selected-provider', model: 'selected-model', reasoningEffort: 'off' } },
     executorFactory: config => ({
       classify: async prompt => {
         seen = config; assert.match(prompt, /load_skill/u);
@@ -72,6 +72,7 @@ test('DSH runner must prove actual skill/parser/evidence calls and unread refere
   const patch = await readFile(seen.extraPatches[0], 'utf8');
   assert.match(patch, /dsh-mcp-client/u); assert.match(patch, /TEAMPLAY_TRIAGE_CONTEXT_FILE/u);
   assert.match(patch, /agent-default-model/u); assert.match(patch, /selected-provider/u); assert.match(patch, /selected-model/u);
+  assert.match(patch, /reasoningEffort: "off"/u);
   invalid = true;
   await assert.rejects(runner.runSkill(request()), error => error.modelStarted === true);
   await runner.close();
@@ -80,7 +81,10 @@ test('DSH runner must prove actual skill/parser/evidence calls and unread refere
 test('task prompt contains skill identity and optional business parameters without host paths', () => {
   const prompt = skillTaskPrompt(request());
   assert.match(prompt, /ota-log-triage@1.3.2/u); assert.match(prompt, /故障时间可选/u);
+  assert.match(prompt, /本业务约定只覆盖skill/u); assert.match(prompt, /八个JSON字段/u);
+  assert.match(prompt, /不额外添加业务判断要求/u);
   assert.doesNotMatch(prompt, /\/trusted\//u);
+  assert.doesNotMatch(prompt, /合成测试/u); // QA context is for tracking; no implicit symptom is added to the skill.
 });
 
 test('default generation policy admits twelve steps and exposes its actual trusted limits', async t => {
