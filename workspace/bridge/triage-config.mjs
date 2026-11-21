@@ -1,5 +1,4 @@
 import { resolve } from 'node:path';
-import { normalizeExecutionLimits } from './triage-limits.mjs';
 
 function integer(value, fallback, min, max, label) {
   value ??= fallback;
@@ -15,12 +14,13 @@ function path(base, value, label) {
   if (typeof value !== 'string' || !value || /[\r\n\0]/u.test(value)) throw new Error('Invalid QA ' + label + '.');
   return resolve(base, value);
 }
-/** Disabled by default, explicit budgets and destination bindings are mandatory. */
+/** Disabled by default; destination bindings and source credentials stay explicit. */
 export function normalizeTriageConfig(value, base, config) {
   if (!value || value.enabled === false) return null;
   if (value.enabled !== true) throw new Error('QA enabled must be boolean.');
   const result = structuredClone(value);
-  result.executionLimits = normalizeExecutionLimits(result.executionLimits);
+  // Old quota settings remain readable but no longer control QA execution.
+  for (const field of ['executionLimits', 'workerLimits', 'totalModelCalls', 'dailyModelCalls']) delete result[field];
   result.backend ??= 'dsh';
   if (result.backend !== 'dsh') throw new Error('Only the installed DSH skill adapter is currently configured.');
   if (result.modelSelection !== undefined && (!result.modelSelection || typeof result.modelSelection !== 'object'
@@ -30,10 +30,8 @@ export function normalizeTriageConfig(value, base, config) {
     || result.modelSelection.reasoningEffort !== undefined && !/^[A-Za-z0-9_.-]{1,80}$/u.test(result.modelSelection.reasoningEffort))) throw new Error('Invalid QA model selection.');
   if (!/^[A-Za-z0-9_.-]{1,80}$/u.test(result.sourceId ?? '')) throw new Error('QA sourceId is required.');
   result.pollMilliseconds = integer(result.pollMilliseconds, 60000, 1000, 3600000, 'poll interval');
-  result.totalModelCalls = integer(result.totalModelCalls, 0, 0, 100000, 'total model budget');
-  result.dailyModelCalls = integer(result.dailyModelCalls, 0, 0, 1000, 'daily model budget');
   result.maxConcurrent = integer(result.maxConcurrent, 1, 1, 1, 'concurrency');
-  result.modelTimeoutMs = integer(result.modelTimeoutMs, 600000, 1000, 900000, 'model timeout');
+  result.modelTimeoutMs = 0;
   result.adminSenderIds = ids(result.adminSenderIds ?? [], 'administrators');
   if (result.adminSenderIds.some(id => !config.senderIds.includes(id))) throw new Error('QA administrators must be authorized IM senders.');
   if (result.allowChatProjectBinding !== undefined && typeof result.allowChatProjectBinding !== 'boolean') throw new Error('QA chat binding policy must be boolean.');

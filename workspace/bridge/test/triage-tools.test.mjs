@@ -30,7 +30,7 @@ async function handlerFor(f, limits) {
   await request('initialize', {});
   return { request, call: async (name, args = {}) => (await request('tools/call', { name, arguments: args })).result };
 }
-const data = result => { assert.notEqual(result.isError, true); return JSON.parse(result.content[0].text); };
+const data = result => { assert.notEqual(result.isError, true, result.content?.[0]?.text); return JSON.parse(result.content[0].text); };
 
 async function stdio(t, f, { initialize = true } = {}) {
   const child = spawn(process.execPath, [modulePath], { env: { TEAMPLAY_TRIAGE_CONTEXT_FILE: f.contextFile }, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -128,7 +128,7 @@ test('real fixed parser stages three chunks at the 16 MB boundary and preserves 
   });
   const { call } = await handlerFor(f);
   const result = data(await call('run_parser', { files: selected.map(file => file.path) }));
-  assert.equal(result.selectedBytes, 16000000); assert.equal(result.omittedCount, 1); assert.equal(result.coverage, 'partial');
+  assert.equal(result.selectedBytes, 16000000); assert.equal(result.omittedCount, 1); assert.equal(result.coverage, 'selected-files');
   assert.deepEqual(result.selectedFiles, selected);
   const stageName = (await readdir(f.root)).find(name => name.startsWith('parser-inputs-'));
   assert.ok(stageName);
@@ -136,37 +136,22 @@ test('real fixed parser stages three chunks at the 16 MB boundary and preserves 
     assert.equal(digest(await readFile(join(f.directory, file.path))), file.sha256);
     assert.equal(digest(await readFile(join(f.root, stageName, file.path))), file.sha256);
   }
-  assert.deepEqual((await f.proof()).parserScope.selectedFiles, selected);
+  assert.deepEqual(result.batches[0].files, selected);
   assert.equal((await f.proof()).parserRan, true); assert.equal((await f.proof()).parserProcess.exitCode, 0);
 });
 
-test('oversized default and explicit choices fail without consuming the unique parser execution', async t => {
-  const f = await fixture(t, async context => {
-    const chunk = await addChunk(context, 'large/com.carota.log', 16000001);
-    chunk.evidence.id = 'E0002'; context.payload.evidence = [chunk.evidence];
-  });
+test('a source above one parser batch is processed in multiple stages without rejecting the source', async t => {
+  const f = await fixture(t, async context => { const chunk = await addChunk(context, 'large/com.carota.log', 16000001); chunk.evidence.id = 'E0002'; context.payload.evidence.push(chunk.evidence); });
   const { call } = await handlerFor(f);
-  for (const files of [[], ['example.log', 'example.log'], ['../escape.log'], ['C:/outside.log'], ['a', 'b', 'c', 'd'], ['not-listed.log']]) {
-    assert.equal((await call('run_parser', { files })).isError, true);
-  }
-  assert.match((await call('run_parser')).content[0].text, /NO_ELIGIBLE_INPUT/u);
-  assert.match((await call('run_parser', { files: ['large/com.carota.log'] })).content[0].text, /PARSER_INPUT_LIMIT/u);
-  assert.equal((await f.proof()).parserRan, false); assert.equal((await f.proof()).parserProcess, undefined);
-  const result = data(await call('run_parser', { files: ['example.log'] }));
-  assert.deepEqual(result.selectedFiles.map(file => file.path), ['example.log']); assert.equal(result.omittedCount, 1);
-  assert.equal((await f.proof()).parserRan, true);
+  for (const files of [[], ['example.log', 'example.log'], ['../escape.log'], ['C:/outside.log'], ['not-listed.log']]) assert.equal((await call('run_parser', { files })).isError, true);
+  const result = data(await call('run_parser')); assert.equal(result.selectedFiles.length, 2); assert.ok(result.batches.length >= 2);
+  assert.equal(result.omittedCount, 0); assert.equal((await f.proof()).parserRan, true);
 });
-
-test('default parser choice follows evidence order while skipping files that cannot fit the scope budget', async t => {
-  const f = await fixture(t, async context => {
-    const original = context.payload.evidence[0], chunk = await addChunk(context, 'large/com.carota.log', 16000001);
-    chunk.evidence.id = 'E0002'; context.payload.evidence = [chunk.evidence, original];
-  });
+test('default parser selection includes all manifest files rather than skipping a larger source', async t => {
+  const f = await fixture(t, async context => { const chunk = await addChunk(context, 'large/com.carota.log', 16000001); chunk.evidence.id = 'E0002'; context.payload.evidence.push(chunk.evidence); });
   const { call } = await handlerFor(f), result = data(await call('run_parser'));
-  assert.deepEqual(result.selectedFiles.map(file => file.path), ['example.log']);
-  assert.equal(result.coverage, 'partial'); assert.equal(result.omittedCount, 1);
+  assert.deepEqual(result.selectedFiles.map(file => file.path), ['example.log', 'large/com.carota.log']); assert.equal(result.omittedCount, 0); assert.equal(result.coverage, 'all-selected-files');
 });
-
 test('parser hints match the exact staged relative path rather than another file with the same basename', () => {
   const directory = join(tmpdir(), 'synthetic-parser-scope');
   const evidence = [{ id: 'E0001', file: 'com.carota.log', line: 1 }, { id: 'E0002', file: 'nested/com.carota.log', line: 1 }, { id: 'E0003', file: 'other/com.carota.log', line: 1 }];
@@ -175,28 +160,19 @@ test('parser hints match the exact staged relative path rather than another file
   assert.deepEqual(scopedParserHints(parser, directory, files, evidence), [{ summary: 'Synthetic nested finding', evidenceIds: ['E0002'] }]);
 });
 
-test('attempt count is durable, unknown evidence never reads files and the session call budget cannot expand', async t => {
+test('attempt accounting remains durable and unknown IDs remain denied without activating retired call quotas', async t => {
   const f = await fixture(t), { call } = await handlerFor(f, { calls: 2 });
-  assert.equal((await call('read_evidence', { ids: ['E9999'] })).isError, true);
-  assert.equal((await f.proof()).toolCalls, 1);
-  data(await call('list_inputs'));
-  assert.match((await call('read_evidence', { ids: ['E0001'] })).content[0].text, /CALL_LIMIT/u);
-  assert.equal((await f.proof()).toolCalls, 2); assert.deepEqual((await f.proof()).evidenceReadIds, []);
+  assert.equal((await call('read_evidence', { ids: ['E9999'] })).isError, true); assert.equal((await f.proof()).toolCalls, 1);
+  data(await call('list_inputs')); data(await call('read_evidence', { ids: ['E0001'] }));
+  assert.equal((await f.proof()).toolCalls, 3); assert.deepEqual((await f.proof()).evidenceReadIds, ['E0001']);
 });
-
-test('return budget prevents false proof and repeated evidence does not consume the evidence budget again', async t => {
-  const f = await fixture(t), { call } = await handlerFor(f, { returnedCharacters: 400 });
-  assert.match((await call('load_skill', { skillId: TRIAGE_SKILL_ID })).content[0].text, /RETURN_BUDGET/u);
-  assert.equal((await f.proof()).skillLoaded, false);
-  const second = await fixture(t), length = JSON.stringify({ evidence: second.context.payload.evidence }).length;
-  const limited = await handlerFor(second, { evidenceCharacters: length + 5 });
-  data(await limited.call('read_evidence', { ids: ['E0001'] }));
-  const duplicate = data(await limited.call('read_evidence', { ids: ['E0001'] }));
-  assert.deepEqual(duplicate.evidence, []); assert.equal(duplicate.alreadyProvided[0].id, 'E0001');
-  assert.ok(!Object.hasOwn(duplicate.alreadyProvided[0], 'text'));
-  assert.equal((await second.proof()).evidenceCharacters, length);
+test('retired return and evidence budgets do not suppress skill loading or repeated source reads', async t => {
+  const f = await fixture(t), { call } = await handlerFor(f, { returnedCharacters: 1, evidenceCharacters: 1 });
+  assert.ok(data(await call('load_skill', { skillId: TRIAGE_SKILL_ID })).rules.length > 19000);
+  assert.equal(data(await call('read_evidence', { ids: ['E0001'] })).evidence.length, 1);
+  assert.equal(data(await call('read_evidence', { ids: ['E0001'] })).evidence.length, 1);
+  const proof = await f.proof(); assert.equal(proof.skillLoaded, true); assert.equal(proof.evidenceReadCalls, 2); assert.equal(proof.evidenceLines, 2);
 });
-
 test('modified, unlisted and hard-linked input files are rejected before parser access', async t => {
   for (const change of [
     async f => writeFile(join(f.directory, 'example.log'), log + 'changed'),
@@ -230,15 +206,12 @@ test('directory junctions or symlinks cannot expand the log allowlist', async t 
   await assert.rejects(createTriageToolHandler({ contextFile: f.contextFile }), { code: 'TRIAGE_TOOL_LINK' });
 });
 
-test('fixed parser timeout is counted and reaped, with cached errors preventing another identical run', async t => {
+test('the fixed parser completes without an inherited artificial elapsed quota and repeated scope uses its cache', async t => {
   const f = await fixture(t), { call } = await handlerFor(f, { parserTimeoutMs: 1 });
-  const result = await call('run_parser'); assert.match(result.content[0].text, /PARSER_TIMEOUT/u);
-  assert.equal((await f.proof()).toolCalls, 1); assert.equal((await f.proof()).parserRan, false);
-  assert.equal((await f.proof()).parserProcess.status, 'stopped');
-  const again = await call('run_parser'); assert.match(again.content[0].text, /PARSER_TIMEOUT/u);
-  assert.equal(JSON.parse(again.content[0].text).cachedError, true); assert.equal((await f.proof()).parserRunCount, 1);
+  const first = data(await call('run_parser')); const next = data(await call('run_parser'));
+  assert.equal(first.cacheHit, false); assert.equal(next.cacheHit, true);
+  const proof = await f.proof(); assert.equal(proof.parserRuns, 2); assert.equal(proof.parserBatchRuns, 1); assert.equal(proof.parserProcess.status, 'stopped');
 });
-
 test('concurrent tool requests serialize durable accounting and proof output', async t => {
   const f = await fixture(t), { call } = await handlerFor(f);
   const results = await Promise.all(Array.from({ length: 5 }, () => call('read_evidence', { ids: ['E0001'] })));
@@ -246,80 +219,32 @@ test('concurrent tool requests serialize durable accounting and proof output', a
   assert.equal(proof.toolCalls, 5); assert.deepEqual(proof.evidenceReadIds, ['E0001']); assert.equal(proof.tools.length, 5);
 });
 
-test('trusted context limits use the expanded defaults and fixed hard caps, while wire limits remain forbidden', async t => {
-  const defaults = await fixture(t), normal = await handlerFor(defaults);
-  data(await normal.call('list_inputs'));
-  assert.deepEqual((await defaults.proof()).limits, { calls: 32, returnedCharacters: 128000, evidenceCharacters: 96000, parserRuns: 4,
-    skillCharacters: 24000, parserCharacters: 8000, parserTimeoutMs: 60000 });
-  const trusted = await fixture(t, context => { context.toolLimits = { calls: 96, returnedCharacters: 384000, evidenceCharacters: 256000, parserRuns: 8 }; });
-  const high = await handlerFor(trusted), result = data(await high.call('list_inputs'));
-  assert.equal(result.budget.remainingCalls, 95); assert.equal(result.budget.remainingParserRuns, 8);
-  assert.equal((await high.call('list_inputs', { toolLimits: { calls: 1000 } })).isError, true);
-  assert.equal((await trusted.proof()).limits.calls, 96);
-  for (const toolLimits of [{ calls: 97 }, { returnedCharacters: 384001 }, { evidenceCharacters: 256001 }, { parserRuns: 9 }, { parserRuns: 0 }, { calls: 1.5 }, { parserTimeoutMs: 1 }, { command: 'other' }, []]) {
-    const invalid = await fixture(t, context => { context.toolLimits = toolLimits; });
-    await assert.rejects(createTriageToolHandler({ contextFile: invalid.contextFile }), { code: 'TRIAGE_TOOL_LIMITS' });
-  }
+test('old context quota fields are inert and the model cannot change host execution capabilities', async t => {
+  const f = await fixture(t, context => { context.toolLimits = { calls: 1, returnedCharacters: 1, evidenceCharacters: 1, parserRuns: 1 }; });
+  const { call } = await handlerFor(f); data(await call('list_inputs')); data(await call('list_inputs'));
+  assert.equal((await call('list_inputs', { calls: 100000 })).isError, true);
+  assert.equal((await f.proof()).toolCalls, 3);
 });
-
-test('one read returns 60 real evidence lines, and repeated IDs send only an index without duplicate evidence charges', async t => {
+test('one page returns real evidence lines and repeated reads report actual returned lines', async t => {
   const f = await fixture(t, async context => {
-    const lines = Array.from({ length: 60 }, (_, index) => `2026-11-20 10:00:00 INFO synthetic line ${index} ${'a'.repeat(450)}`);
-    const text = lines.join('\n') + '\n'; await writeFile(join(context.directory, 'example.log'), text);
-    context.files = [{ path: 'example.log', bytes: Buffer.byteLength(text), sha256: digest(text) }];
-    context.payload.evidence = lines.map((text, index) => ({ id: 'E' + String(index + 1).padStart(4, '0'), file: 'example.log', line: index + 1,
-      text, time: '2026-11-20 10:00:00', timeZone: 'unconfirmed', sha256: digest(lines.join('\n') + '\n') }));
+    const text = Array.from({ length: 60 }, (_, i) => '2026-11-20 10:00:00 CAROTA CORE VER row ' + (i + 1)).join('\n');
+    await writeFile(join(context.directory, 'example.log'), text); context.files[0] = { path: 'example.log', bytes: Buffer.byteLength(text), sha256: digest(text) };
+    context.payload.evidence = text.split('\n').map((line, i) => ({ id: 'E' + String(i + 1).padStart(4, '0'), file: 'example.log', line: i + 1, text: line, sha256: digest(text) }));
   });
   const { call } = await handlerFor(f), ids = f.context.payload.evidence.map(item => item.id);
-  const firstRaw = await call('read_evidence', { ids }), first = data(firstRaw), afterFirst = await f.proof();
-  assert.equal(first.evidence.length, 60); assert.deepEqual(first.alreadyProvided, []);
-  const repeatedRaw = await call('read_evidence', { ids }), repeated = data(repeatedRaw), afterRepeated = await f.proof();
-  assert.deepEqual(repeated.evidence, []); assert.equal(repeated.alreadyProvided.length, 60);
-  assert.ok(repeated.alreadyProvided.every(item => !Object.hasOwn(item, 'text')));
-  assert.equal(afterRepeated.evidenceCharacters, afterFirst.evidenceCharacters);
-  assert.equal(afterRepeated.returnedCharacters, firstRaw.content[0].text.length + repeatedRaw.content[0].text.length);
-  assert.equal(repeated.budget.remainingCharacters, afterRepeated.limits.returnedCharacters - afterRepeated.returnedCharacters);
-  assert.equal(repeated.budget.remainingEvidenceCharacters, afterRepeated.limits.evidenceCharacters - afterRepeated.evidenceCharacters);
-  assert.equal((await call('read_evidence', { ids: [...ids, 'E0061'] })).isError, true);
+  assert.equal(data(await call('read_evidence', { ids })).evidence.length, 60); assert.equal(data(await call('read_evidence', { ids })).evidence.length, 60);
+  const proof = await f.proof(); assert.equal(proof.evidenceLines, 120); assert.equal(proof.evidenceReadIds.length, 60);
 });
-
-test('parser scopes cache by file path and hash regardless of order, with four distinct real runs allowed', async t => {
-  const files = [];
-  const f = await fixture(t, async context => {
-    for (const directory of ['a', 'b', 'c', 'd']) files.push((await addChunk(context, directory + '/com.carota.log', 1000, directory)).file.path);
-  });
+test('parser scopes retain path and hash cache identity without a session run quota', async t => {
+  const f = await fixture(t, async context => { for (let i = 0; i < 6; i++) await addChunk(context, 'scope-' + i + '/com.carota.log', 512); });
   const { call } = await handlerFor(f);
-  const first = data(await call('run_parser', { files: files.slice(0, 2) }));
-  const pid = (await f.proof()).parserProcess.pid;
-  const repeated = data(await call('run_parser', { files: files.slice(0, 2).reverse() }));
-  assert.equal(first.cacheHit, false); assert.equal(repeated.cacheHit, true); assert.deepEqual(repeated.hints, first.hints); assert.deepEqual(repeated.selectedFiles, first.selectedFiles);
-  assert.equal((await f.proof()).parserRunCount, 1); assert.equal((await f.proof()).parserProcess.pid, pid);
-  for (const file of [files[2], files[3], 'example.log']) data(await call('run_parser', { files: [file] }));
-  assert.equal((await f.proof()).parserRunCount, 4); assert.equal((await f.proof()).parserScopes.length, 4);
-  assert.equal((await readdir(f.root)).filter(name => name.startsWith('parser-inputs-')).length, 4);
-  assert.match((await call('run_parser', { files: [files[0]] })).content[0].text, /PARSER_RUN_LIMIT/u);
-  const cachedAfterLimit = data(await call('run_parser', { files: files.slice(0, 2) }));
-  assert.equal(cachedAfterLimit.cacheHit, true); assert.equal(cachedAfterLimit.budget.remainingParserRuns, 0); assert.match(cachedAfterLimit.guidance, /完成报告/u);
+  for (let i = 0; i < 6; i++) assert.equal(data(await call('run_parser', { files: ['scope-' + i + '/com.carota.log'] })).cacheHit, false);
+  assert.equal(data(await call('run_parser', { files: ['scope-5/com.carota.log'] })).cacheHit, true);
+  const proof = await f.proof(); assert.equal(proof.parserRuns, 7); assert.equal(proof.parserBatchRuns, 6);
 });
-
-test('failed parser scopes consume real-run budget and cache errors without retrying the child', async t => {
-  const f = await fixture(t, async context => { await addChunk(context, 'other/com.carota.log', 1000); });
-  const { call } = await handlerFor(f, { parserRuns: 2, parserTimeoutMs: 1 });
-  assert.equal((await call('run_parser', { files: ['example.log'] })).isError, true);
-  const pid = (await f.proof()).parserProcess.pid;
-  const again = await call('run_parser', { files: ['example.log'] });
-  assert.equal(JSON.parse(again.content[0].text).cachedError, true); assert.equal((await f.proof()).parserRunCount, 1); assert.equal((await f.proof()).parserProcess.pid, pid);
-  assert.equal((await call('run_parser', { files: ['other/com.carota.log'] })).isError, true);
-  assert.match((await call('run_parser', { files: ['example.log', 'other/com.carota.log'] })).content[0].text, /PARSER_RUN_LIMIT/u);
-  const proof = await f.proof(); assert.equal(proof.parserRunCount, 2); assert.equal(proof.parserRan, false); assert.ok(proof.parserScopes.every(scope => scope.status === 'failed'));
-});
-
-test('all tool result text including budget metadata and safe errors is included in the returned-character counter', async t => {
-  const f = await fixture(t), { call } = await handlerFor(f, { calls: 3 }); let total = 0;
-  for (const [name, args] of [['list_inputs', {}], ['read_evidence', { ids: ['E9999'] }], ['read_evidence', { ids: ['E0001'] }]]) {
-    const result = await call(name, args); total += result.content[0].text.length;
-    const value = JSON.parse(result.content[0].text), proof = await f.proof();
-    assert.equal(proof.returnedCharacters, total); assert.equal(value.budget.remainingCharacters, proof.limits.returnedCharacters - total);
-  }
-  const proof = await f.proof(); assert.equal(proof.counter, 3); assert.equal(proof.evidenceReadIds.length, 1);
+// Superseded quota-only scenario; cross-page monitoring coverage is in triage-monitoring.test.mjs.
+test('returned-character statistics include the delivered page metadata without an exhaustion gate', async t => {
+  const f = await fixture(t), { call } = await handlerFor(f); let count = 0;
+  for (let i = 0; i < 12; i++) { const result = await call('list_inputs'); count += result.content[0].text.length; }
+  assert.equal((await f.proof()).returnedCharacters, count); assert.equal((await f.proof()).toolCalls, 12);
 });

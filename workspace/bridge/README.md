@@ -1,5 +1,9 @@
 # DSH 异机桥接
 
+## QA当前入口：v0.4.2
+
+按[QA-MONITORING-v0.4.2](../docs/QA-MONITORING-v0.4.2.md)配置授权项目/聊天。旧totalModelCalls、dailyModelCalls、executionLimits和分析超时字段不再限制当前QA执行，不需要补额度；保留历史计数以便追溯。生产采用完整原DSH插件配方与直接模型调用，聊天一条原结论+完整TXT，用量在下载里；JSON内部保留，原行/hash仍核验。用户已于2026-11-21暂停日志分析等公司VPN，本机triage关闭，新原配方真实模型验收待恢复；不要从旧四工具完成记录推断等价。通用三执行器接入另见WORKER-ROUTING-v0.5.0；原代码worker超时约定不在QA更改范围。
+
 ## 当前入口：v0.3.2 同频TeamPlay
 
 当前Super-agent模式的设计/业务流程与边界见[根README](../../README.md)，启用和管理见[SUPER-OPERATIONS-v0.3.0](../docs/SUPER-OPERATIONS-v0.3.0.md)。v0.3.2只更名和整理核对，不改执行机制。下文v0.2及更早说明保留为兼容路线；“没有实时取消/并行”等不适用于新模式。新模式需要独立配置和账本，不覆盖旧未完成任务；异机媒体与长期运行不得仅凭接缝存在称为已验收。

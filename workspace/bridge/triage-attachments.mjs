@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { lstat, open, realpath } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
-const MAX_BYTES = 256 * 1024;
+const MAX_BYTES = 99999999;
 const NAMES = new Map([['report.json', 'application/json'], ['报告.txt', 'text/plain']]);
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const inside = (root, file) => { const rest = relative(root, file); return rest && !isAbsolute(rest) && rest !== '..' && !rest.startsWith('..' + sep); };
@@ -19,7 +19,7 @@ function identity(item) {
   if (!item || item.kind !== 'log-triage' || item.category !== 'artifact' || typeof item.key !== 'string' || !item.key || item.key.length > 300
     || typeof item.clientId !== 'string' || !/^[A-Za-z0-9_.:-]{1,160}$/.test(item.clientId)
     || typeof item.event?.conversation_id !== 'string' || !item.event.conversation_id || item.event.conversation_id.length > 200
-    || typeof item.text !== 'string' || item.text.length > 9000) throw invalid();
+    || typeof item.text !== 'string' || item.text.length > 10000) throw invalid();
   const artifact = item.artifact;
   if (!artifact || !NAMES.has(artifact.name) || artifact.mime !== NAMES.get(artifact.name) || typeof artifact.pathPrivate !== 'string'
     || !isAbsolute(artifact.pathPrivate) || basename(artifact.pathPrivate) !== artifact.name
@@ -30,7 +30,7 @@ function identity(item) {
     text: item.text, artifact: { ...publicMetadata(artifact), mime: artifact.mime, pathPrivate: artifact.pathPrivate } }));
 }
 
-/** Read at most 256KiB+1, retaining file identity across the read and refusing symlink parents. */
+/** Retain file identity across the read; reports follow the same <100MB IM attachment contract. */
 async function artifactBytes(root, artifact) {
   if (typeof root !== 'string' || !isAbsolute(root) || (await lstat(root)).isSymbolicLink()) throw invalid();
   const trustedRoot = await realpath(root), absolute = resolve(artifact.pathPrivate);
@@ -95,16 +95,14 @@ export async function publishTriageArtifact({ api, item, root, transaction, befo
       const current = data.outbox?.[item.key];
       if (!current || identity(current) !== fingerprint) throw invalid();
       const attempts = current.uploadAttempts ?? 0;
-      if (!Number.isSafeInteger(attempts) || attempts < 0 || attempts > 3) throw invalid();
+      if (!Number.isSafeInteger(attempts) || attempts < 0) throw invalid();
       if (current.attachmentId) {
         if (attempts < 1 || !/^[A-Za-z0-9_-]{1,160}$/.test(current.attachmentId) || !sameMetadata(current.attachmentMetadata, item.artifact)) throw invalid();
         return { attachmentId: current.attachmentId };
       }
-      if (attempts >= 3) return { paused: true, verdict: 'upload-limit', error: '报告文件上传次数已用完，需要核对。' };
       current.uploadAttempts = attempts + 1;
       return { upload: true };
     });
-    if (authoritative.paused) return authoritative;
     let attachmentId = authoritative.attachmentId;
     if (!attachmentId) {
       let metadata;
@@ -118,7 +116,7 @@ export async function publishTriageArtifact({ api, item, root, transaction, befo
       } catch (error) {
         await transaction(data => {
           const current = data.outbox?.[item.key];
-          if (current && identity(current) === fingerprint) current.uploadError = '报告文件上传未获确认，重试次数有限。';
+          if (current && identity(current) === fingerprint) current.uploadError = '报告文件上传未获确认，稍后继续发送。';
         });
         throw error;
       }

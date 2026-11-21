@@ -64,11 +64,11 @@ export class InstalledHeadlessExecutor {
     this.auth = this.options.auth ?? 'stored';
     this.permissionMode = this.options.permissionMode ?? 'danger-full-access';
     this.runTimeoutMs = this.options.runTimeoutMs ?? 7200000;
-    this.classificationTimeoutMs = this.options.classificationTimeoutMs ?? Math.min(this.runTimeoutMs, 120000);
+    this.classificationTimeoutMs = this.options.classificationTimeoutMs ?? (this.runTimeoutMs === 0 ? 0 : Math.min(this.runTimeoutMs, 120000));
     if (!['stored', 'environment'].includes(this.auth)) throw new Error('auth must be stored or environment.');
     if (!PERMISSIONS.has(this.permissionMode)) throw new Error('Invalid worker permissionMode.');
-    if (!Number.isSafeInteger(this.runTimeoutMs) || this.runTimeoutMs < 100 || this.runTimeoutMs > 86400000) throw new Error('runTimeoutMs must be 100..86400000.');
-    if (!Number.isSafeInteger(this.classificationTimeoutMs) || this.classificationTimeoutMs < 100 || this.classificationTimeoutMs > 86400000) throw new Error('classificationTimeoutMs must be 100..86400000.');
+    if (!Number.isSafeInteger(this.runTimeoutMs) || this.runTimeoutMs !== 0 && (this.runTimeoutMs < 100 || this.runTimeoutMs > 86400000)) throw new Error('runTimeoutMs must be 0 or 100..86400000.');
+    if (!Number.isSafeInteger(this.classificationTimeoutMs) || this.classificationTimeoutMs !== 0 && (this.classificationTimeoutMs < 100 || this.classificationTimeoutMs > 86400000)) throw new Error('classificationTimeoutMs must be 0 or 100..86400000.');
     this.map = { version: 1, cwd: this.cwd, sessions: {} };
     try { this.map = JSON.parse(await readFile(this.sessionMapPath, 'utf8')); }
     catch (error) { if (error.code !== 'ENOENT') throw new Error('Cannot read DSH session map; preserving it for inspection.'); }
@@ -249,7 +249,7 @@ export class InstalledHeadlessExecutor {
     if (this.active.size) throw new Error('This DSH executor already owns a running invocation.');
     const runDirectory = join(this.runsPath, `${kind}-${randomUUID()}`);
     const startedUtc = new Date().toISOString();
-    const timeoutMs = versionOnly ? Math.min(this.runTimeoutMs, 30000) : kind === 'classifier' ? this.classificationTimeoutMs : this.runTimeoutMs;
+    const timeoutMs = versionOnly ? (this.runTimeoutMs === 0 ? 30000 : Math.min(this.runTimeoutMs, 30000)) : kind === 'classifier' ? this.classificationTimeoutMs : this.runTimeoutMs;
     await mkdir(runDirectory, { mode: 0o700 });
     const taskFile = join(runDirectory, 'task.txt');
     if (!versionOnly) await writeFile(taskFile, prompt, { flag: 'wx', mode: 0o600 });
@@ -331,7 +331,8 @@ export class InstalledHeadlessExecutor {
     const interval = setInterval(() => { capture = capture.then(observeProgress); }, 100);
     let stopFailed;
     const terminationFailure = new Promise((_, reject) => { stopFailed = reject; });
-    const timeout = setTimeout(() => { timedOut = true; stop().catch(stopFailed); }, timeoutMs);
+    const timeout = timeoutMs === 0 ? undefined : setTimeout(() => { timedOut = true; stop().catch(stopFailed); }, timeoutMs);
+    let summary;
     try {
       const result = await Promise.race([closed, terminationFailure]);
       if (stopping) await stopping;
@@ -342,7 +343,6 @@ export class InstalledHeadlessExecutor {
         kind: timedOut ? 'timeout' : 'cancelled', processTreeStopped, timeoutMs, runDirectory,
       });
       if (mappingError) throw mappingError;
-      let summary;
       try { summary = JSON.parse(await readFile(join(runDirectory, 'result.json'), 'utf8')); }
       catch { throw new Error(`DSH runner did not produce a verified result. Inspect ${runDirectory}.`); }
       if (versionOnly) {
@@ -366,12 +366,17 @@ export class InstalledHeadlessExecutor {
       diagnostic = '';
       // This bridge-owned sidecar records interruption even if the force-stopped
       // PowerShell runner could not replace its initial run.json status.
-      await writeFile(join(runDirectory, 'bridge-supervision.json'), JSON.stringify({
+      const invocation = {
         version: 1, kind, status: completed ? 'completed' : failure?.kind === 'timeout' ? 'timed_out' : failure?.kind === 'cancelled' ? 'cancelled' : 'failed',
         failureKind: completed ? null : failure?.kind ?? 'execution-failed', startedUtc, finishedUtc: new Date().toISOString(),
         timeoutMs, launcherPid: child.pid ?? null, launcherExited: child.exitCode !== null || child.signalCode !== null || Boolean(spawnError),
         ...(timedOut || cancelled || this.terminationUnconfirmed ? { processTreeStopped } : {}),
-      }, null, 2), { flag: 'wx', mode: 0o600, flush: true });
+      };
+      await writeFile(join(runDirectory, 'bridge-supervision.json'), JSON.stringify(invocation, null, 2), { flag: 'wx', mode: 0o600, flush: true });
+      this.lastInvocation = { ...invocation, runDirectory, completed, nativeExitCode: summary?.nativeExitCode,
+        finalReason: summary?.finalReason, sessionId: summary?.sessionId,
+        processTreeStopped: processTreeStopped || completed,
+        usage: summary?.usage };
     }
   }
 

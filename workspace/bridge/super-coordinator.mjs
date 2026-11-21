@@ -97,7 +97,8 @@ export class SuperCoordinator {
       }
       data.heartbeat = this.now();
     });
-    const revoked = Object.values(this.data.tasks).filter(task => !TERMINAL.has(task.status) && task.status !== 'paused'
+    const revoked = Object.values(this.data.tasks).filter(task => (task.kind !== 'log-triage' || this.triage)
+      && !TERMINAL.has(task.status) && task.status !== 'paused'
       && !(task.kind === 'log-triage' ? this.triage?.authorized(task, conversations) : this.authorized(task.event, conversations)));
     for (const task of revoked) {
       await this.transaction(data => { const current = data.tasks[task.id]; current.stopRequested = true; current.pauseRequested = true;
@@ -220,7 +221,7 @@ export class SuperCoordinator {
     if (this.stopping) return;
     this.pump().catch(error => { this.lastError = String(error.message); });
     this.flushOutbox().catch(error => { this.lastError = String(error.message); });
-    for (const task of Object.values(this.data.tasks)) if (task.status === 'merged') this.queueRelease(task.id);
+    for (const task of Object.values(this.data.tasks)) if (task.kind !== 'log-triage' && task.status === 'merged') this.queueRelease(task.id);
   }
   async pump() {
     if (this.pumping || this.stopping || !this.conversations) return;
@@ -241,7 +242,7 @@ export class SuperCoordinator {
     } finally { this.pumping = false; }
   }
   async execute(id) {
-    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage.execute(id);
+    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.execute(id);
     let task;
     await this.transaction(data => { task = data.tasks[id]; if (task.status !== 'queued') return; task.status = 'preparing'; task.attempt++; task.startedAt = this.now(); task.updatedAt = this.now(); });
     if (this.data.tasks[id].status !== 'preparing') return;
@@ -332,7 +333,7 @@ export class SuperCoordinator {
       { projectId: task.projectId, conversations: [task.conversationId] }, this.config.contextCharacters ?? 12000);
   }
   async pause(id, error) {
-    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage.pause(id, error);
+    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.pause(id, error);
     await this.transaction(data => {
       const task = data.tasks[id]; if (!task) return;
       task.stopRequested = true; task.pauseRequested = true;
@@ -346,14 +347,14 @@ export class SuperCoordinator {
     });
   }
   async finishStopped(id) {
-    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage.finishStopped(id);
+    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.finishStopped(id);
     await this.transaction(data => { const task = data.tasks[id];
       if (!['closed', 'merged'].includes(task.status)) task.status = task.pauseRequested ? 'paused' : 'cancelled';
       task.uncertain = false; task.updatedAt = this.now(); this.taskNode(data, task);
       if (!task.speculative || task.delivery?.number) this.enqueue(data, task.event, `#${id} ${labels[task.status]}，已有修改和记录保留。`, `stopped-${id}-${task.attempt}`); });
   }
   async stopTask(id, reason = 'Human requested stop') {
-    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage.cancel(id, reason);
+    if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.cancel(id, reason);
     if (!this.active.get(id)?.started) return;
     const result = await this.pool.cancel(id, reason);
     if (result?.processTreeStopped !== true) throw new Error('Execution stop was not verified.');
@@ -371,6 +372,7 @@ export class SuperCoordinator {
       for (const item of Object.values(this.data.outbox)) {
         if (item.status !== 'pending' || (item.nextAttempt && Date.parse(item.nextAttempt) > Date.parse(this.now()))) continue;
         if (item.kind === 'log-triage') {
+          if (!this.triage) continue;
           const verdict = await this.triage?.beforeSend(item, conversations) ?? 'pause';
           if (verdict !== 'send') { await this.transaction(data => { data.outbox[item.key].status = verdict === 'drop' ? 'superseded' : 'paused'; }); continue; }
         }

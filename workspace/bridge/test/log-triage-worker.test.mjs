@@ -12,6 +12,7 @@ import { validateModelReport, renderReport, redact, collectEvidence, buildModelP
 import { createHash } from 'node:crypto';
 import { createTriageToolHandler, TRIAGE_SKILL_ID } from '../triage-tools.mjs';
 import { SkillExecutionService } from '../skill-execution.mjs';
+import { mapPluginReport } from '../triage-plugin-recipe.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PYTHON = process.env.IM_TEST_PYTHON || join(ROOT, 'environment/venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
@@ -43,6 +44,53 @@ async function fixture(t, { data = LOG, name = 'com.carota.log', response, realS
     model: async (payload, options) => { modelCalls++; seen = payload; return model ? model(payload, options) : modelReport(payload); } });
   return { worker, directory, origin, server, calls: () => modelCalls, seen: () => seen, requests: () => requests };
 }
+
+test('zero total timeout and a service-verified dynamic source line reach the final Worker report and usage', async t => {
+  const data = Array.from({ length: 300 }, (_, index) => `2026-11-20 10:00:00 CAROTA CORE VER state ${index + 1}`).join('\n');
+  const f = await fixture(t, { data, limits: { runTimeoutMs: 0 } });
+  f.worker.executionService = new SkillExecutionService({ root: f.directory, runner: { runSkill: async request => {
+    await new Promise(resolve => setTimeout(resolve, 25));
+    const file = request.inputFiles[0], actual = await readFile(join(request.executionContext.directory, file.path), 'utf8');
+    const entry = { id: 'E9999', file: file.path, line: 201, text: actual.split('\n')[200], sha256: file.sha256,
+      time: '2026-11-20 10:00:00', aligned: false, inRequestedWindow: null };
+    return { evidence: [entry], result: { conclusion: 'Actual source record checked', confidence: 'high', responsibility: '待验证',
+      evidence: [{ id: entry.id, interpretation: 'Observed line 201' }], timeline: [{ id: entry.id, event: 'Recorded state' }], alternatives: [], nextSteps: ['Review source'], limitations: [] },
+      execution: { backend: 'dsh', agentSessions: 1, providerRequests: 41, toolCalls: 140, skillLoaded: true, proofValidated: true,
+        usage: { elapsedMs: 25, providerRequests: 41, toolCalls: 140, toolCallsByName: { read_evidence: 1 }, evidenceReadCalls: 1, evidenceLines: 1, parserRuns: 8 } } };
+  } } });
+  const result = await f.worker.run(snapshot({ window: {} }), { beforeModel: async () => {} });
+  assert.equal(result.status, 'completed'); assert.equal(result.execution.providerRequests, 41); assert.equal(result.execution.usage.evidenceLines, 1);
+  assert.ok(result.report.evidenceIndex.some(item => item.id === 'E9999' && item.line === 201)); assert.match(result.text, /com\.carota\.log:201/u);
+  assert.equal(result.report.confidence, 'high'); assert.equal(result.files.length, 2);
+});
+
+test('the original plugin recipe owns all evidence selection and its full report survives the Worker without a second model', async t => {
+  const f = await fixture(t); let calls = 0;
+  const runner = { recipe: 'chery-qa-plugin', async runSkill(request) {
+    calls++; assert.deepEqual(request.executionContext.payload.evidence, []);
+    const file = request.inputFiles[0], actual = await readFile(join(request.executionContext.directory, file.path), 'utf8');
+    const evidence = [{ id: 'E0001', file: file.path, line: 2, text: redact(actual.split('\n')[1]), sha256: file.sha256, time: '', aligned: false }];
+    const sourceReport = `# OTA 日志分析报告\n\n【结论】\n责任方：服务连接；置信度：中。\n保持原模型判断。\n\n【依据】\n${file.path}:2 超时记录。\n\n【时间线】\n${file.path}:2 出现超时。\n\n【其他可能】\n需要核对服务。\n\n【下一步】\n联系维护者。`;
+    return { result: mapPluginReport(sourceReport, evidence), sourceReport, evidence,
+      execution: { backend: 'dsh', recipe: this.recipe, agentSessions: 1, providerRequests: 1, toolCalls: 0, skillLoaded: true, proofValidated: true,
+        usage: { providerRequests: 1, toolCalls: 0, parserRuns: 1 } } };
+  } };
+  f.worker.executionService = new SkillExecutionService({ root: f.directory, runner });
+  const result = await f.worker.run(snapshot({ window: {} }));
+  assert.equal(calls, 1); assert.equal(f.calls(), 0); assert.equal(result.status, 'completed');
+  assert.equal(result.manifest.preparation.kind, 'chery-qa-plugin'); assert.equal(result.execution.toolCalls, 0);
+  assert.ok(result.text.startsWith(result.report.sourceReport)); assert.ok(result.report.conclusion.includes('保持原模型判断。'));
+});
+
+test('an explicit symptom is passed intact to the skill service beyond the former 4000 character slice', async t => {
+  const f = await fixture(t), symptom = '合成现象。'.repeat(1200) + '末尾关键补充';
+  let received;
+  f.worker.executionService = { async execute(request, { beforeExecute }) {
+    received = request.parameters.symptom; await beforeExecute(); return serviceResult(request);
+  } };
+  const result = await f.worker.run(snapshot({ descriptionOverride: symptom }));
+  assert.equal(result.status, 'completed'); assert.equal(received, symptom); assert.ok(received.endsWith('末尾关键补充'));
+});
 
 test('missing logs wait; missing description/timezone/date stays preliminary and openedAt never supplies fault date', async t => {
   const f = await fixture(t);
@@ -123,29 +171,29 @@ test('UTC clocks align; unspecified log clocks preserve raw preliminary time and
   assert.equal(noEvidence.modelCalls, 0); assert.equal(empty.calls(), 0); assert.match(noEvidence.text, /不代表系统没有故障/);
 });
 
-test('actual download bytes, metadata hashes and cross-origin redirects are bounded before model', async t => {
-  const large = await fixture(t, { data: 'A'.repeat(100), limits: { maxFileBytes: 30 } });
-  await assert.rejects(large.worker.run(snapshot()), e => e instanceof TriageWorkerError && !e.modelStarted && e.processTreeStopped && e.phase === 'download');
-  const hash = await fixture(t, { metadata: { md5: '0'.repeat(32) } }); await assert.rejects(hash.worker.run(snapshot())); assert.equal(hash.calls(), 0);
+test('streamed download ignores retired size quotas while metadata hashes and origins remain verified', async t => {
+  const large = await fixture(t, { data: LOG, limits: { maxFileBytes: 30, maxDownloadBytes: 30 } });
+  assert.equal((await large.worker.run(snapshot())).status, 'completed');
+  const badHash = await fixture(t, { metadata: { md5: '0'.repeat(32) } });
+  await assert.rejects(badHash.worker.run(snapshot())); assert.equal(badHash.calls(), 0);
   let redirect;
   const redirected = await fixture(t, { response: (_req, res) => { res.writeHead(302, { location: redirect }); res.end(); } });
   redirect = redirected.origin.replace('127.0.0.1', 'localhost') + '/target';
   await assert.rejects(redirected.worker.run(snapshot()), e => !e.modelStarted && e.phase === 'download'); assert.equal(redirected.requests(), 1);
 });
-
 function zip(entries) {
   return execFileSync(PYTHON, ['-c', "import sys,json,io,zipfile,stat; b=io.BytesIO(); z=zipfile.ZipFile(b,'w',zipfile.ZIP_DEFLATED); entries=json.loads(sys.argv[1]); [(z.writestr(x[0],x[1])) for x in entries]; z.close(); sys.stdout.buffer.write(b.getvalue())", JSON.stringify(entries)], { windowsHide: true });
 }
-test('safe ZIP parses real extracted files; traversal, drive paths, case collisions and compression bombs are refused', async t => {
-  const safe = await fixture(t, { name: 'logs.zip', data: zip([['com.carota.log', LOG]]) });
-  assert.equal((await safe.worker.run(snapshot())).status, 'completed');
-  for (const entries of [[['../escape.txt', LOG]], [['C:\\escape.txt', LOG]], [['A.log', LOG], ['a.log', LOG]], [['com.carota.log', 'A'.repeat(20000)]]]) {
-    const attack = await fixture(t, { name: 'logs.zip', data: zip(entries), limits: { maxCompressionRatio: 20 } });
-    await assert.rejects(attack.worker.run(snapshot()), e => e.phase === 'extract' && !e.modelStarted && e.processTreeStopped);
-    assert.equal(attack.calls(), 0);
+test('streamed ZIP accepts dense legitimate input while refusing traversal, drive paths and case collisions', async t => {
+  for (const entries of [[['com.carota.log', LOG]], [['com.carota.log', 'A'.repeat(20000)]]]) {
+    const safe = await fixture(t, { name: 'logs.zip', data: zip(entries), limits: { maxCompressionRatio: 1, maxExpandedBytes: 10, maxExpandedFileBytes: 10, maxExtractedFiles: 0 } });
+    assert.equal((await safe.worker.run(snapshot())).status, 'completed');
+  }
+  for (const entries of [[['../escape.txt', LOG]], [['C:\\escape.txt', LOG]], [['A.log', LOG], ['a.log', LOG]]]) {
+    const attack = await fixture(t, { name: 'logs.zip', data: zip(entries) });
+    await assert.rejects(attack.worker.run(snapshot()), e => e.phase === 'extract' && !e.modelStarted && e.processTreeStopped); assert.equal(attack.calls(), 0);
   }
 });
-
 test('safe and nested ZIPs leave exactly their leaf manifest and initialize the real strict skill tool handler', async t => {
   const nested = execFileSync(PYTHON, ['-c', `import sys,io,zipfile
 inner=io.BytesIO()
@@ -243,13 +291,11 @@ test('beforeModel revision/permission/budget rejection preserves error code and 
   assert.equal(f.calls(), 0);
 });
 
-test('prompt metadata, rules and evidence share one overall character budget', async t => {
-  const data = Array.from({ length: 100 }, (_, i) => `2026-11-20 10:00:${String(i % 60).padStart(2, '0')} CloudTransmitter ERROR ${'X'.repeat(550)}`).join('\n');
+test('prompt material is not discarded because of the retired cumulative character quota', async t => {
+  const data = Array.from({ length: 100 }, (_, i) => '2026-11-20 10:00:00 CloudTransmitter ERROR ' + 'X'.repeat(550)).join('\n');
   const f = await fixture(t, { data, limits: { maxInputCharacters: 10000 } });
-  assert.equal((await f.worker.run(snapshot())).status, 'completed');
-  assert.ok(JSON.stringify(f.seen()).length <= 10000); assert.ok(f.seen().evidence.length < 60);
+  assert.equal((await f.worker.run(snapshot())).status, 'completed'); assert.ok(JSON.stringify(f.seen()).length > 10000); assert.equal(f.seen().evidence.length, 60);
 });
-
 test('a late ERROR after 1300 ordinary lines reaches the model with its real line/file/hash and early context', async t => {
   const data = Array.from({ length: 1300 }, (_value, index) => `2026-11-20 10:00:00 CloudTransmitter normal startup ${index + 1}`).join('\n')
     + '\n2026-11-20 10:00:00 CloudTransmitter ERROR synthetic-late-failure\n';
@@ -278,26 +324,11 @@ test('late anomaly replacement keeps exactly the candidate cap and first forty a
   assert.equal(f.calls(), 0);
 });
 
-test('overall 48k input clipping keeps a late anomaly after long ordinary evidence and drops oldest anomalies last', () => {
-  const evidence = Array.from({ length: 60 }, (_value, index) => ({ id: `E${String(index + 1).padStart(4, '0')}`,
-    file: 'input-001/com.carota.log', line: index === 59 ? 1301 : index + 1,
-    text: (index === 59 ? 'ERROR synthetic-late-failure ' : 'normal startup ') + 'X'.repeat(570), sha256: 'a'.repeat(64),
-    time: '2026-11-20 10:00:00', rawTime: '2026-11-20 10:00:00', timeZone: 'unconfirmed',
-    timestampSourceLine: index === 59 ? 1301 : index + 1, aligned: false, inRequestedWindow: null }));
-  const build = entries => buildModelPayload({ snapshot: snapshot(), window: { mode: 'preliminary' }, evidence: entries,
-    parserSummary: [], rules: 'R'.repeat(14000), limitations: [], maxCharacters: 48000 });
-  const payload = build(evidence);
-  assert.ok(payload.evidence.length < 60); assert.ok(JSON.stringify(payload).length <= 48000);
-  assert.ok(payload.evidence.some(item => item.line === 1301));
-  assert.equal(payload.evidence[0].line, 1);
-  assert.ok(payload.evidence.filter(item => item.line !== 1301).every(item => item.line <= 40));
-  assert.ok(payload.limitations.some(text => text.includes('模型上下文达到预算')));
-  const onlyAnomalies = build(evidence.map(item => ({ ...item, text: 'ERROR ' + 'X'.repeat(570) })));
-  assert.ok(JSON.stringify(onlyAnomalies).length <= 48000);
-  assert.ok(onlyAnomalies.evidence.some(item => item.line === 1301));
-  assert.ok(!onlyAnomalies.evidence.some(item => item.line === 1));
+test('the entry catalog and parser references are preserved when the former prompt quota is smaller than the material', () => {
+  const evidence = Array.from({ length: 80 }, (_, index) => ({ id: 'E' + String(index + 1).padStart(4, '0'), file: 'app.log', line: index + 1, text: 'X'.repeat(900), aligned: false }));
+  const payload = buildModelPayload({ snapshot: snapshot(), window: { mode: 'preliminary' }, evidence, parserSummary: [{ summary: 'actual source', evidenceIds: ['E0080'] }], rules: 'fixed rules', limitations: [], maxCharacters: 1 });
+  assert.equal(payload.evidence.length, 80); assert.equal(payload.parserSummary[0].evidenceIds[0], 'E0080'); assert.ok(JSON.stringify(payload).length > 48000);
 });
-
 test('cancellation before work is zero-call and unconfirmed model cancellation becomes uncertain rather than retrying', async t => {
   const before = await fixture(t), cancel = new AbortController(); cancel.abort();
   await assert.rejects(before.worker.run(snapshot(), { signal: cancel.signal }), e => !e.modelStarted); assert.equal(before.requests(), 0);
@@ -321,7 +352,7 @@ test('opaque attachments still return an honest zero-model preliminary report; s
   assert.equal(inspectTriageInputs(snapshot({ window: { timeZone: 'not-a-zone' } })).status, 'waiting_input');
 });
 
-async function serviceResult(request, { partial = false, judgement = {} } = {}) {
+async function serviceResult(request, { partial = false, judgement = {}, usage } = {}) {
   const payload = request.executionContext.payload;
   const result = validateModelReport({ ...modelReport(payload), ...judgement }, payload);
   if (partial) {
@@ -331,13 +362,13 @@ async function serviceResult(request, { partial = false, judgement = {} } = {}) 
   }
   const files = [];
   for (const [name, mime, content] of [['report.json', 'application/json', JSON.stringify(result, null, 2)],
-    ['报告.txt', 'text/plain', renderReport(result, payload)]]) {
+    ['报告.txt', 'text/plain', renderReport(result, payload, usage)]]) {
     const pathPrivate = join(request.executionContext.outputDirectory, name);
     const bytes = Buffer.from(content); await writeFile(pathPrivate, bytes, { flag: 'wx' });
     files.push({ name, mime, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), pathPrivate });
   }
   return { status: partial ? 'partial' : 'completed', result, files, execution: { backend: 'dsh', agentSessions: 1,
-    providerRequests: partial ? 6 : 3, toolCalls: partial ? 11 : 4, skillLoaded: true, proofValidated: true } };
+    providerRequests: partial ? 6 : 3, toolCalls: partial ? 11 : 4, skillLoaded: true, proofValidated: true, ...(usage ? { usage } : {}) } };
 }
 
 test('verified partial service results preserve partial status and both strict artifacts without a second admission or model', async t => {
@@ -459,22 +490,18 @@ test('missing fault time preserves an evidence-based model judgement in legacy a
   assert.equal(result.report.responsibility, judgement.responsibility); assert.equal(result.files.length, 2);
 });
 
-test('unverified or excessive skill execution proof and out-of-scope artifacts prevent completion', async t => {
-  for (const altered of ['proof', 'path', 'provider-limit', 'tool-limit']) {
+test('unverified skill execution proof and out-of-scope artifacts still prevent completion', async t => {
+  for (const altered of ['proof', 'path']) {
     const f = await fixture(t);
     f.worker.executionService = { async execute(request, { beforeExecute }) {
-      await beforeExecute();
-      const result = await serviceResult(request);
+      await beforeExecute(); const result = await serviceResult(request);
       if (altered === 'proof') result.execution.skillLoaded = false;
-      else if (altered === 'provider-limit') result.execution.providerRequests = 33;
-      else if (altered === 'tool-limit') result.execution.toolCalls = 97;
       else result.files[0].pathPrivate = join(request.executionContext.directory, request.inputFiles[0].path);
       return result;
     } };
     await assert.rejects(f.worker.run(snapshot()), e => e.phase === 'report' && e.modelStarted && e.processTreeStopped);
   }
 });
-
 test('verified execution can exceed the former six-request pilot policy within the hard count limits', async t => {
   for (const [providerRequests, toolCalls] of [[7, 20], [32, 96]]) {
     const f = await fixture(t); let admitted = 0, serviceCalls = 0;
@@ -491,31 +518,18 @@ test('verified execution can exceed the former six-request pilot policy within t
   }
 });
 
-test('verified execution policy is preserved and actual counts must fit the complete bounded four-field policy', async t => {
-  const defaultPolicy = { modelRequests: 12, toolCalls: 32, inputCharacters: 192000, maxTokens: 4096 };
-  const variants = [defaultPolicy, { ...defaultPolicy, modelRequests: 6 }, { ...defaultPolicy, toolCalls: 19 },
-    { ...defaultPolicy, modelRequests: 33 }, { ...defaultPolicy, toolCalls: 97 },
-    { ...defaultPolicy, inputCharacters: 384001 }, { ...defaultPolicy, maxTokens: 8193 },
-    { modelRequests: 12, toolCalls: 32 }, { ...defaultPolicy, untrustedExtra: 1 }];
-  for (const [index, limits] of variants.entries()) {
-    const f = await fixture(t); let serviceCalls = 0, admitted = 0;
-    f.worker.executionService = { async execute(request, { beforeExecute }) {
-      serviceCalls++; await beforeExecute();
-      const result = await serviceResult(request);
-      Object.assign(result.execution, { providerRequests: 7, toolCalls: 20, limits });
-      return result;
-    } };
-    const run = f.worker.run(snapshot(), { beforeModel() { admitted++; } });
-    if (index === 0) {
-      const result = await run;
-      assert.equal(result.status, 'completed'); assert.deepEqual(result.execution.limits, defaultPolicy);
-      assert.deepEqual(result.manifest.execution.limits, defaultPolicy);
-      assert.equal(result.modelCalls, 1);
-    } else await assert.rejects(run, error => error.phase === 'report' && error.modelStarted && error.processTreeStopped);
-    assert.equal(serviceCalls, 1); assert.equal(admitted, 1); assert.equal(f.calls(), 0);
-  }
+test('verified execution counts are statistics and a retired declared policy does not reject completed work', async t => {
+  const f = await fixture(t);
+  const usage = { elapsedMs: 7, providerRequests: 41, toolCalls: 140, evidenceReadCalls: 99, evidenceLines: 9000, parserRuns: 12, toolCallsByName: { read_evidence: 99 } };
+  f.worker.executionService = { async execute(request, { beforeExecute }) {
+    await beforeExecute(); const result = await serviceResult(request, { usage });
+    Object.assign(result.execution, { providerRequests: 41, toolCalls: 140, limits: { modelRequests: 1, toolCalls: 1 },
+      usage });
+    return result;
+  } };
+  const result = await f.worker.run(snapshot()); assert.equal(result.status, 'completed'); assert.equal(result.execution.providerRequests, 41);
+  assert.equal(result.execution.usage.evidenceLines, 9000); assert.equal(Object.hasOwn(result.execution, 'limits'), false);
 });
-
 test('real execution-service validation rejects changed input before reserving budget or starting a backend', async t => {
   const f = await fixture(t); let admitted = 0, runnerCalls = 0;
   const service = new SkillExecutionService({ root: f.worker.root, runner: { async runSkill() { runnerCalls++; throw new Error('must not start'); } } });

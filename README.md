@@ -2,7 +2,41 @@
 
 小团队私有聊天工具：Windows 客户端，支持私聊、群聊、文字、图片、音频、视频和文件。每个附件严格小于 **100,000,000 字节**。团队可以在授权群里讨论需求，让 DeepSeek Harness（DSH）在指定代码项目中执行、测试，再把结果送回聊天与 GitHub。
 
-当前源码版本 **v0.4.1**。QA 日志分析按固定 skill 直接生成并回传报告，启用需显式绑定项目、聊天与分析额度。Windows v0.3.3 客户端继续兼容，下载见 [v0.3.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+当前源码版本 **v0.4.2**。QA 日志分析按固定 skill 直接生成并回传报告，启用需显式绑定项目与聊天；用量只统计，不设分析额度。Windows v0.3.3 客户端继续兼容，下载见 [v0.3.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+
+## 产品定位：统一业务入口与任务路由中心
+
+同频的目标是让团队在聊天里提出需求，或由业务系统的变化触发任务；后台识别要做什么、选择合适的Worker，再调用该业务需要的Agent、Skill与MCP，把结果和文件送回原聊天。日志分析、代码修改、业务查询可以接成不同的业务插件，各自保留自己的执行流程。普通聊天仍直接通信，不需要每条消息都调用模型。
+
+| 角色 | 职责 |
+| --- | --- |
+| IM | 团队统一入口，保存讨论、材料和结果。 |
+| Trigger | 把聊天请求、QA新增Bug等变化转成可追踪的任务事件。 |
+| Router | 识别业务与任务归属，选择已注册、已授权的Worker，关联已有任务或建立新任务。 |
+| Worker | 对一项业务负责：准备输入、调用执行能力、收集结果和文件，再交回聊天。日志分析Worker与代码Worker可以有不同流程。 |
+| Agent | 执行任务的智能体运行环境，例如DSH；不同Worker可接不同Agent，不要求每个任务同时启动多个Agent。 |
+| Skill | 业务的做事流程、规则和配套脚本。日志业务按原DSH插件配方执行，不由Router另写一套诊断流程。 |
+| MCP | 业务系统的数据和操作接口，例如读取QA缺陷及附件；可供来源监听或Worker使用。 |
+
+```mermaid
+flowchart LR
+  Input[聊天请求 / 业务变化] --> Trigger[Trigger]
+  Trigger --> Router[Router：识别业务与任务]
+  Router --> Log[日志分析Worker]
+  Router --> Code[代码Worker]
+  Router -.后续接入.-> Other[其他业务Worker]
+  Log --> LogRecipe[原DSH插件：Skill与模型调用]
+  Code --> CodeAgent[代码Agent与项目工具]
+  Other -.-> Capability[对应Agent、Skill、MCP]
+  LogRecipe --> Result[业务结果与文件]
+  CodeAgent --> Result
+  Capability -.-> Result
+  Result --> Chat[原聊天]
+```
+
+**当前实现与目标分开。** QA日志入口已有明确规则的typed Router，代码入口已有只读AI分类与任务归属判断；它们尚不是一个能根据任意需求动态选择所有Worker的通用AI路由器。DSH是当前日志执行后端，Pi、Hermes、OpenCode只有适配注册协议，不能视为已经接通。后续插件需登记业务能力、触发方式、Worker入口、所需Agent/Skill/MCP、输入输出与授权范围，Router才能在这些明确能力中选择；聊天内容或模型输出不能自行安装插件或扩大权限。
+
+插件化和多Agent是扩展方式；持续接收补充、保存任务身份、恢复执行和把结果可靠送回团队，仍是这里落实Super-agent思想的一部分。以下QA流程说明当前如何触发、归属和执行，后文的编码流程与审计保留其实际能力边界。
 
 ## Windows 托盘与新消息
 
@@ -10,43 +44,58 @@
 
 窗口在后台、最小化或托盘时，当前聊天也不会被自动标为已读。退出聊天账号会清除桌面提醒；退出客户端不停止独立服务器/DSH。规格与验证见[托盘设计](workspace/docs/DESKTOP-TRAY-v0.3.3.md)和[v0.3.3报告](outputs/VERIFICATION-v0.3.3.md)。
 
-## QA 新 Bug 与日志分析 Worker
+## QA 新 Bug：自动触发、路由与日志分析
 
-QA新增缺陷和授权群里贴编号均进入统一Trigger与Router。[v0.4.0实现规格](workspace/docs/QA-IMPLEMENTATION-v0.4.0.md)覆盖[原流程设计](workspace/docs/QA-TRIGGER-ROUTE.md)的待实现阶段。用户所说的“业务平台”在这里具体就是Super-agent的**日志分析Worker**，负责真实故障排查这个业务角色；IM负责触发和结果展示。
+这里的 **Trigger → Router** 具体指“后台定时去QA读取Bug，把变化交给正确的分析任务”，这一段已经实现，并非要求成员手动把所有问题转发进群。启用后，后台默认每 **60秒** 扫描显式绑定的QA项目，读取缺陷及附件清单；关闭聊天窗口不会停止独立后台。配置入口为 [config.super.example.json](workspace/bridge/config.super.example.json) 的 `superAgent.triage`，操作见[桥接说明](workspace/bridge/README.md)。
 
 ```mermaid
-flowchart LR
-  QA[QA Source：新增缺陷或新日志] --> Trigger[持久 Trigger 与来源准入]
-  Chat[IM Source：编号重分析或补充] --> Trigger
-  Trigger --> Route[统一只读 Router：新建、关联、补充或忽略]
-  Route -->|创建或续接| Task[统一任务号与缺陷 Thread]
-  Route -->|忽略或拒绝| Record[只记录判断]
-  Task --> Worker[日志分析 Worker：提交 skill ID、参数、文件]
-  Worker --> Adapter[执行适配服务]
-  Adapter --> Agent[本机 Agent：加载 skill、调用模型和日志工具]
-  Agent --> Adapter
-  Adapter -->|校验 JSON、证据与产物| Worker
-  Worker --> Save[保存报告、文件与输入版本]
-  Save --> Gate[输入版本与群权限门禁]
-  Gate --> Outbox[Outbox：固定结果与发送去重]
-  Outbox --> IM[绑定聊天：结论、依据、待补充与建议]
+flowchart TB
+  QA[每60秒读取绑定QA项目] --> Baseline{该绑定已有完整基线?}
+  Baseline -->|没有| SaveBaseline[完整扫描后保存历史清单，不分析旧Bug]
+  Baseline -->|已有| Change[识别新增Bug、附件变化、更新或关闭]
+  Chat[授权群：问题编号、重分析或补充] --> Trigger
+  Change --> Trigger[Trigger：来源、项目、问题、结果群及版本持久入账]
+  Trigger --> Route[只读Router：新建、关联、补充、停止或忽略]
+  Route --> Task[统一T任务号与输入版本]
+  Task --> Worker[日志Worker：读取并校验本问题附件]
+  Worker --> Recipe[完整原DSH插件配方：解析、回读、关键行、原提示词]
+  Recipe --> DSH[DSH直接调用当前指定模型]
+  DSH --> Report[保存模型原五段报告与实际用量]
+  Report --> Outbox[Outbox：核验当前版本和群权限，幂等发送]
+  Outbox --> Result[绑定结果群：一条结论消息加完整报告TXT]
 ```
 
-QA Source使用有界全量补偿轮询发现变化；扫描只持久保存Trigger，Router决定归属和任务类型，模型在日志Worker批准的执行会话内调用。QA来源有独立身份，不伪装成人类IM消息。日志任务不进入代码工作副本、PR、合并或发布。旧代码链路的A1/A2审计缺口继续保留。
+### 已实现的来源与路由行为
 
-Worker提交固定的 `ota-log-triage@1.3.2`、业务参数和校验过的输入文件；执行适配服务调本机Agent加载skill，使用“加载技能、列材料、读证据、运行解析器”四个受控日志工具排查，再核验JSON与真实证据，收集自己生成的 `report.json`、`报告.txt`。首个适配后端是DSH；Pi、Hermes、OpenCode可注册同协议适配器，当前没有冒称它们已接通。执行额度由可信配置决定，默认12轮生成、32次工具；证据可批量读取，重复证据及相同解析范围复用结果；分析次数与内部请求数分别记录，宿主shell、QA凭据和Git写权限不交给日志Agent。这仍不等于OS沙箱。
+1. **首次只建立基线。** 必须完整读完项目分页及附件列表，才提交基线；历史Bug不会被当成新增Bug批量分析。绑定重新启用时也先重建基线，不补跑停止跟踪期间的问题。扫描失败保留旧检查点并退避，不把半轮扫描记成成功。
+2. **新增Bug自动入队。** 后续发现尚未见过的未关闭问题，生成 `issue.created` Trigger。Router在绑定范围内创建 `log-triage` 任务；已有同一问题任务则关联原T号。路由只决定归属，不调用模型诊断、不把QA内容路由到代码修改或发布。
+3. **新附件回到原问题。** 已有任务的问题增加附件或补充内容，产生变化Trigger，关联原T号；确有输入变化才推进新版本。没有日志时可等待补充，日志到达后再继续。基线中的历史Bug若从未建立分析任务，仅补附件目前不会自动新建任务；先在群里贴编号即可建立分析与关联。
+4. **群里也能触发。** 授权成员发送 `DEMO-42` 或 `分析 DEMO-42`，后台精确读取该绑定项目中的问题；未建任务则创建，已有且材料未变则复用原结果。明确发送 `重新分析 DEMO-42` 才请求再次分析；`#T000001 问题说明 ……` 可补充现象，日期、时间和日志时区也可补充到原任务。
+5. **关闭与取消会停止后续工作。** QA关闭事件关联已有任务并请求停止；聊天支持 `取消任务 #T000001`、`任务状态 #T000001`、`继续分析 #T000001`。未知终态的执行不会自行重做。
 
-直接调用skill并保留它生成的结论、可信度、责任倾向和缺口，不添加额外诊断要求，不因缺时间强制改写结果。默认编号分析与原插件现象输入留空一致：QA标题/描述保存在来源账本，只有聊天明确补充的“问题说明”才作为现象参数传入。故障时间可选，完整有效窗口才做筛选；没有可用证据时可给有限的零模型初排，但不算本轮真实模型正向完成。
+Trigger身份包含来源、项目、问题、绑定结果群和内容版本。缺陷快照与附件ID形成稳定哈希；重复扫描和重复Trigger不会重复建任务。Trigger与来源检查点在同一事务保存，同一问题在不同项目或群里不会混并。QA身份独立于IM成员，不伪装成人类消息，机器人回话也不会再次触发自己。
 
-取证前按类型进行有界小批解析，并回读清单内真实行和上下文；流式扫描及证据核验为2M行/320M字符，匹配已允许的320MB展开材料范围。业务失败优先于重复成功码，保留安全主机/环境/业务接口语义，隐藏认证、参数及下载地址。模型仍只接收最多60条重点证据；小批预处理不替代Agent实际使用skill/解析工具的证明。
+启用需要 `triage.enabled=true`、允许的QA读取身份和明确的项目→结果群绑定；助手必须在结果群内，群与成员仍受部署配置白名单约束。只有预配管理员、且显式打开 `allowChatProjectBinding` 后，才可在授权群发送 `跟踪项目 DEMO` / `停止跟踪项目 DEMO`；项目代码须精确且唯一匹配，同一QA项目不能借聊天命令改投另一群。日志、模型或普通成员不能更改这些绑定。
 
-`partial`仍是明确的非模型终稿，只作为中间结果保留。[v0.4.1标准](workspace/docs/QA-ACCEPTANCE-v0.4.1.md)要求真实Agent完成报告，经正常Outbox发到聊天，并由成员身份下载两份报告核对内容与哈希。真实结果和失败以最新HANDOFF及验收报告为准；不能以状态标签或异常单测代替完成。
+实际入口：[QA Source](workspace/bridge/qa-source.mjs)产生变化，[SuperTriage](workspace/bridge/super-triage.mjs)持久接收及关联，[typed Router](workspace/bridge/triage-route.mjs)确定日志任务归属，[SuperCoordinator](workspace/bridge/super-coordinator.mjs)负责执行与Outbox。QA目前没有可靠事件游标或已接通的Webhook；60秒是默认轮询间隔，不是实时推送保证，扫描间创建又删除的问题可能无法捕获。
 
-第一轮完整建立历史基线，之后只处理绑定项目。迟到附件和群补充归回同一T编号的新输入版本；跨群相同编号不合并。结果先保存再回传，丢失确认只重发同一内容，不重新分析；发送期间收到新材料也保留后续轮。取消、解绑、移出机器人、过期版本或409冲突都会拦住相应发送。报告文件通过现有认证附件机制下载。
+### 日志执行：完整对齐原DSH插件配方
 
-授权成员可发 `DEMO-42`、`分析 DEMO-42`、`重新分析 DEMO-42`、`#T000001 问题说明 ……`、`分析详情 #T000001`、`任务状态 #T000001`、`取消任务 #T000001`、`继续分析 #T000001`。预配管理员可发 `跟踪项目 DEMO`、`停止跟踪项目 DEMO`，范围受已批准聊天和QA读取身份约束。日志或模型不能改变授权。
+本轮最新执行规范见 [QA-MONITORING-v0.4.2](workspace/docs/QA-MONITORING-v0.4.2.md)末节。日志Worker提交完整校验材料，按原DSH插件配方组织分析：完整解包目标、固定skill CLI和相同 `windowArgs`，保留完整 `verdict/findings/suggestions`；按原findings顺序回读上下文，再独立扫描原 `filesUsed` 的关键行。标准 `mid` 档使用原配方的44个证据块、60个关键块、三份技能文档、`compactVerdict` 及原system/user文本。这些是原插件的材料组织方式，不是IM额外施加的会话额度。
 
-截图中的原插件仍是手动UI实现，本项目复用经SHA256锁定的公开1.3.2技能，不调用Desktop私有路由、不修改原DSH安装。QA接口没有可靠事件游标，扫描失败保留检查点；真实项目、群、缺陷、原始日志、下载地址与认证只留在忽略的本机数据中。配置见[桥接说明](workspace/bridge/README.md)，实际验证及试点状态以最新[HANDOFF](workspace/docs/HANDOFF.md)和[v0.4.1报告](outputs/VERIFICATION-v0.4.1.md)为准。
+执行链路为 **完整原插件配方 → DSH宿主 `llm.prepareCall/stream` 直接调用当前指定模型 → 保存原五段报告**。首档推理参数与原插件一致，不再让“四工具Agent自选少量材料＋八字段JSON提示”替代原插件流程，也不增加第二个模型改写结果。若内部兼容结构仍用八字段，只做原报告标题、段落和真实行引用的确定性映射。原插件的HTTP路由、登录和清理逻辑不移入IM，不修改用户原DSH安装。
+
+默认编号分析保持原插件的空现象输入；QA标题和描述留在来源账本，只有聊天明确补充的“问题说明”才作为现象参数。故障时间可选，参数按原配方处理，不由宿主改写责任方、置信度或主要因果链。材料路径、hash、真实行引用、凭据隔离和当前任务权限继续核验；不把参考截图结论写入代码或提示词。
+
+累计/每日分析数、模型调用、工具阅读次数、累计字符及人为分析总时长不再作为停止条件，用量仅统计。旧额度账本保留作历史与幂等记录；只自动接续确认模型尚未启动、且仅因旧额度暂停的任务，不自动重做其他失败或已取消任务。模型及操作系统的实际能力仍属于运行条件。
+
+**验收状态单独记录。** 新配方的整包CLI及三档system/user逐字对比已通过；此前四工具Agent会话完成、历史`partial`或传输通过，不能证明分析等价。2026-11-21公司QA内网不可达，用户已暂停日志分析等VPN；新原配方真实DSH模型及完整交付尚未验收，本机QA关闭。详见[v0.4.2报告](outputs/VERIFICATION-v0.4.2.md)，最新运行与失败见[HANDOFF](workspace/docs/HANDOFF.md)。
+
+### 聊天只展示结论，完整报告下载阅读
+
+每个完成的Bug只发布 **一条带附件消息**：问题编号、原报告【结论】段及其责任方/置信度，附件为完整 `报告.txt`。依据、时间线、其他可能、下一步及实际用量小报表都在下载文件中；`report.json` 内部保存，不另发。正常已收到、进度和独立用量消息不再占聊天位置；真正缺材料或发生错误时仍提供必要信息。
+
+报告先保存再进入Outbox，丢失确认只重发同一正文和附件，不重新分析。新材料以新输入版本接续；取消、解绑、成员或机器人被移出、过期结果及409冲突会拦住相应发送。下载继续使用IM原有成员认证与每附件严格小于100MB的约定。原报告、完整解析结果、模型输入哈希及实际用量只留在忽略的任务目录；真实项目、群、缺陷、日志、下载地址和认证不提交Git。
 
 ## 是否符合文章的 Super-agent 概念
 
@@ -182,13 +231,13 @@ IM 面向小团队，实时连接路由在单进程中；增加 worker/集群前
 | 2026-11-10 当前源码审查 | 控制器/并发/引用/监督/交付机制确有实现，以及上述静态边界 | 所有任务均能正确完成，或已长期生产运行。 |
 | 本轮常规、浏览器与打包验证 | 结果见[v0.3.2验收报告](outputs/VERIFICATION-v0.3.2.md)；过程/传输测试包含模拟 DSH/gh | 模拟测试等同真实模型编码、评审或腾讯部署。 |
 | 2026-11-09 真实原生模型历史 | 三个 Worker 会话、四次 invocation，含并行小夹具、原会话 steer 消费和独立工具 daemon；只读 Router 两会话、Watchdog 一会话 | 任意规模代码质量、全部媒体理解、物理异机或长期高负载。详见[v0.3.0报告](outputs/VERIFICATION-v0.3.0.md)，其中失败与修正记录保留。 |
-| 本机当前运行 | 按最新[state](environment/state.json)与[HANDOFF](workspace/docs/HANDOFF.md)及实际进程查询确认 | 不能把11月9日另一检出的“已在线”当作本机现在仍在线。本轮未启动正式监听、模型调用为0。 |
+| 本机当前运行 | 按最新[state](environment/state.json)与[HANDOFF](workspace/docs/HANDOFF.md)及实际进程查询确认 | 不能把另一检出的“已在线”或旧轮次的“模型调用为0”当作当前事实；QA新配方是否真实验收完成须另看本轮记录。 |
 
 ## 开发、恢复与源码入口
 
 先读根 [AGENTS](AGENTS.md)、[RESTORE](RESTORE.md)、state、HANDOFF 和最新过程；干净工作树才 `git pull --ff-only`。新机器不会随 clone 获得旧机器的账号、运行数据库、DSH认证或Windows成品。按[恢复与运行说明](workspace/README.md)执行 setup、首次建管理员、助手绑定和启动，不在 README 写入真实密码或连接码。
 
-桥接需要 Node **>=24.9**，桌面工具需要 Node >=22.12；本次使用项目内隔离 Node24.19.0，未改全局 PATH。常规验证不调用模型；真实模型实验需显式开关和预算。UI 保持远端已选石墨主题、图标优先与精简文案，用户界面不展示这里的架构说明。
+桥接需要 Node **>=24.9**，桌面工具需要 Node >=22.12；本次使用项目内隔离 Node24.19.0，未改全局 PATH。常规验证不调用模型；真实QA分析按明确授权范围执行，用量只统计。历史编码实验规则见各自设计与验收。UI 保持远端已选石墨主题、图标优先与精简文案，用户界面不展示这里的架构说明。
 
 ```text
 workspace/

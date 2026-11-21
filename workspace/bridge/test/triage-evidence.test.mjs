@@ -129,6 +129,7 @@ test('completed model report rendering preserves its judgment and own limitation
   const text = renderReport(report, payload);
   assert.match(text, /^DEMO-1 日志分析/u); assert.match(text, /模型判定的责任方；置信度：高/u);
   assert.match(text, /模型自己说明的缺口/u); assert.match(text, /app\.log:9/u);
+  assert.doesNotMatch(text, /本次用量/u);
   assert.doesNotMatch(text, /初排|不作跨时钟|program-only|未经复核|暂无足够证据/u);
 });
 

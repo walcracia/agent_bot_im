@@ -4,15 +4,16 @@ import { copyFile, lstat, mkdir, mkdtemp, open, readFile, realpath, writeFile } 
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspectTriageInputs, collectEvidence, logType, parserHints, buildModelPayload, validateModelReport, renderReport, redact, reportHash } from './triage-report.mjs';
+import { validateExecutionProof, validateExecutionUsage } from './skill-execution.mjs';
 
 export { inspectTriageInputs } from './triage-report.mjs';
 export const SKILL_ARCHIVE_SHA256 = '3be41e8de6d60ace8f22c99469854023bc8ed4622d212998eea2be9b5f057e17';
 const SKILL_FILES_DIGEST = '02bfa88c2871a8f748f4a52647075c505ccb7e5fe88765ada5a839aca4319ad5';
 const EXTRACTOR = fileURLToPath(new URL('./triage-extract.py', import.meta.url));
-const DEFAULTS = Object.freeze({ maxAttachments: 8, maxFileBytes: 99999999, maxDownloadBytes: 160000000, downloadTimeoutMs: 60000,
+const DEFAULTS = Object.freeze({ maxAttachments: 8, maxFileBytes: 99999999, maxDownloadBytes: 160000000, downloadTimeoutMs: 0,
   maxExpandedBytes: 320000000, maxExpandedFileBytes: 64000000, maxExtractedFiles: 800, maxArchiveDepth: 3, maxCompressionRatio: 150,
-  parserTimeoutMs: 60000, extractionTimeoutMs: 60000, runTimeoutMs: 900000, maxProcessOutputBytes: 2000000,
-  maxScanLines: 2000000, maxScanCharacters: 320000000, maxEvidenceCandidates: 1200, maxEvidence: 60, maxLineCharacters: 600,
+  parserTimeoutMs: 0, extractionTimeoutMs: 0, runTimeoutMs: 0, maxProcessOutputBytes: 0,
+  maxScanLines: 0, maxScanCharacters: 0, maxEvidenceCandidates: 1200, maxEvidence: 60, maxLineCharacters: 600,
   maxInputCharacters: 48000, maxReportCharacters: 24000, terminationGraceMs: 4000 });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const contained = (root, path) => { const rest = relative(root, path); return rest && !isAbsolute(rest) && rest !== '..' && !rest.startsWith('..' + sep); };
@@ -27,27 +28,19 @@ async function readOnlyCall(promise, signal) {
   } finally { if (abort) signal.removeEventListener('abort', abort); }
 }
 async function executionArtifacts(service, result, fallbackRoot, validated, payload, text) {
-  const proof = result.execution;
+  const proof = validateExecutionProof(result.execution, result.execution?.backend);
+  const expectedText = renderReport(validated, payload, proof.usage, result.sourceReport);
+  if (text.trimEnd() !== expectedText.trimEnd()) throw new Error('Rendered report differs from the verified execution usage.');
   if (!proof || !['dsh', 'pi', 'hermes', 'opencode'].includes(proof.backend) || proof.agentSessions !== 1 || proof.skillLoaded !== true
-    || proof.proofValidated !== true || !Number.isSafeInteger(proof.providerRequests) || proof.providerRequests < 1 || proof.providerRequests > 32
-    || !Number.isSafeInteger(proof.toolCalls) || proof.toolCalls < 3 || proof.toolCalls > 96)
+    || proof.proofValidated !== true || !Number.isSafeInteger(proof.providerRequests) || proof.providerRequests < 1
+    || !Number.isSafeInteger(proof.toolCalls) || proof.toolCalls < (proof.recipe === 'chery-qa-plugin' ? 0 : 1))
     throw new Error('Skill execution proof is missing or outside its budget.');
-  let executionLimits;
-  if (proof.limits !== undefined) {
-    const policy = proof.limits, hard = { modelRequests: 32, toolCalls: 96, inputCharacters: 384000, maxTokens: 8192 };
-    if (!policy || typeof policy !== 'object' || Array.isArray(policy)
-      || Object.keys(policy).sort().join('|') !== Object.keys(hard).sort().join('|')
-      || Object.entries(hard).some(([key, max]) => !Number.isSafeInteger(policy[key]) || policy[key] < (key === 'toolCalls' ? 3 : 1) || policy[key] > max)
-      || proof.providerRequests > policy.modelRequests || proof.toolCalls > policy.toolCalls)
-      throw new Error('Skill execution proof exceeds its verified policy.');
-    executionLimits = Object.fromEntries(Object.keys(hard).map(key => [key, policy[key]]));
-  }
   if (!Array.isArray(result.files) || result.files.length !== 2 || new Set(result.files.map(item => item?.name)).size !== 2)
     throw new Error('Skill execution must return its two validated report files.');
   const root = await realpath(service.root ?? fallbackRoot), files = [];
   for (const file of result.files) {
     if (!file || !['report.json', '报告.txt'].includes(file.name) || file.mime !== (file.name === 'report.json' ? 'application/json' : 'text/plain')
-      || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 2000000 || !/^[a-f0-9]{64}$/.test(file.sha256 ?? '')
+      || !Number.isSafeInteger(file.size) || file.size < 1 || file.size >= 100000000 || !/^[a-f0-9]{64}$/.test(file.sha256 ?? '')
       || typeof file.pathPrivate !== 'string' || !isAbsolute(file.pathPrivate) || !contained(root, resolve(file.pathPrivate)))
       throw new Error('Skill report artifact metadata is invalid.');
     const name = relative(root, resolve(file.pathPrivate)).split(sep).join('/');
@@ -59,11 +52,11 @@ async function executionArtifacts(service, result, fallbackRoot, validated, payl
     if (redact(content) !== content) throw new Error('Skill report artifact contains unsanitized sensitive text.');
     if (file.name === 'report.json') {
       if (JSON.stringify(validateModelReport(JSON.parse(content), payload)) !== JSON.stringify(validated)) throw new Error('JSON artifact differs from the validated report.');
-    } else if (content.trimEnd() !== text.trimEnd()) throw new Error('Text artifact differs from the validated report.');
+    } else if (content.trimEnd() !== expectedText.trimEnd()) throw new Error('Text artifact differs from the validated report.');
     files.push({ name: file.name, mime: file.mime, size: file.size, sha256: file.sha256, pathPrivate: path });
   }
   return { files, execution: { backend: proof.backend, agentSessions: 1, providerRequests: proof.providerRequests, toolCalls: proof.toolCalls,
-    skillLoaded: true, proofValidated: true, ...(executionLimits ? { limits: executionLimits } : {}) } };
+    skillLoaded: true, proofValidated: true, ...(proof.recipe ? { recipe: proof.recipe } : {}), ...(proof.usage ? { usage: proof.usage } : {}) } };
 }
 
 export class TriageWorkerError extends Error {
@@ -74,12 +67,8 @@ export class TriageWorkerError extends Error {
 
 function limitsFor(input = {}) {
   const limits = { ...DEFAULTS, ...input };
-  for (const [key, value] of Object.entries(limits)) if (!(key in DEFAULTS) || !Number.isSafeInteger(value) || value < 1)
+  for (const [key, value] of Object.entries(limits)) if (!(key in DEFAULTS) || !Number.isSafeInteger(value) || value < 0)
     throw new Error(`Invalid log-triage limit ${key}.`);
-  if (limits.maxFileBytes >= 100000000 || limits.maxDownloadBytes > 500000000 || limits.maxExpandedBytes > 512000000
-    || limits.maxExpandedFileBytes > limits.maxExpandedBytes || limits.maxExtractedFiles > 5000 || limits.maxArchiveDepth > 8
-    || limits.maxInputCharacters > 100000 || limits.maxEvidence > 200 || limits.maxProcessOutputBytes > 8000000)
-    throw new Error('Log-triage limits exceed supported bounds.');
   return limits;
 }
 async function independentFile(root, name) {
@@ -132,12 +121,12 @@ async function processJSON(executable, args, { cwd, timeoutMs, maxBytes, signal,
       termination.unref?.();
     };
     const abort = () => stop(new TriageWorkerError('日志分析已停止。', { kind: signal?.reason?.kind ?? 'cancelled', phase }));
-    const timer = setTimeout(() => stop(new TriageWorkerError('解析超过时间预算。', { kind: 'parser-timeout', phase })), timeoutMs);
-    timer.unref?.();
+    const timer = timeoutMs > 0 ? setTimeout(() => stop(new TriageWorkerError('解析超过时间预算。', { kind: 'parser-timeout', phase })), timeoutMs) : null;
+    timer?.unref?.();
     signal?.addEventListener('abort', abort, { once: true });
     child.stdout.on('data', chunk => {
       bytes += chunk.length;
-      if (bytes > maxBytes) stop(new TriageWorkerError('解析输出超过预算。', { kind: 'parser-output-limit', phase }));
+      if (maxBytes > 0 && bytes > maxBytes) stop(new TriageWorkerError('解析输出超过预算。', { kind: 'parser-output-limit', phase }));
       else stdout.push(chunk);
     });
     child.stderr.on('data', () => {}); // Do not expose a log line, URL or credential from parser diagnostics.
@@ -227,8 +216,8 @@ export class LogTriageWorker {
     let phase = 'prepare', modelStarted = false, modelSettled = false;
     const abort = new AbortController();
     const combined = signal ? AbortSignal.any([signal, abort.signal]) : abort.signal;
-    const timer = setTimeout(() => abort.abort(new TriageWorkerError('分析超过总时间预算。', { kind: 'timeout' })), this.limits.runTimeoutMs);
-    timer.unref?.();
+    const timer = this.limits.runTimeoutMs > 0 ? setTimeout(() => abort.abort(new TriageWorkerError('分析超过总时间预算。', { kind: 'timeout' })), this.limits.runTimeoutMs) : null;
+    timer?.unref?.();
     const waiting = (status, text, manifest = {}) => ({ status, text, report: null, manifest, inputRevision: snapshot.inputRevision, modelCalls: 0 });
     try {
       combined.throwIfAborted();
@@ -236,7 +225,7 @@ export class LogTriageWorker {
         throw new Error('Task identity or input revision is invalid.');
       const input = inspectTriageInputs(snapshot);
       if (input.status !== 'ready') return waiting(input.status, input.text);
-      if (input.fileIds.length > this.limits.maxAttachments || input.fileIds.some(id => !Number.isSafeInteger(id) || id < 1) || new Set(input.fileIds).size !== input.fileIds.length)
+      if (input.fileIds.some(id => !Number.isSafeInteger(id) || id < 1) || new Set(input.fileIds).size !== input.fileIds.length)
         throw new Error('Invalid or excessive attachment IDs.');
       if (!this.origins.size) throw new Error('No trusted download origins configured.');
       const skill = await this.verifySkill(this.skillRoot);
@@ -252,13 +241,13 @@ export class LogTriageWorker {
         let url = new URL(metadata.url);
         if (!this.origins.has(url.origin) || url.username || url.password || url.hash) throw new Error('Attachment URL is outside trusted origins.');
         const originalOrigin = url.origin;
-        if (Number.isFinite(metadata.size) && (metadata.size > this.limits.maxFileBytes || metadata.size < 0)) throw new Error('Attachment metadata size exceeds budget.');
+        if (Number.isFinite(metadata.size) && metadata.size < 0) throw new Error('Attachment metadata size is invalid.');
         const name = String(metadata.name || `log-${index + 1}.txt`).replaceAll('\\', '/').split('/').at(-1);
         if (!name || name.length > 180 || /[\0\r\n:]/.test(name)) throw new Error('Attachment file name is invalid.');
         const file = join(directory, `download-${index + 1}`);
         const requestAbort = new AbortController();
-        const requestTimer = setTimeout(() => requestAbort.abort(new TriageWorkerError('附件下载超时。', { kind: 'download-timeout' })), this.limits.downloadTimeoutMs);
-        requestTimer.unref?.();
+        const requestTimer = this.limits.downloadTimeoutMs > 0 ? setTimeout(() => requestAbort.abort(new TriageWorkerError('附件下载超时。', { kind: 'download-timeout' })), this.limits.downloadTimeoutMs) : null;
+        requestTimer?.unref?.();
         const requestSignal = AbortSignal.any([combined, requestAbort.signal]);
         let handle;
         try {
@@ -275,14 +264,13 @@ export class LogTriageWorker {
           }
           if (!response.ok || !response.body) { await response.body?.cancel(); throw new Error('Attachment download failed.'); }
           const declared = response.headers.get('content-length');
-          if (declared && (!/^\d+$/.test(declared) || Number(declared) > this.limits.maxFileBytes || Number(declared) + downloaded > this.limits.maxDownloadBytes)) {
+          if (declared && !/^\d+$/.test(declared)) {
             await response.body.cancel(); throw new Error('Declared download size exceeds budget.');
           }
           handle = await open(file, 'wx', 0o600);
           let bytes = 0; const hash = createHash('sha256'), md5 = createHash('md5');
           for await (const chunk of response.body) {
             combined.throwIfAborted(); bytes += chunk.length; downloaded += chunk.length;
-            if (bytes > this.limits.maxFileBytes || downloaded > this.limits.maxDownloadBytes) throw new Error('Actual download size exceeds budget.');
             await handle.write(chunk); hash.update(chunk); md5.update(chunk);
           }
           if (Number.isSafeInteger(metadata.size) && metadata.size !== bytes) throw new Error('Attachment metadata size mismatch.');
@@ -301,19 +289,21 @@ export class LogTriageWorker {
       const extraction = await processJSON(this.python, [EXTRACTOR, '--request', requestPath], { cwd: directory, timeoutMs: this.limits.extractionTimeoutMs,
         maxBytes: this.limits.maxProcessOutputBytes, signal: combined, phase, graceMs: this.limits.terminationGraceMs });
       manifest.files = extraction.files; manifest.expandedBytes = extraction.expandedBytes;
+      const pluginRecipe = this.executionService?.runner?.recipe === 'chery-qa-plugin';
       let preparation = null;
-      if (this.executionService) {
+      if (this.executionService && !pluginRecipe) {
         phase = 'preparation';
         preparation = await prepareParserEvidence({ directory, extracted, files: extraction.files, skill, limits: this.limits, signal: combined });
         manifest.preparation = preparation.manifest;
       }
       phase = 'evidence';
-      const collected = await collectEvidence({ directory: extracted, files: extraction.files, window: input.window,
-        clockDomains: snapshot.clockDomains, limits: this.limits, signal: combined, parserFindings: preparation?.findings ?? [] });
+      const collected = pluginRecipe ? { recognized: extraction.files.length, evidence: [], limitations: [] }
+        : await collectEvidence({ directory: extracted, files: extraction.files, window: input.window,
+          clockDomains: snapshot.clockDomains, limits: this.limits, signal: combined, parserFindings: preparation?.findings ?? [] });
       manifest.mode = !collected.recognized || !collected.evidence.length || input.window.mode === 'preliminary'
         || collected.evidence.some(item => !item.aligned) ? 'preliminary' : 'windowed';
       await writeFile(join(directory, 'manifest.json'), JSON.stringify(manifest, null, 2), { flag: 'wx', mode: 0o600 });
-      if (!collected.recognized || !collected.evidence.length) {
+      if (!collected.recognized || !pluginRecipe && !collected.evidence.length) {
         manifest.mode = 'preliminary';
         const payload = buildModelPayload({ snapshot, window: { ...input.window, mode: 'preliminary' }, evidence: [], parserSummary: [], rules: '',
           limitations: [...input.limitations, ...collected.limitations, '没有可提供模型复核的实际证据，本次为零模型规则初排。'], maxCharacters: this.limits.maxInputCharacters });
@@ -328,7 +318,9 @@ export class LogTriageWorker {
       if (typeof this.executionService?.execute !== 'function' && typeof this.model !== 'function') throw new Error('A skill execution service is not configured.');
       const limitations = [...input.limitations, ...collected.limitations, ...(preparation?.limitations ?? [])];
       let parserSummary = [];
-      if (this.executionService) {
+      if (pluginRecipe) {
+        manifest.preparation = { kind: 'chery-qa-plugin', coverage: 'whole-target', agentProof: false };
+      } else if (this.executionService) {
         parserSummary = parserHints({ findings: preparation.findings }, collected.evidence);
         limitations.push('本次按日志类型选取部分记录核对，再由助手选择有限日志解析；未覆盖全部材料。');
       } else {
@@ -366,7 +358,7 @@ export class LogTriageWorker {
         const invoke = () => this.executionService ? this.executionService.execute({
           taskId: snapshot.id, inputRevision: snapshot.inputRevision, skillId: 'ota-log-triage@1.3.2',
           parameters: { mode: payload.mode, window: input.window, clockDomains: snapshot.clockDomains ?? {},
-            ...(snapshot.descriptionOverride ? { symptom: redact(snapshot.descriptionOverride).slice(0, 4000) } : {}) },
+            ...(snapshot.descriptionOverride ? { symptom: redact(snapshot.descriptionOverride) } : {}) },
           inputFiles: extraction.files, executionContext: { directory: extracted, outputDirectory: artifactDirectory, skillRoot: this.skillRoot, payload }
         }, { signal: combined, beforeExecute: admitModel }) : this.model(payload, { signal: combined });
         raw = await Promise.race([Promise.resolve().then(invoke), aborted]);
@@ -380,17 +372,22 @@ export class LogTriageWorker {
         if (!executionResult || typeof executionResult !== 'object' || !Object.hasOwn(executionResult, 'result')) throw new Error('Skill execution result is invalid.');
         if (executionResult.status !== undefined && !['completed', 'partial'].includes(executionResult.status)) throw new Error('Skill execution status is invalid.');
         raw = executionResult.result;
+        if (executionResult.evidence !== undefined) {
+          if (!Array.isArray(executionResult.evidence)) throw new Error('Skill evidence catalog is invalid.');
+          payload.evidence = executionResult.evidence;
+        }
       }
       const validated = validateModelReport(raw, payload);
-      const text = renderReport(validated, payload);
-      if (text.length > this.limits.maxReportCharacters) throw new Error('Rendered report exceeds budget.');
+      const sourceReport = executionResult?.sourceReport;
+      const text = renderReport(validated, payload, validateExecutionUsage(executionResult?.execution?.usage), sourceReport);
       const { files, execution } = executionResult ? await executionArtifacts(this.executionService, executionResult, artifactDirectory, validated, payload, text)
         : { files: [], execution: null };
       if (execution) {
         manifest.outputs = files.map(({ pathPrivate, ...file }) => file); manifest.execution = execution;
         await writeFile(join(directory, 'manifest.json'), JSON.stringify(manifest, null, 2), { mode: 0o600 });
       }
-      const report = { ...validated, mode: payload.mode, inputRevision: snapshot.inputRevision, window: input.window, evidenceIndex: payload.evidence, manifestHash: reportHash(manifest) };
+      const report = { ...validated, mode: payload.mode, inputRevision: snapshot.inputRevision, window: input.window, evidenceIndex: payload.evidence, manifestHash: reportHash(manifest),
+        ...(sourceReport === undefined ? {} : { sourceReport }) };
       const status = executionResult?.status === 'partial' ? 'partial' : 'completed';
       await writeFile(join(directory, 'report.json'), JSON.stringify({ status, text, report, manifest, files, execution }, null, 2), { flag: 'wx', mode: 0o600 });
       return { status, text, report, manifest, files, execution, inputRevision: snapshot.inputRevision, modelCalls: 1 };
@@ -404,6 +401,7 @@ export class LogTriageWorker {
       const error = new TriageWorkerError('日志分析未完成，已有材料保留供核查。', { kind: combined.aborted ? 'cancelled' : cause?.kind ?? 'failed', phase,
         modelStarted, processTreeStopped: !modelStarted || modelSettled || cause?.processTreeStopped === true, cause });
       if (/^[A-Z][A-Z0-9_]{2,100}$/.test(cause?.code ?? '')) error.code = cause.code;
+      if (cause?.usage) error.usage = validateExecutionUsage(cause.usage);
       throw error;
     } finally { clearTimeout(timer); }
   }

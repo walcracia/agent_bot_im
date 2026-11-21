@@ -264,3 +264,10 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 失败记录保留：CSP夹具eval被拒后改测试端有界poll，不改产品CSP；一次driver连接失败未确证原因；headless失焦假设改明确故障注入且另有真窗口覆盖；最小化isVisible假设改user32只读样式核对；ASAR多层路径改平台join。均区分夹具与产品，未反复美化截图或重复模型。完整报告VERIFICATION-v0.3.3，正式服务/模型/QA监听未启动。下一阶段仅按新v0.3.3提交/推送及Release资产核验，远端回执更新HANDOFF/state。
 
 实际Git交付：4dce522及annotated v0.3.3已上传main，远端branch/tag对象/peel核对通过。Release先draft上传两资产，核对state/size/SHA256后正式发布，isDraft=false；ZIP与校验文本digest均一致。旧版本/tag/资产未移动。交接回执追加v0.3.3-handoff.1，QA设计未变为已启用，也未新增任何模型/业务数据操作。
+# 2026-11-21 · v0.4.2：无额度、单条结论、原插件流程
+
+按用户要求先写QA-MONITORING设计，再去掉QA人工额度/会话总量/总时长拦截，增加实际会话用量。两项原额度阻塞任务真实Agent完成；原终稿格式拒绝修复后零额外模型恢复发布。随后按用户反馈缩成一条结论+TXT附件，用量在下载里，三报告真实浏览器/下载通过。
+
+用户进一步要求完全按原DSH插件流程。实查发现同附件同skill但取证/提示不同；复用整包CLI及原函数/system/user，生产直接prepareCall并保留原报告。79日志/692发现与原缓存相同，三档提示逐字比较及相关测试通过。真实重分析在QA取资料前TCP超时；用户明确暂停该功能等VPN，未启动新配方模型、不声称真实等价。停用可选模块的历史任务崩溃修复并回归，账本副作用有备份后精准恢复。
+
+范围、实际通过/失败和未执行见outputs/VERIFICATION-v0.4.2。新目标通用AI路由、DSH/Hermes/Pi与三Agent回归另在WORKER-ROUTING-v0.5.0设计，实际CLI零模型就绪与隔离真实执行单列，不混入此轮已验收声明。

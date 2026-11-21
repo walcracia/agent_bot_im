@@ -57,12 +57,63 @@ test('event replay and lost reply acknowledgement cannot repeat a worker', async
   assert.equal(new Set(f.replies.filter(item => /已接到任务/u.test(item.text)).map(item => item.id)).size, 1);
 });
 
+test('log analysis text delivery keeps its backoff and immutable identity beyond repeated network failures', async t => {
+  let failures = 12;
+  const f = await fixture(t, { reply: async () => { if (failures-- > 0) throw new Error('Synthetic transient network failure'); return { id: 101 }; } });
+  f.c.triage = { beforeSend: async () => 'send', close: async () => {} };
+  await f.c.transaction(data => { data.outbox['qa-result'] = { key: 'qa-result', kind: 'log-triage', category: 'result',
+    event: { id: 'triage', conversation_id: 'chat' }, text: 'Synthetic skill report', attempts: 0, status: 'pending' }; });
+  for (let attempt = 1; attempt <= 12; attempt++) {
+    await f.c.transaction(data => { data.outbox['qa-result'].nextAttempt = null; });
+    await f.c.flushOutbox();
+    const item = f.c.data.outbox['qa-result'];
+    assert.equal(item.status, 'pending'); assert.equal(item.attempts, attempt);
+    const backoff = Date.parse(item.nextAttempt) - Date.now(); assert.ok(backoff > 0 && backoff <= 300000);
+  }
+  await f.c.transaction(data => { data.outbox['qa-result'].nextAttempt = null; });
+  await f.c.flushOutbox();
+  assert.equal(f.c.data.outbox['qa-result'].status, 'sent'); assert.equal(f.replies.length, 13);
+  assert.equal(new Set(f.replies.map(reply => reply.id)).size, 1); assert.equal(new Set(f.replies.map(reply => reply.text)).size, 1);
+  assert.equal(f.starts.length, 0);
+});
+
 test('restart preserves an in-flight task as paused and does not invoke a model or create replacement work', async t => {
   const f = await fixture(t); await f.c.ingestIm([event(1, 'Fix')], conversations); await f.c.routePending(); await until(() => f.starts.length === 1);
   const state = structuredClone(f.c.state);
   const recovered = await fixture(t, { state });
   assert.equal(recovered.c.data.tasks.T000001.status, 'paused'); assert.equal(recovered.starts.length, 0);
   assert.equal(recovered.c.data.tasks.T000001.workspace, '/work/T000001');
+});
+
+test('disabled log module preserves historical tasks and pending reports throughout coordinator lifecycle', async t => {
+  const tasks = Object.fromEntries(['queued', 'running', 'paused', 'completed', 'merged'].map((status, index) => {
+    const id = 'T' + String(index + 1).padStart(6, '0');
+    return [id, { id, kind: 'log-triage', status, attempt: 2, inputRevision: 1, conversationId: 'old-qa-chat',
+      event: event(index + 1, 'Historical log request', human, 'old-qa-chat'), inputs: [], execution: { backend: 'dsh' },
+      report: { conclusion: 'Historical skill conclusion' } }];
+  }));
+  const outbox = { 'historical-report': { key: 'historical-report', taskId: 'T000004', kind: 'log-triage', category: 'artifact',
+    status: 'pending', attempts: 0, event: { id: 'qa-history', conversation_id: 'old-qa-chat' }, text: 'Historical conclusion' } };
+  const state = { cursor: 0, superAgent: { version: 3, nextTask: 6, tasks: structuredClone(tasks), outbox: structuredClone(outbox),
+    graph: {}, inbox: {}, subscriptions: {}, actions: {}, sources: {} } };
+  const unexpected = () => assert.fail('A disabled log task must not reach a code worker.');
+  let closed = 0;
+  const f = await fixture(t, { state, config: { codeEnabled: false }, pool: {
+    prepare: unexpected, start: unexpected, cancel: unexpected, input: unexpected, inspect: unexpected, close: async () => { closed++; },
+  } });
+  assert.equal(f.c.triage, undefined);
+  await f.c.ingestIm([event(20, 'Ordinary chat while QA is disabled')], conversations);
+  await f.c.routePending(); f.c.kick();
+  await f.c.pump(); await f.c.flushOutbox(); await f.c.inspectActive();
+  // Generic lifecycle/control callbacks may still hold an old log task ID.
+  // They must neither throw on an absent module nor fall through to coding.
+  await f.c.execute('T000001'); await f.c.pause('T000002', new Error('Historical callback'));
+  await f.c.finishStopped('T000002'); await f.c.stopTask('T000002');
+  await f.c.close();
+  assert.ok(closed >= 1); assert.equal(f.starts.length, 0); assert.equal(f.replies.length, 0);
+  assert.equal(f.c.lastError, undefined); assert.equal(f.c.active.size, 0);
+  assert.deepEqual(f.c.data.tasks, tasks); assert.deepEqual(f.c.data.outbox, outbox);
+  assert.equal(f.c.data.inbox['im:20'].decision.reason, 'coding_disabled');
 });
 
 test('attempt start time remains stable while activity is published for semantic supervision', async t => {

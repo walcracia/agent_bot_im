@@ -43,7 +43,7 @@ async function httpFixture(t, { loseUpload = false, mismatch = false } = {}) {
     if (req.url.endsWith('/attachments')) {
       for await (const _chunk of req) { /* Consume the real multipart request without storing credentials/body. */ }
       stats.uploads++;
-      if (loseUpload) { req.socket.destroy(); return; }
+      if (loseUpload === true || stats.uploads <= loseUpload) { req.socket.destroy(); return; }
       res.writeHead(201, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ id: 'attachment-' + stats.uploads, name: 'report.json', size: content.length, sha256: mismatch ? '0'.repeat(64) : hash(content) })); return;
     }
@@ -84,12 +84,11 @@ test('fresh authorization/revision gate after upload pauses sending while preser
   f.args.beforeSend = () => 'send'; await publishTriageArtifact(f.args); assert.equal(f.stats.uploads, 1); assert.equal(f.stats.messages, 1);
 });
 
-test('upload acknowledgement loss has at most three attempts and no analysis/model re-execution', async t => {
-  const f = await httpFixture(t, { loseUpload: true });
-  for (let i = 0; i < 3; i++) await assert.rejects(publishTriageArtifact(f.args), error => !error.message.includes(f.directory) && !error.message.includes(f.api.token));
-  const stopped = await publishTriageArtifact(f.args);
-  assert.equal(stopped.paused, true); assert.equal(stopped.verdict, 'upload-limit');
-  assert.equal(f.stats.uploads, 3); assert.equal(f.stats.messages, 0); assert.equal(f.state.read().outbox[f.args.item.key].uploadAttempts, 3);
+test('upload acknowledgement loss remains retryable beyond the former three attempts without another analysis', async t => {
+  const f = await httpFixture(t, { loseUpload: 5 });
+  for (let i = 0; i < 5; i++) await assert.rejects(publishTriageArtifact(f.args), error => !error.message.includes(f.directory) && !error.message.includes(f.api.token));
+  await publishTriageArtifact(f.args);
+  assert.equal(f.stats.uploads, 6); assert.equal(f.stats.messages, 1); assert.equal(f.state.read().outbox[f.args.item.key].uploadAttempts, 6);
 });
 
 test('wrong upload hashes and persisted attachment IDs without matching original metadata cannot publish', async t => {
@@ -106,7 +105,7 @@ test('report allowlist, real bytes, root bounds, parent links and hardlinks are 
     const state = ledger(item), result = await publishTriageArtifact({ ...f.args, item, transaction: state.transaction });
     assert.equal(result.paused, true); assert.ok(!JSON.stringify(result).includes(f.directory) && !JSON.stringify(result).includes(f.api.token));
   };
-  for (const changes of [{ name: 'raw.log' }, { size: 256 * 1024 + 1 }, { mime: 'text/html' }, { sha256: '1'.repeat(64) },
+  for (const changes of [{ name: 'raw.log' }, { size: 100000000 }, { mime: 'text/html' }, { sha256: '1'.repeat(64) },
     { pathPrivate: join(f.directory, 'report.json') }]) await expectPause({ ...original, artifact: { ...original.artifact, ...changes } });
   const hardlink = join(f.args.root, 'hardlink.json'); await link(original.artifact.pathPrivate, hardlink);
   await expectPause(original); await unlink(hardlink);
@@ -167,7 +166,8 @@ test('REAL isolated FastAPI multipart/file hash + lost message ACK recovers to o
   const messages = await admin.request(`/api/conversations/${conversation.id}/messages`);
   assert.equal(messages.length, 1); assert.equal(messages[0].client_id, artifact.item.clientId); assert.equal(messages[0].attachment.sha256, hash(content));
   assert.equal(durable.read().outbox[artifact.item.key].uploadAttempts, 1);
-  const textBytes = Buffer.from('合成初排结果，仍需人工验证。');
+  const textBytes = Buffer.from('合成完整报告，用于验证较长的报告也能正常回传。'.repeat(8000));
+  assert.ok(textBytes.length > 256 * 1024);
   const textPath = join(artifact.root, '报告.txt'); await writeFile(textPath, textBytes);
   const textItem = { ...artifact.item, key: 'triage-artifact-T000001-r1-text', clientId: 'triage-T000001-r1-text',
     artifact: { pathPrivate: textPath, name: '报告.txt', mime: 'text/plain', size: textBytes.length, sha256: hash(textBytes) } };

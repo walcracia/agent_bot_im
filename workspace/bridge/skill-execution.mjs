@@ -4,11 +4,10 @@ import { lstat, mkdir, open, realpath } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { validateModelReport, renderReport, redact } from './triage-report.mjs';
+import { mapPluginReport } from './triage-plugin-recipe.mjs';
 
 export const TRIAGE_SKILL_ID = 'ota-log-triage@1.3.2';
 const BACKENDS = new Set(['dsh', 'pi', 'hermes', 'opencode']);
-const LIMITS = Object.freeze({ files: 800, fileBytes: 64000000, totalBytes: 320000000, payloadCharacters: 100000,
-  parameterCharacters: 16000, reportBytes: 200000, evidence: 200, scanLines: 2000000, scanCharacters: 320000000 });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const contained = (root, path) => { const rest = relative(root, path); return rest && !isAbsolute(rest) && rest !== '..' && !rest.startsWith('..' + sep); };
 const equalIdentity = (a, b) => ['dev', 'ino', 'size', 'mtimeNs', 'ctimeNs'].every(key => a[key] === b[key]);
@@ -59,7 +58,7 @@ async function safeFile(directory, descriptor, signal) {
       const read = await handle.read(buffer, 0, buffer.length, null);
       if (!read.bytesRead) break;
       bytes += read.bytesRead;
-      if (bytes > descriptor.bytes || bytes > LIMITS.fileBytes) throw failure('SKILL_INPUT_SIZE');
+      if (bytes > descriptor.bytes) throw failure('SKILL_INPUT_SIZE');
       hash.update(buffer.subarray(0, read.bytesRead));
     }
     const after = await handle.stat({ bigint: true }), visible = await lstat(path, { bigint: true });
@@ -69,12 +68,12 @@ async function safeFile(directory, descriptor, signal) {
   } finally { await handle.close(); }
 }
 async function evidenceProof(payload, files, directory, signal) {
-  if (!Array.isArray(payload.evidence) || !payload.evidence.length || payload.evidence.length > LIMITS.evidence) throw failure('SKILL_EVIDENCE_INVALID');
+  if (!Array.isArray(payload.evidence)) throw failure('SKILL_EVIDENCE_INVALID');
   const ids = new Set(), linesByFile = new Map();
   for (const evidence of payload.evidence) {
-    if (!plain(evidence) || typeof evidence.id !== 'string' || !/^E\d{4,8}$/u.test(evidence.id) || ids.has(evidence.id)
-      || !Number.isSafeInteger(evidence.line) || evidence.line < 1 || evidence.line > LIMITS.scanLines
-      || typeof evidence.text !== 'string' || !evidence.text || evidence.text.length > 6000) throw failure('SKILL_EVIDENCE_INVALID');
+    if (!plain(evidence) || typeof evidence.id !== 'string' || !/^E\d{4,}$/u.test(evidence.id) || ids.has(evidence.id)
+      || !Number.isSafeInteger(evidence.line) || evidence.line < 1
+      || typeof evidence.text !== 'string' || !evidence.text) throw failure('SKILL_EVIDENCE_INVALID');
     ids.add(evidence.id);
     const input = files.find(file => file.sha256 === evidence.sha256 && redact(file.path).slice(0, 500) === evidence.file);
     if (!input) throw failure('SKILL_EVIDENCE_SCOPE');
@@ -90,7 +89,6 @@ async function evidenceProof(payload, files, directory, signal) {
     try {
       for await (const line of lines) {
         signal?.throwIfAborted(); number++; scanned++; characters += line.length;
-        if (scanned > LIMITS.scanLines || characters > LIMITS.scanCharacters) throw failure('SKILL_EVIDENCE_SCAN_LIMIT');
         if (pending.has(number)) {
           for (const item of pending.get(number)) if (!redact(line).startsWith(item.text)) throw failure('SKILL_EVIDENCE_CHANGED');
           pending.delete(number);
@@ -102,20 +100,28 @@ async function evidenceProof(payload, files, directory, signal) {
   }
 }
 export function validateExecutionProof(value, backend) {
+  const direct = value?.recipe === 'chery-qa-plugin';
   if (!plain(value) || value.agentSessions !== 1 || value.skillLoaded !== true || value.proofValidated !== true
-    || !Number.isSafeInteger(value.providerRequests) || value.providerRequests < 1 || value.providerRequests > 32
-    || !Number.isSafeInteger(value.toolCalls) || value.toolCalls < 3 || value.toolCalls > 96
+    || !Number.isSafeInteger(value.providerRequests) || value.providerRequests < 1
+    || !Number.isSafeInteger(value.toolCalls) || value.toolCalls < (direct ? 0 : 1)
     || value.backend !== undefined && value.backend !== backend) throw failure('SKILL_EXECUTION_PROOF_INVALID', { modelStarted: true });
-  let limits;
-  if (value.limits !== undefined) {
-    const maximum = { modelRequests: 32, toolCalls: 96, inputCharacters: 384000, maxTokens: 8192 };
-    if (!plain(value.limits) || Object.keys(value.limits).some(key => !Object.hasOwn(maximum, key))
-      || Object.entries(maximum).some(([key, max]) => !Number.isSafeInteger(value.limits[key]) || value.limits[key] < (key === 'toolCalls' ? 3 : 1) || value.limits[key] > max)
-      || value.providerRequests > value.limits.modelRequests || value.toolCalls > value.limits.toolCalls) throw failure('SKILL_EXECUTION_PROOF_INVALID', { modelStarted: true });
-    limits = Object.fromEntries(Object.keys(maximum).map(key => [key, value.limits[key]]));
-  }
+  const usage = validateExecutionUsage(value.usage);
   return { backend, agentSessions: 1, providerRequests: value.providerRequests, toolCalls: value.toolCalls, skillLoaded: true, proofValidated: true,
-    ...(limits ? { limits } : {}) };
+    ...(direct ? { recipe: 'chery-qa-plugin' } : {}), ...(usage ? { usage } : {}) };
+}
+
+export function validateExecutionUsage(value) {
+  if (value === undefined) return undefined;
+  if (!plain(value)) throw failure('SKILL_USAGE_INVALID');
+  const result = {};
+  for (const name of ['elapsedMs', 'providerRequests', 'toolCalls', 'evidenceReadCalls', 'evidenceLines', 'parserRuns']) if (value[name] !== undefined) {
+    if (!Number.isSafeInteger(value[name]) || value[name] < 0) throw failure('SKILL_USAGE_INVALID'); result[name] = value[name];
+  }
+  for (const name of ['toolCallsByName', 'tokens']) if (value[name] !== undefined) {
+    if (!plain(value[name]) || Object.entries(value[name]).some(([key, number]) => !/^[A-Za-z0-9_.-]+$/u.test(key) || !Number.isSafeInteger(number) || number < 0)) throw failure('SKILL_USAGE_INVALID');
+    result[name] = { ...value[name] };
+  }
+  return result;
 }
 
 /** Configured factories are trusted process adapters, never backend names supplied by a model. */
@@ -138,18 +144,18 @@ export class SkillExecutionService {
     if (!this.runner || typeof this.runner.runSkill !== 'function') throw failure('SKILL_RUNNER_INVALID');
   }
   async execute(request, { signal, beforeExecute } = {}) {
-    let started = false, settled = false;
+    let started = false, settled = false, observedUsage;
     try {
       signal?.throwIfAborted();
       if (!plain(request) || Object.keys(request).some(key => !['taskId', 'inputRevision', 'skillId', 'parameters', 'inputFiles', 'executionContext'].includes(key))
         || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/u.test(request.taskId ?? '') || !Number.isSafeInteger(request.inputRevision) || request.inputRevision < 1) throw failure('SKILL_REQUEST_INVALID');
       request = freeze(structuredClone(request));
       if (request.skillId !== TRIAGE_SKILL_ID) throw failure('SKILL_NOT_ALLOWED');
-      if (!plain(request.parameters) || JSON.stringify(request.parameters).length > LIMITS.parameterCharacters) throw failure('SKILL_PARAMETERS_INVALID');
+      if (!plain(request.parameters)) throw failure('SKILL_PARAMETERS_INVALID');
       const context = request.executionContext;
       if (!plain(context) || Object.keys(context).some(key => !['directory', 'outputDirectory', 'skillRoot', 'payload', 'proofPath'].includes(key))
         || !plain(context.payload) || context.payload.taskId !== request.taskId || context.payload.inputRevision !== request.inputRevision
-        || context.payload.skill?.version !== '1.3.2' || JSON.stringify(context.payload).length > LIMITS.payloadCharacters) throw failure('SKILL_CONTEXT_INVALID');
+        || context.payload.skill?.version !== '1.3.2') throw failure('SKILL_CONTEXT_INVALID');
       if (request.parameters.mode !== undefined && request.parameters.mode !== context.payload.mode
         || request.parameters.window !== undefined && JSON.stringify(request.parameters.window) !== JSON.stringify(context.payload.window)) throw failure('SKILL_PARAMETERS_MISMATCH');
       const rootInfo = await lstat(this.root);
@@ -157,14 +163,14 @@ export class SkillExecutionService {
       const root = await realpath(this.root), directory = await directoryPath(root, context.directory);
       if (!isAbsolute(context.skillRoot ?? '') || (await lstat(context.skillRoot)).isSymbolicLink() || !(await lstat(context.skillRoot)).isDirectory()) throw failure('SKILL_CONTEXT_INVALID');
       if (context.proofPath && (!isAbsolute(context.proofPath) || !contained(root, resolve(context.proofPath)) || resolve(context.proofPath) === directory || contained(directory, resolve(context.proofPath)))) throw failure('SKILL_PROOF_PATH_INVALID');
-      if (!Array.isArray(request.inputFiles) || !request.inputFiles.length || request.inputFiles.length > LIMITS.files) throw failure('SKILL_INPUT_FILES_INVALID');
+      if (!Array.isArray(request.inputFiles) || !request.inputFiles.length) throw failure('SKILL_INPUT_FILES_INVALID');
       const files = [], names = new Set(); let total = 0;
       for (const descriptor of request.inputFiles) {
         if (!plain(descriptor) || Object.keys(descriptor).some(key => !['path', 'name', 'sha256', 'bytes'].includes(key))
-          || !Number.isSafeInteger(descriptor.bytes) || descriptor.bytes < 0 || descriptor.bytes > LIMITS.fileBytes
+          || !Number.isSafeInteger(descriptor.bytes) || descriptor.bytes < 0
           || !/^[a-f0-9]{64}$/u.test(descriptor.sha256 ?? '') || descriptor.name !== undefined && (typeof descriptor.name !== 'string' || descriptor.name.length > 500)) throw failure('SKILL_INPUT_FILES_INVALID');
         const name = relativeFile(descriptor.path), key = process.platform === 'win32' ? name.toLowerCase() : name;
-        if (names.has(key) || (total += descriptor.bytes) > LIMITS.totalBytes) throw failure('SKILL_INPUT_FILES_INVALID');
+        if (names.has(key)) throw failure('SKILL_INPUT_FILES_INVALID'); total += descriptor.bytes;
         names.add(key); files.push(structuredClone(descriptor));
       }
       const snapshot = freeze(structuredClone({ ...request, inputFiles: files, executionContext: { ...context, directory } }));
@@ -182,23 +188,39 @@ export class SkillExecutionService {
       signal?.throwIfAborted(); await beforeExecute?.(); signal?.throwIfAborted();
       started = true;
       const raw = await this.runner.runSkill(snapshot, { signal }); settled = true;
+      observedUsage = validateExecutionUsage(raw?.execution?.usage);
       signal?.throwIfAborted();
       const status = raw?.status ?? 'completed';
       if (!['completed', 'partial'].includes(status)) throw failure('SKILL_STATUS_INVALID', { modelStarted: true });
       const execution = validateExecutionProof(raw?.execution, this.backend);
       for (const file of files) await safeFile(directory, file, signal);
-      await evidenceProof(snapshot.executionContext.payload, files, directory, signal);
-      const result = validateModelReport(raw?.result, snapshot.executionContext.payload);
+      const byId = new Map(snapshot.executionContext.payload.evidence.map(item => [item.id, item]));
+      if (raw?.evidence !== undefined && !Array.isArray(raw.evidence)) throw failure('SKILL_EVIDENCE_INVALID');
+      for (const entry of raw?.evidence ?? []) {
+        const previous = byId.get(entry?.id);
+        if (previous && (previous.file !== entry.file || previous.line !== entry.line || previous.sha256 !== entry.sha256 || !entry.text?.startsWith(previous.text))) throw failure('SKILL_EVIDENCE_CHANGED');
+        byId.set(entry?.id, entry);
+      }
+      const payload = { ...snapshot.executionContext.payload, evidence: [...byId.values()] };
+      await evidenceProof(payload, files, directory, signal);
+      const result = validateModelReport(raw?.result, payload);
+      let sourceReport;
+      if (raw?.sourceReport !== undefined) {
+        if (status !== 'completed' || typeof raw.sourceReport !== 'string' || !raw.sourceReport.trim()) throw failure('SKILL_SOURCE_REPORT_INVALID');
+        sourceReport = redact(raw.sourceReport).trim();
+        const mapped = validateModelReport(mapPluginReport(sourceReport, payload.evidence), payload);
+        if (JSON.stringify(mapped) !== JSON.stringify(result)) throw failure('SKILL_SOURCE_REPORT_MISMATCH');
+      }
       if (status === 'partial') { result.confidence = 'low'; result.responsibility = '待验证'; }
       if (status === 'partial' && !result.limitations.some(text => text.includes('非模型终稿')))
-        result.limitations = ['执行已达到预算上限；以下为程序初排，并非模型终稿。', ...result.limitations].slice(0, 12);
+        result.limitations = ['执行已达到预算上限；以下为程序初排，并非模型终稿。', ...result.limitations];
       // Only the service creates these two artifacts; runner/model file paths are never collected.
       const contents = [{ name: 'report.json', mime: 'application/json', data: JSON.stringify(result, null, 2) + '\n' },
-        { name: '报告.txt', mime: 'text/plain', data: renderReport(result, snapshot.executionContext.payload) + '\n' }];
+        { name: '报告.txt', mime: 'text/plain', data: renderReport(result, payload, execution.usage, sourceReport) + '\n' }];
       const artifacts = [];
       for (const item of contents) {
         const bytes = Buffer.from(item.data, 'utf8');
-        if (bytes.length > LIMITS.reportBytes || redact(item.data) !== item.data) throw failure('SKILL_OUTPUT_UNSAFE');
+        if (bytes.length >= 100000000 || redact(item.data) !== item.data) throw failure('SKILL_OUTPUT_UNSAFE');
         const path = join(output, item.name), handle = await open(path, 'wx', 0o600);
         try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
         const descriptor = { path: relative(root, path).split(sep).join('/'), bytes: bytes.length, sha256: digest(bytes) };
@@ -206,12 +228,15 @@ export class SkillExecutionService {
         artifacts.push({ name: item.name, mime: item.mime, size: bytes.length, sha256: descriptor.sha256, pathPrivate: path });
       }
       return { schemaVersion: 1, taskId: request.taskId, inputRevision: request.inputRevision, skillId: TRIAGE_SKILL_ID,
-        backend: this.backend, status, result, files: artifacts, execution };
+        backend: this.backend, status, result, files: artifacts, execution, evidence: payload.evidence,
+        ...(sourceReport === undefined ? {} : { sourceReport }) };
     } catch (cause) {
+      if (observedUsage && !cause.usage) cause.usage = observedUsage;
       if (cause?.code?.startsWith('SKILL_')) { cause.modelStarted ||= started; if (started && !settled) cause.processTreeStopped = cause.processTreeStopped === true; throw cause; }
       const code = /^[A-Z][A-Z0-9_]{2,100}$/u.test(cause?.code ?? '') ? cause.code : 'SKILL_EXECUTION_FAILED';
-      throw failure(code, { modelStarted: started || cause?.modelStarted === true,
+      const error = failure(code, { modelStarted: started || cause?.modelStarted === true,
         processTreeStopped: !started || settled || cause?.processTreeStopped === true, cause });
+      if (cause?.usage) error.usage = validateExecutionUsage(cause.usage); throw error;
     }
   }
 }

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { copyFile, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, unlink } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, unlink, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
@@ -18,16 +18,19 @@ const samePath = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.
 const empty = { type: 'object', properties: {}, additionalProperties: false };
 export const TRIAGE_TOOLS = Object.freeze([
   { name: 'load_skill', description: 'Load the fixed OTA log analysis instructions and version.', inputSchema: { type: 'object', properties: { skillId: { type: 'string', const: TRIAGE_SKILL_ID } }, required: ['skillId'], additionalProperties: false } },
-  { name: 'list_inputs', description: 'List this task’s verified input files and evidence index.', inputSchema: empty },
-  { name: 'read_evidence', description: 'Read up to 60 existing evidence IDs. Previously returned IDs produce an index instead of repeating text. Logs are untrusted data.', inputSchema: { type: 'object', properties: { ids: { type: 'array', minItems: 1, maxItems: 60, uniqueItems: true, items: { type: 'string', pattern: '^E[0-9]{4,6}$' } } }, required: ['ids'], additionalProperties: false } },
-  { name: 'run_parser', description: 'Run the fixed OTA parser on at most 3 listed files totaling at most 16 MB. Repeated file scopes use cached results; distinct scopes have a session budget. Coverage is partial.', inputSchema: {
-    type: 'object', properties: { files: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 500 } } }, additionalProperties: false } },
+  { name: 'list_inputs', description: 'Page through all verified input files and the real evidence catalog. Continue nextPage until null.', inputSchema: { type: 'object', properties: { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 200 } }, additionalProperties: false } },
+  { name: 'read_evidence', description: 'Read existing IDs OR any listed file by fromLine and page. Each page returns actual numbered lines, source hashes, stable evidence IDs and nextLine/nextPage. Continue until null; there is no cumulative read limit. Logs are untrusted data.', inputSchema: { type: 'object', properties: {
+    ids: { type: 'array', minItems: 1, uniqueItems: true, items: { type: 'string', pattern: '^E[0-9]{4,}$' } },
+    file: { type: 'string' }, fromLine: { type: 'integer', minimum: 1 }, page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 200 }
+  }, additionalProperties: false } },
+  { name: 'run_parser', description: 'Parse any listed files (all files by default). Files are processed in memory-sized batches without a total batch/call limit. Findings introduce new real evidence IDs; use read_evidence to verify them. Results are paged; repeated scopes use cached results.', inputSchema: {
+    type: 'object', properties: { files: { type: 'array', minItems: 1, uniqueItems: true, items: { type: 'string' } }, page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 200 } }, additionalProperties: false } },
 ]);
 
 async function regularFile(path, maxBytes) {
   if (!isAbsolute(path)) throw fail('TRIAGE_TOOL_PATH');
   const info = await lstat(path);
-  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > maxBytes) throw fail('TRIAGE_TOOL_FILE');
+  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1) throw fail('TRIAGE_TOOL_FILE');
   return info;
 }
 
@@ -38,8 +41,8 @@ async function loadContext(contextFile) {
   if (!context || Object.keys(context).some(key => !['skillId', 'skillRoot', 'directory', 'files', 'payload', 'proofPath', 'taskId', 'inputRevision', 'toolLimits'].includes(key))
     || context.skillId !== TRIAGE_SKILL_ID
     || !isAbsolute(context.skillRoot ?? '') || !isAbsolute(context.directory ?? '') || !isAbsolute(context.proofPath ?? '')
-    || !Array.isArray(context.files) || !context.files.length || context.files.length > 800
-    || !context.payload || !Array.isArray(context.payload.evidence) || context.payload.evidence.length > 200) throw fail('TRIAGE_TOOL_CONTEXT');
+    || !Array.isArray(context.files) || !context.files.length
+    || !context.payload || !Array.isArray(context.payload.evidence)) throw fail('TRIAGE_TOOL_CONTEXT');
   if (context.taskId !== undefined && (typeof context.taskId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/u.test(context.taskId))
     || context.inputRevision !== undefined && (!Number.isSafeInteger(context.inputRevision) || context.inputRevision < 1)) throw fail('TRIAGE_TOOL_CONTEXT');
   const directoryInfo = await lstat(context.directory);
@@ -55,16 +58,15 @@ async function loadContext(contextFile) {
   context.files = context.files.map(file => {
     if (!file || Object.keys(file).some(key => !['path', 'sha256', 'bytes'].includes(key)) || typeof file.path !== 'string' || file.path.length > 500
       || file.path.includes('\\') || file.path.includes(':') || file.path.split('/').some(part => !part || part === '.' || part === '..')
-      || !/^[a-f0-9]{64}$/u.test(file.sha256) || !Number.isSafeInteger(file.bytes) || file.bytes < 0 || file.bytes > 64000000 || names.has(file.path)) throw fail('TRIAGE_TOOL_INPUT');
+      || !/^[a-f0-9]{64}$/u.test(file.sha256) || !Number.isSafeInteger(file.bytes) || file.bytes < 0 || names.has(file.path)) throw fail('TRIAGE_TOOL_INPUT');
     names.add(file.path); bytes += file.bytes;
     return { path: file.path, sha256: file.sha256, bytes: file.bytes };
   });
-  if (bytes > 320000000) throw fail('TRIAGE_TOOL_INPUT_LIMIT');
   const evidenceIds = new Set();
   for (const item of context.payload.evidence) {
     const file = context.files.find(file => file.path === item?.file);
-    if (!item || !/^E[0-9]{4,6}$/u.test(item.id) || evidenceIds.has(item.id) || !file || item.sha256 !== file.sha256
-      || !Number.isSafeInteger(item.line) || item.line <= 0 || item.line > 2000000 || typeof item.text !== 'string' || !item.text.length || item.text.length > 2000) throw fail('TRIAGE_TOOL_EVIDENCE');
+    if (!item || !/^E[0-9]{4,}$/u.test(item.id) || evidenceIds.has(item.id) || !file || item.sha256 !== file.sha256
+      || !Number.isSafeInteger(item.line) || item.line <= 0 || typeof item.text !== 'string' || !item.text.length) throw fail('TRIAGE_TOOL_EVIDENCE');
     evidenceIds.add(item.id);
   }
   context.payload.evidence = context.payload.evidence.map(item => Object.fromEntries(['id', 'file', 'line', 'time', 'rawTime', 'timeZone', 'unknownZone', 'timestampSourceLine', 'aligned', 'inRequestedWindow', 'text', 'sha256']
@@ -80,7 +82,7 @@ async function verifyInputs(context) {
   const expected = new Map(context.files.map(file => [file.path, file])); let visited = 0;
   const visit = async (directory, prefix = '') => {
     for (const name of await readdir(directory)) {
-      if (++visited > 2400) throw fail('TRIAGE_TOOL_DIRECTORY_LIMIT');
+      visited++;
       const path = join(directory, name), logical = prefix + name, info = await lstat(path);
       if (info.isSymbolicLink() || !within(context.directory, await realpath(path))) throw fail('TRIAGE_TOOL_LINK');
       if (info.isDirectory()) await visit(path, logical + '/');
@@ -111,7 +113,6 @@ async function verifyEvidence(context) {
     try {
       for await (const text of lines) {
         line++; scanned++; characters += text.length;
-        if (characters > 320000000 || scanned > 2000000) throw fail('TRIAGE_TOOL_EVIDENCE_LIMIT');
         const items = wanted.get(line);
         if (items) {
           if (items.some(item => redact(text).slice(0, item.text.length) !== item.text)) throw fail('TRIAGE_TOOL_EVIDENCE_CHANGED');
@@ -166,12 +167,12 @@ async function runParser(skill, context, timeoutMs, recordProcess) {
       { cwd: context.directory, env: parserEnvironment(), shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     const chunks = []; let bytes = 0, failure, killTimer, processRecord, tracking = Promise.resolve();
     const stop = code => { failure ??= fail(code); child.kill(); killTimer ??= setTimeout(() => child.kill('SIGKILL'), 1500); };
-    const timer = setTimeout(() => stop('TRIAGE_TOOL_PARSER_TIMEOUT'), timeoutMs);
+    const timer = timeoutMs > 0 ? setTimeout(() => stop('TRIAGE_TOOL_PARSER_TIMEOUT'), timeoutMs) : null;
     child.once('spawn', () => {
       processRecord = { pid: child.pid, status: 'running', startedAt: new Date().toISOString() };
       tracking = recordProcess(processRecord).catch(() => stop('TRIAGE_TOOL_PROOF_FAILED'));
     });
-    child.stdout.on('data', chunk => { bytes += chunk.length; if (bytes > 2000000) stop('TRIAGE_TOOL_PARSER_OUTPUT'); else chunks.push(chunk); });
+    child.stdout.on('data', chunk => { bytes += chunk.length; chunks.push(chunk); });
     child.stderr.on('data', () => {});
     child.once('error', () => { failure ??= fail('TRIAGE_TOOL_PARSER_START'); });
     child.once('close', async (code, signal) => {
@@ -228,128 +229,165 @@ function validateArguments(name, args) {
 }
 
 /** contextFile and constructor limits are host inputs, never MCP tool arguments. */
-export async function createTriageToolHandler({ contextFile, limits: supplied = {} } = {}) {
+/** Paginated access has no cumulative reading, model, parser or elapsed quota. */
+export async function createTriageToolHandler({ contextFile } = {}) {
   const context = await loadContext(contextFile);
-  if (context.toolLimits !== undefined && (!context.toolLimits || typeof context.toolLimits !== 'object' || Array.isArray(context.toolLimits)
-    || Object.keys(context.toolLimits).some(key => !['calls', 'returnedCharacters', 'evidenceCharacters', 'parserRuns'].includes(key)))) throw fail('TRIAGE_TOOL_LIMITS');
-  const limits = { ...DEFAULT_LIMITS, ...context.toolLimits, ...supplied };
-  for (const [key, value] of Object.entries(limits)) if (!Object.hasOwn(HARD_LIMITS, key) || !Number.isSafeInteger(value) || value < 1 || value > HARD_LIMITS[key]) throw fail('TRIAGE_TOOL_LIMITS');
-  const proof = { version: 1, sessionId: randomUUID(), taskId: context.taskId, inputRevision: context.inputRevision, skillId: context.skillId, limits: { ...limits },
-    counter: 0, toolCalls: 0, skillLoaded: false, parserRan: false, evidenceReadIds: [], tools: [], returnedCharacters: 0, evidenceCharacters: 0, parserRunCount: 0, parserScopes: [] };
+  const catalog = new Map(context.payload.evidence.map(item => [item.id, item]));
+  const locations = new Map(context.payload.evidence.map(item => [`${item.file}:${item.line}`, item.id]));
+  let nextId = Math.max(0, ...[...catalog.keys()].map(id => Number(id.slice(1)))) + 1;
+  const proof = { version: 2, sessionId: randomUUID(), taskId: context.taskId, inputRevision: context.inputRevision, skillId: context.skillId,
+    counter: 0, toolCalls: 0, skillLoaded: false, parserRan: false, evidenceReadIds: [], evidenceCatalog: [...catalog.values()], tools: [],
+    toolCallsByName: {}, evidenceReadCalls: 0, evidenceLines: 0, parserRuns: 0, parserBatchRuns: 0, parserRunCount: 0,
+    returnedCharacters: 0, evidenceCharacters: 0, parserScopes: [] };
   let initialized = false, queued = Promise.resolve(), proofCreated = false;
   const parserCache = new Map();
   const save = async () => {
-    const parentInfo = await lstat(dirname(context.proofPath));
-    if (!parentInfo.isDirectory() || parentInfo.isSymbolicLink() || !samePath(await realpath(dirname(context.proofPath)), context.proofDirectory)) throw fail('TRIAGE_TOOL_PROOF_PATH');
-    if (proofCreated) await regularFile(context.proofPath, 100000);
-    const temporary = context.proofPath + '.' + randomUUID() + '.tmp';
-    const handle = await open(temporary, 'wx', 0o600);
+    if ((await lstat(dirname(context.proofPath))).isSymbolicLink() || !samePath(await realpath(dirname(context.proofPath)), context.proofDirectory)) throw fail('TRIAGE_TOOL_PROOF_PATH');
+    if (proofCreated) await regularFile(context.proofPath);
+    proof.evidenceCatalog = [...catalog.values()];
+    const temporary = context.proofPath + '.' + randomUUID() + '.tmp', handle = await open(temporary, 'wx', 0o600);
     try { await handle.writeFile(JSON.stringify(proof)); await handle.sync(); } finally { await handle.close(); }
-    try { await replaceOwnedFile(temporary, context.proofPath, async () => { if (proofCreated) await regularFile(context.proofPath, 100000); }); proofCreated = true; }
+    try { await replaceOwnedFile(temporary, context.proofPath, async () => { if (proofCreated) await regularFile(context.proofPath); }); proofCreated = true; }
     catch (cause) { await unlink(temporary).catch(() => {}); throw cause; }
   };
-  const formatted = (value, evidenceCost = 0, maxCharacters = Infinity) => {
-    let remaining = limits.returnedCharacters - proof.returnedCharacters, text;
-    for (let iteration = 0; iteration < 12; iteration++) {
-      const budget = { remainingCalls: Math.max(0, limits.calls - proof.counter), remainingCharacters: remaining,
-        remainingEvidenceCharacters: limits.evidenceCharacters - proof.evidenceCharacters - evidenceCost,
-        remainingParserRuns: limits.parserRuns - proof.parserRunCount };
-      const guidance = budget.remainingCalls <= 3 || budget.remainingCharacters < 8000 || budget.remainingEvidenceCharacters < 4000 || budget.remainingParserRuns === 0
-        ? '读取预算已接近上限，请使用已取得的证据完成报告。' : undefined;
-      text = JSON.stringify({ ...value, ...(guidance ? { guidance } : {}), budget });
-      const nextRemaining = limits.returnedCharacters - proof.returnedCharacters - text.length;
-      if (nextRemaining < 0) throw fail('TRIAGE_TOOL_RETURN_BUDGET');
-      if (nextRemaining >= remaining) {
-        text += ' '.repeat(nextRemaining - remaining); // Keep the reported remaining count exact at digit boundaries.
-        if (text.length > maxCharacters) throw fail('TRIAGE_TOOL_PARSER_HINT_LIMIT');
-        return text;
+  const sourceFor = name => {
+    const file = context.files.find(item => item.path === name);
+    if (!file) throw fail('TRIAGE_TOOL_EVIDENCE_FILE'); return file;
+  };
+  const readRows = async (file, fromLine, count) => {
+    const result = [], stream = createReadStream(join(context.directory, file.path), { encoding: 'utf8' });
+    const reader = createInterface({ input: stream, crlfDelay: Infinity }); let number = 0, nextLine = null, rawTime = null, stampLine = null;
+    try {
+      for await (const text of reader) {
+        number++;
+        const match = /\b\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:?\d\d)?/u.exec(text);
+        if (match) { rawTime = match[0]; stampLine = number; }
+        if (number < fromLine) continue;
+        if (number >= fromLine + count) { nextLine = number; break; }
+        if (!text.trim()) continue;
+        const key = `${file.path}:${number}`, existing = locations.get(key);
+        let item = existing && catalog.get(existing);
+        if (!item) {
+          const id = `E${String(nextId++).padStart(4, '0')}`;
+          item = { id, file: file.path, line: number, sha256: file.sha256, text: redact(text),
+            time: rawTime ?? '未提供时间戳', rawTime, timeZone: 'unconfirmed', timestampSourceLine: stampLine,
+            aligned: false, inRequestedWindow: null };
+          catalog.set(id, item); locations.set(key, id);
+        } else if (item.text !== redact(text)) { item = { ...item, text: redact(text) }; catalog.set(item.id, item); }
+        result.push(item);
       }
-      if (text.length > maxCharacters) throw fail('TRIAGE_TOOL_PARSER_HINT_LIMIT');
-      remaining = nextRemaining;
+    } finally { reader.close(); stream.destroy(); }
+    return { evidence: result, nextLine };
+  };
+  const pageOptions = args => {
+    const page = args.page ?? 1, pageSize = args.pageSize ?? 100;
+    if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1) throw fail('TRIAGE_TOOL_ARGUMENTS');
+    return { page, pageSize: Math.min(pageSize, 200) };
+  };
+  const parseAll = async names => {
+    const selected = names ? names.map(sourceFor) : context.files;
+    if (!selected.length || new Set(selected.map(file => file.path)).size !== selected.length) throw fail('TRIAGE_TOOL_PARSER_SELECTION');
+    const key = createHash('sha256').update(JSON.stringify(selected.map(file => [file.path, file.sha256]).sort())).digest('hex');
+    if (parserCache.has(key)) return { ...parserCache.get(key), cacheHit: true };
+    const skill = await verifySkill(context.skillRoot), batches = [];
+    // Each parser child receives a bounded batch, with no cap on batch count.
+    for (const file of selected) {
+      if (file.bytes <= 16000000) {
+        let batch = batches.at(-1);
+        if (!batch || batch.large || batch.files.length >= 3 || batch.bytes + file.bytes > 16000000) batches.push(batch = { files: [], bytes: 0 });
+        batch.files.push({ ...file, source: file.path, offset: 0 }); batch.bytes += file.bytes;
+      } else {
+        // Split bytes for parser memory, retaining the original line offset.
+        const handle = await open(join(context.directory, file.path), 'r'); let offset = 0, position = 0;
+        try {
+          while (position < file.bytes) {
+            const buffer = Buffer.alloc(Math.min(16000000, file.bytes - position)), read = await handle.read(buffer, 0, buffer.length, position);
+            if (!read.bytesRead) break;
+            const bytes = buffer.subarray(0, read.bytesRead), directory = await mkdtemp(join(context.proofDirectory, 'parser-inputs-'));
+            const target = join(directory, file.path); await mkdir(dirname(target), { recursive: true }); await writeFile(target, bytes, { flag: 'wx', mode: 0o600 });
+            batches.push({ large: true, directory, bytes: bytes.length, files: [{ path: file.path, source: file.path, offset, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }] });
+            offset += (bytes.toString('utf8').match(/\n/gu) ?? []).length; position += bytes.length;
+          }
+        } finally { await handle.close(); }
+      }
     }
-    throw fail('TRIAGE_TOOL_RETURN_BUDGET');
+    const findings = [], scopes = [];
+    for (const batch of batches) {
+      const directory = batch.directory ?? await stageParserInputs(context, { selectedFiles: batch.files.map(({ source, offset, ...file }) => file) });
+      proof.parserBatchRuns++; proof.parserRunCount = proof.parserBatchRuns;
+      const parser = await runParser(skill, { ...context, directory }, 0, async record => { proof.parserProcess = record; await save(); });
+      for (const finding of Array.isArray(parser?.findings) ? parser.findings : []) {
+        const ids = [];
+        for (const ref of Array.isArray(finding.evidence) ? finding.evidence : []) {
+          if (!Number.isSafeInteger(ref.line) || ref.line < 1 || typeof ref.file !== 'string') continue;
+          const file = batch.files.find(item => samePath(resolve(directory, ref.file), join(directory, item.path)));
+          if (!file) continue;
+          const page = await readRows(sourceFor(file.source), Math.max(1, ref.line + file.offset - 2), 5);
+          ids.push(...page.evidence.map(item => item.id));
+        }
+        if (ids.length) findings.push({ summary: redact(finding.summary ?? ''), evidenceIds: [...new Set(ids)] });
+      }
+      scopes.push({ files: batch.files.map(({ source, offset, ...file }) => file), stats: parserStats(parser) });
+    }
+    await verifyInputs(context);
+    const result = { selectedFiles: selected, selectedBytes: selected.reduce((sum, file) => sum + file.bytes, 0), omittedCount: context.files.length - selected.length,
+      coverage: selected.length === context.files.length ? 'all-selected-files' : 'selected-files', hints: findings, batches: scopes, cacheHit: false };
+    parserCache.set(key, result); return result;
   };
   const perform = async request => {
-    if (!request || request.jsonrpc !== '2.0' || typeof request.method !== 'string' || request.id !== undefined && (!['number', 'string'].includes(typeof request.id) || typeof request.id === 'number' && !Number.isFinite(request.id))) return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid request.' } };
+    if (!request || request.jsonrpc !== '2.0' || typeof request.method !== 'string') return { jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32600, message: 'Invalid request.' } };
     if (request.id === undefined) return null;
     const response = result => ({ jsonrpc: '2.0', id: request.id, result });
-    // Modern SDKs probe server/discover, then may respawn a legacy stdio peer.
-    // A probe must receive MethodNotFound and must not consume/create a task proof.
     if (!['initialize', 'ping', 'tools/list', 'tools/call'].includes(request.method)) return { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found.' } };
-    if (request.method === 'initialize') { initialized = true; return response({ protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'teamplay-log-analysis', version: '0.4.0' } }); }
+    if (request.method === 'initialize') { initialized = true; return response({ protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'teamplay-log-analysis', version: '0.4.2' } }); }
     if (!initialized) return { jsonrpc: '2.0', id: request.id, error: { code: -32000, message: 'Initialize first.' } };
     if (request.method === 'ping') return response({});
     if (request.method === 'tools/list') return response({ tools: TRIAGE_TOOLS });
     if (request.method !== 'tools/call') return { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found.' } };
+    const { name, arguments: args = {} } = request.params ?? {};
+    proof.counter++; proof.toolCalls = proof.counter; proof.tools.push(TRIAGE_TOOLS.some(tool => tool.name === name) ? name : 'denied');
+    proof.toolCallsByName[name] = (proof.toolCallsByName[name] ?? 0) + 1; await save();
     try {
-      if (proof.counter >= limits.calls) throw fail('TRIAGE_TOOL_CALL_LIMIT');
-      proof.counter++; proof.toolCalls = proof.counter;
-      const { name, arguments: args = {} } = request.params ?? {};
-      proof.tools.push(TRIAGE_TOOLS.some(tool => tool.name === name) ? name : 'denied');
-      await save(); // Attempt budget is durable before parsing, file reads or child execution.
-      if (!request.params || Object.keys(request.params).some(key => !['name', 'arguments'].includes(key)) || !TRIAGE_TOOLS.some(tool => tool.name === name)) throw fail('TRIAGE_TOOL_DENIED');
-      validateArguments(name, args);
+      if (!TRIAGE_TOOLS.some(tool => tool.name === name) || !args || typeof args !== 'object' || Array.isArray(args)
+        || Object.keys(request.params).some(key => !['name', 'arguments'].includes(key))) throw fail('TRIAGE_TOOL_DENIED');
       await verifyInputs(context);
-      let result, evidenceCost = 0, succeeded = () => {};
+      let result;
       if (name === 'load_skill') {
-        const skill = await verifySkill(context.skillRoot);
-        if (skill.rules.length > limits.skillCharacters) throw fail('TRIAGE_TOOL_SKILL_LIMIT');
-        result = { skillId: TRIAGE_SKILL_ID, version: '1.3.2', rules: skill.rules }; succeeded = () => { proof.skillLoaded = true; };
+        if (Object.keys(args).length !== 1 || args.skillId !== TRIAGE_SKILL_ID) throw fail('TRIAGE_TOOL_SKILL_ID');
+        const skill = await verifySkill(context.skillRoot); proof.skillLoaded = true; result = { skillId: TRIAGE_SKILL_ID, version: '1.3.2', rules: skill.rules };
       } else if (name === 'list_inputs') {
-        result = { files: context.files, evidence: context.payload.evidence.map(({ id, file, line, time, timeZone }) => ({ id, file, line, time, timeZone })) };
+        if (Object.keys(args).some(key => !['page', 'pageSize'].includes(key))) throw fail('TRIAGE_TOOL_ARGUMENTS');
+        const { page, pageSize } = pageOptions(args), start = (page - 1) * pageSize;
+        result = { files: context.files.slice(start, start + pageSize), evidence: [...catalog.values()].slice(start, start + pageSize).map(({ id, file, line, time, timeZone }) => ({ id, file, line, time, timeZone })),
+          page, pageSize, nextPage: start + pageSize < Math.max(context.files.length, catalog.size) ? page + 1 : null, totalFiles: context.files.length, totalEvidence: catalog.size };
       } else if (name === 'read_evidence') {
-        const selected = args.ids.map(id => context.payload.evidence.find(item => item.id === id));
-        if (selected.some(item => !item)) throw fail('TRIAGE_TOOL_EVIDENCE_ID');
-        const provided = new Set(proof.evidenceReadIds), fresh = selected.filter(item => !provided.has(item.id));
-        const alreadyProvided = selected.filter(item => provided.has(item.id)).map(({ id, file, line, time, timeZone }) => ({ id, file, line, time, timeZone }));
-        result = { evidence: fresh, alreadyProvided, ...(alreadyProvided.length ? { note: '这些条目的正文已在此前返回，请引用原结果。' } : {}) };
-        evidenceCost = fresh.length ? JSON.stringify({ evidence: fresh }).length : 0;
-        if (proof.evidenceCharacters + evidenceCost > limits.evidenceCharacters) throw fail('TRIAGE_TOOL_EVIDENCE_BUDGET');
-        succeeded = () => { proof.evidenceCharacters += evidenceCost; proof.evidenceReadIds = [...new Set([...proof.evidenceReadIds, ...args.ids])]; };
-      } else {
-        const scope = selectParserFiles(context, args.files);
-        const scopeKey = createHash('sha256').update(JSON.stringify(scope.selectedFiles.map(file => [file.path, file.sha256]).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))).digest('hex');
-        const cached = parserCache.get(scopeKey);
-        if (cached?.error) throw Object.assign(fail(cached.error), { cachedError: true });
-        if (cached) result = { ...cached.result, cacheHit: true };
-        else {
-          if (proof.parserRunCount >= limits.parserRuns) throw fail('TRIAGE_TOOL_PARSER_RUN_LIMIT');
-          const skill = await verifySkill(context.skillRoot), directory = await stageParserInputs(context, scope);
-          const record = { scopeKey, ...scope, runIndex: ++proof.parserRunCount, status: 'running' };
-          proof.parserScope = scope; proof.parserScopes.push(record); await save();
-          try {
-            const parser = await runParser(skill, { ...context, directory }, limits.parserTimeoutMs, async processRecord => { proof.parserProcess = processRecord; await save(); });
-            await verifyInputs(context);
-            await verifyInputs({ directory, files: scope.selectedFiles });
-            result = { ...scope, hints: scopedParserHints(parser, directory, scope.selectedFiles, context.payload.evidence), stats: parserStats(parser) };
-            if (JSON.stringify(result).length > limits.parserCharacters) throw fail('TRIAGE_TOOL_PARSER_HINT_LIMIT');
-            record.status = 'completed'; parserCache.set(scopeKey, { result });
-          } catch (cause) {
-            const code = /^TRIAGE_TOOL_[A-Z_]+$/u.test(cause.code ?? '') ? cause.code : 'TRIAGE_TOOL_PARSER_FAILED';
-            record.status = 'failed'; record.error = code; parserCache.set(scopeKey, { error: code }); throw cause;
-          } finally { await save(); }
-          result = { ...result, cacheHit: false };
+        if (Object.keys(args).some(key => !['ids', 'file', 'fromLine', 'page', 'pageSize'].includes(key))) throw fail('TRIAGE_TOOL_ARGUMENTS');
+        const { page, pageSize } = pageOptions(args); let selected;
+        if (args.file !== undefined) {
+          if (args.ids !== undefined || typeof args.file !== 'string' || !Number.isSafeInteger(args.fromLine ?? 1) || (args.fromLine ?? 1) < 1) throw fail('TRIAGE_TOOL_ARGUMENTS');
+          result = await readRows(sourceFor(args.file), (args.fromLine ?? 1) + (page - 1) * pageSize, pageSize); selected = result.evidence;
+        } else {
+          if (!Array.isArray(args.ids) || !args.ids.length || new Set(args.ids).size !== args.ids.length || args.ids.some(id => !catalog.has(id))) throw fail('TRIAGE_TOOL_EVIDENCE_ID');
+          const ids = args.ids.slice((page - 1) * pageSize, page * pageSize); selected = ids.map(id => catalog.get(id));
+          result = { evidence: selected, page, nextPage: page * pageSize < args.ids.length ? page + 1 : null };
         }
-        succeeded = () => { proof.parserRan = true; };
+        proof.evidenceReadCalls++; proof.evidenceLines += selected.length; proof.evidenceCharacters += JSON.stringify(selected).length;
+        proof.evidenceReadIds = [...new Set([...proof.evidenceReadIds, ...selected.map(item => item.id)])];
+      } else {
+        if (Object.keys(args).some(key => !['files', 'page', 'pageSize'].includes(key)) || args.files !== undefined && (!Array.isArray(args.files) || !args.files.length)) throw fail('TRIAGE_TOOL_ARGUMENTS');
+        proof.parserRuns++; const parsed = await parseAll(args.files); proof.parserRan = true;
+        const { page, pageSize } = pageOptions(args), start = (page - 1) * pageSize;
+        result = { ...parsed, hints: parsed.hints.slice(start, start + pageSize), batches: parsed.batches.slice(start, start + pageSize),
+          page, nextPage: start + pageSize < Math.max(parsed.hints.length, parsed.batches.length) ? page + 1 : null, totalFindings: parsed.hints.length };
       }
-      const text = formatted(result, evidenceCost, name === 'run_parser' ? limits.parserCharacters : Infinity);
-      succeeded();
-      proof.returnedCharacters += text.length;
-      await save();
-      return response({ content: [{ type: 'text', text }] });
+      const text = JSON.stringify({ ...result, usage: { toolCalls: proof.toolCalls, evidenceReadCalls: proof.evidenceReadCalls, evidenceLines: proof.evidenceLines, parserRuns: proof.parserRuns } });
+      proof.returnedCharacters += text.length; await save(); return response({ content: [{ type: 'text', text }] });
     } catch (cause) {
-      proof.lastError = /^TRIAGE_TOOL_[A-Z_]+$/u.test(cause.code ?? '') ? cause.code : 'TRIAGE_TOOL_FAILED';
-      let text;
-      try { text = formatted({ error: proof.lastError, ...(cause.cachedError ? { cachedError: true } : {}) }); }
-      catch { await save(); return { jsonrpc: '2.0', id: request.id, error: { code: -32000, message: 'TRIAGE_TOOL_RETURN_BUDGET' } }; }
-      proof.returnedCharacters += text.length;
-      await save();
-      return response({ isError: true, content: [{ type: 'text', text }] });
+      proof.lastError = /^TRIAGE_TOOL_[A-Z_]+$/u.test(cause.code ?? '') ? cause.code : 'TRIAGE_TOOL_FAILED'; await save();
+      return response({ isError: true, content: [{ type: 'text', text: proof.lastError }] });
     }
   };
-  return request => {
-    const next = queued.then(() => perform(request)); queued = next.catch(() => {}); return next;
-  };
+  return request => { const next = queued.then(() => perform(request)); queued = next.catch(() => {}); return next; };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

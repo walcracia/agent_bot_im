@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { SkillExecutionService, createSkillBackendRegistry, TRIAGE_SKILL_ID } from '../skill-execution.mjs';
 import { renderReport } from '../triage-report.mjs';
+import { mapPluginReport } from '../triage-plugin-recipe.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const LOG = '2026-11-20 10:00:00 ERROR timeout\n2026-11-20 10:00:01 retry\n';
@@ -13,6 +14,7 @@ const proof = { agentSessions: 1, providerRequests: 3, toolCalls: 4, skillLoaded
 const report = () => ({ conclusion: '日志中存在超时记录，具体原因仍待验证。', confidence: 'high', responsibility: '网络环境',
   evidence: [{ id: 'E0001', interpretation: '存在超时记录。' }], timeline: [{ id: 'E0001', event: '记录超时。' }],
   alternatives: ['需要核对服务状态。'], nextSteps: ['补充其他端的记录。'], limitations: ['初排无法确定完整因果。'] });
+const sourceText = '# OTA 日志分析报告\n\n说明：合成材料。\n\n【结论】\n责任方：服务连接；置信度：中。\n\n原始结论保持原文。\n\n【依据】\n`demo.log:1` 记录一次超时。\n\n【时间线】\n`demo.log:1` 记录异常。\n\n【其他可能】\n尚需核对服务。\n\n【下一步】\n联系服务维护者。';
 async function fixture(t, runner) {
   const root = await mkdtemp(join(tmpdir(), 'teamplay-skill-service-'));
   t.after(async () => { assert.equal(dirname(root), resolve(tmpdir())); await rm(root, { recursive: true, force: true }); });
@@ -46,6 +48,16 @@ test('one real adapter contract produces only two service-owned, exact-hash repo
   }
   assert.equal(Object.isFrozen(f.seen()), true); assert.equal(Object.isFrozen(f.seen().executionContext.payload), true);
   assert.equal((await readdir(f.directory)).length, 1);
+});
+
+test('the original plugin report passes through unchanged with zero Agent tools and usage only appended to the download', async t => {
+  const f = await fixture(t, request => ({ sourceReport: sourceText, result: mapPluginReport(sourceText, request.executionContext.payload.evidence),
+    execution: { ...proof, recipe: 'chery-qa-plugin', providerRequests: 1, toolCalls: 0, usage: { providerRequests: 1, toolCalls: 0, parserRuns: 1 } } }));
+  const result = await f.service.execute(f.request);
+  assert.equal(result.sourceReport, sourceText); assert.equal(result.execution.recipe, 'chery-qa-plugin'); assert.equal(result.execution.toolCalls, 0);
+  assert.equal(result.result.conclusion, '责任方：服务连接；置信度：中。\n\n原始结论保持原文。');
+  const text = await readFile(result.files.find(file => file.name === '报告.txt').pathPrivate, 'utf8');
+  assert.ok(text.startsWith(sourceText + '\n\n本次用量\n')); assert.equal(text.split(sourceText).length, 2);
 });
 
 test('a proved budget-limited partial execution keeps partial status and honest exact-hash artifacts', async t => {
@@ -141,35 +153,19 @@ test('a payload cannot invent a line, its text, a file hash or duplicate evidenc
   assert.equal(f.calls(), 0);
 });
 
-test('missing or excessive actual Agent proof is rejected after adapter execution', async t => {
+test('missing or invalid actual Agent proof remains rejected after adapter execution', async t => {
   const f = await fixture(t);
-  for (const execution of [{}, { ...proof, skillLoaded: false }, { ...proof, proofValidated: false }, { ...proof, providerRequests: 33 },
-    { ...proof, toolCalls: 2 }, { ...proof, toolCalls: 97 }, { ...proof, agentSessions: 2 }, { ...proof, backend: 'pi' }]) {
+  for (const execution of [{}, { ...proof, skillLoaded: false }, { ...proof, proofValidated: false }, { ...proof, providerRequests: 0 }, { ...proof, toolCalls: 0 }, { ...proof, agentSessions: 2 }, { ...proof, backend: 'pi' }]) {
     f.service.runner = { runSkill: async () => ({ result: report(), execution }) };
     await assert.rejects(f.service.execute(f.request), error => error.code === 'SKILL_EXECUTION_PROOF_INVALID' && error.modelStarted);
   }
 });
-
-test('trusted declared execution policy is preserved and both declared and hard proof bounds are enforced', async t => {
-  const policy = { modelRequests: 12, toolCalls: 32, inputCharacters: 192000, maxTokens: 4096 };
-  const configured = await fixture(t, async () => ({ result: report(), execution: { ...proof, providerRequests: 12, toolCalls: 32, limits: policy } }));
-  assert.deepEqual((await configured.service.execute(configured.request)).execution.limits, policy);
-  const hard = await fixture(t, async () => ({ result: report(), execution: { ...proof, providerRequests: 32, toolCalls: 96,
-    limits: { modelRequests: 32, toolCalls: 96, inputCharacters: 384000, maxTokens: 8192 } } }));
-  assert.equal((await hard.service.execute(hard.request)).execution.toolCalls, 96);
-  const legacy = await fixture(t, async () => ({ result: report(), execution: { ...proof, providerRequests: 32, toolCalls: 96 } }));
-  assert.equal((await legacy.service.execute(legacy.request)).execution.providerRequests, 32);
-  for (const execution of [
-    { ...proof, providerRequests: 13, limits: policy }, { ...proof, toolCalls: 33, limits: policy },
-    ...Object.entries({ modelRequests: 33, toolCalls: 97, inputCharacters: 384001, maxTokens: 8193 }).map(([key, value]) => ({ ...proof, limits: { ...policy, [key]: value } })),
-    { ...proof, limits: { ...policy, toolCalls: 0 } }, { ...proof, limits: { modelRequests: 12 } },
-    { ...proof, limits: { ...policy, arbitraryPath: 'D:/private' } },
-  ]) {
-    const f = await fixture(t, async () => ({ result: report(), execution }));
-    await assert.rejects(f.service.execute(f.request), { code: 'SKILL_EXECUTION_PROOF_INVALID' });
-  }
+test('completed Agent usage can exceed retired proof quotas and obsolete limits do not become active policy', async t => {
+  const usage = { elapsedMs: 7, providerRequests: 41, toolCalls: 140, toolCallsByName: { read_evidence: 110 }, evidenceReadCalls: 110, evidenceLines: 11000, parserRuns: 19 };
+  const f = await fixture(t, async () => ({ result: report(), execution: { ...proof, providerRequests: 41, toolCalls: 140, limits: { modelRequests: 1, toolCalls: 1 }, usage } }));
+  const result = await f.service.execute(f.request); assert.deepEqual(result.execution.usage, usage); assert.equal(result.execution.providerRequests, 41);
+  assert.equal(result.execution.toolCalls, 140); assert.equal(Object.hasOwn(result.execution, 'limits'), false);
 });
-
 test('strict report fields and evidence references are checked; model-provided output paths are ignored', async t => {
   const f = await fixture(t); const bad = report(); bad.evidence[0].id = 'E9999';
   f.service.runner = { runSkill: async () => ({ result: bad, execution: proof }) };

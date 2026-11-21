@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { SuperTriage, triageWindow, triageClockDomains } from '../super-triage.mjs';
 import { routeTriageTriggers } from '../triage-route.mjs';
 import { readNode } from '../super-context.mjs';
+import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 
 const bot = { id: 'bot', is_bot: true }, human = { id: 'human', is_bot: false }, other = { id: 'other', is_bot: false };
 const chats = [{ id: 'chat', members: [bot, human] }, { id: 'other-chat', members: [bot, other] }];
@@ -89,15 +93,56 @@ test('missing materials call no model hook; later QA attachments resume original
   assert.equal(Object.keys(f.c.data.tasks).length, 1);
 });
 
-test('model budget is reserved and persisted immediately before invocation; zero budget does not stop waiting-input paths', async () => {
+test('analysis reservation is persisted for statistics and old total/daily quotas do not block another session', async () => {
   const f = fixture({ totalModelCalls: 1, dailyModelCalls: 1 }); await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
   assert.equal(f.c.data.triage.budget.total, 1); assert.equal(f.c.data.tasks.T000001.status, 'completed');
   assert.deepEqual(f.calls[0].fileIds, [7]);
   const reserved = f.saved.find(state => state.triage.budget.total === 1); assert.equal(reserved.tasks.T000001.status, 'running');
   await f.im(2, '重分析 DEMO-1'); await f.t.execute('T000001');
-  assert.equal(f.c.data.triage.budget.total, 1); assert.equal(f.c.data.tasks.T000001.status, 'paused');
+  assert.equal(f.c.data.triage.budget.total, 2); assert.equal(f.c.data.tasks.T000001.status, 'completed');
   const zero = fixture({ totalModelCalls: 0, dailyModelCalls: 0 }, { run: async snapshot => ({ status: 'waiting_input', text: '需要故障时间。', inputRevision: snapshot.inputRevision }) });
   await zero.im(1, '分析 DEMO-1'); await zero.t.execute('T000001'); assert.equal(zero.c.data.tasks.T000001.status, 'waiting_input');
+});
+
+test('only a confirmed pre-model quota pause resumes automatically and old history remains intact', async () => {
+  const f = fixture({ totalModelCalls: 0, dailyModelCalls: 0 }); await f.im(1, '分析 DEMO-1');
+  const task = f.c.data.tasks.T000001;
+  Object.assign(task, { status: 'paused', error: 'TRIAGE_MODEL_BUDGET', lastRunStopped: true, uncertain: false,
+    failure: { phase: 'before-model', modelStarted: false, processTreeStopped: true }, attempt: 1 });
+  f.c.data.triage.budget.total = 100; f.c.data.triage.budget.days['2026-11-20'] = 100;
+  f.c.data.triage.budget.reservations['older:1'] = { taskId: 'older', attempt: 1 };
+  const preserved = structuredClone(f.c.data.triage.budget);
+  for (const [id, changes] of [['T000002', { error: 'TRIAGE_FAILED' }], ['T000003', { uncertain: true }], ['T000004', { status: 'cancelled' }]])
+    f.c.data.tasks[id] = { ...structuredClone(task), id, ...changes };
+  f.t.initialize(f.c.data);
+  assert.equal(task.status, 'queued'); assert.equal(task.quotaRecovery.previousError, 'TRIAGE_MODEL_BUDGET');
+  assert.equal(f.c.data.tasks.T000002.status, 'paused'); assert.equal(f.c.data.tasks.T000003.status, 'paused'); assert.equal(f.c.data.tasks.T000004.status, 'cancelled');
+  assert.deepEqual(f.c.data.triage.budget, preserved);
+  await f.t.execute('T000001'); assert.equal(f.c.data.tasks.T000001.status, 'completed'); assert.equal(f.c.data.triage.budget.total, 101);
+});
+
+test('completed analysis usage stays in the task and attempt without a separate chat message', async () => {
+  const usage = { elapsedMs: 123000, providerRequests: 18, toolCalls: 105, toolCallsByName: { read_evidence: 70, run_parser: 9 },
+    evidenceReadCalls: 70, evidenceLines: 2700, parserRuns: 9, tokens: { input: 100000, output: 7000 } };
+  const f = fixture({ totalModelCalls: 0, dailyModelCalls: 0 }, { run: async (snapshot, { beforeModel }) => {
+    await beforeModel(); return { status: 'completed', text: 'Skill原结论', inputRevision: snapshot.inputRevision, modelCalls: 1, execution: { usage } };
+  } });
+  await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
+  const task = f.c.data.tasks.T000001;
+  assert.equal(task.status, 'completed'); assert.deepEqual(task.usage, usage); assert.deepEqual(task.usageByAttempt[1], usage);
+  f.t.initialize(f.c.data); assert.deepEqual(f.c.data.tasks.T000001.usageByAttempt[1], usage);
+  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'usage').length, 0);
+});
+
+test('a failed analysis retains observed usage and necessary error information without claiming a final skill result', async () => {
+  const usage = { elapsedMs: 4200, providerRequests: 2, toolCalls: 7, evidenceReadCalls: 3, evidenceLines: 80, parserRuns: 1 };
+  const f = fixture({}, { run: async (_snapshot, { beforeModel }) => { await beforeModel(); throw Object.assign(new Error('Synthetic transport failure'),
+    { modelStarted: true, processTreeStopped: true, usage }); } });
+  await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
+  assert.equal(f.c.data.tasks.T000001.status, 'paused'); assert.deepEqual(f.c.data.tasks.T000001.usage, usage);
+  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'result').length, 0);
+  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'usage').length, 0);
+  assert.ok(Object.values(f.c.data.outbox).some(item => item.category === 'notice' && /已暂停/u.test(item.text)));
 });
 
 test('a new revision during worker execution is retained, old report is saved but not sent, next attempt uses newest input', async () => {
@@ -271,13 +316,13 @@ async function recoverableFixture() {
   await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001'); return f;
 }
 
-test('normal bounded partial work publishes its actual status, result and two artifact outbox items', async () => {
+test('normal partial work publishes only its original conclusion and one full-text report attachment', async () => {
   const f = fixture({}, { run: async (snapshot, { beforeModel }) => { await beforeModel(); return partialResult(snapshot.inputRevision); } });
   await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
   const task = f.c.data.tasks.T000001;
   assert.equal(task.status, 'partial'); assert.equal(task.reports[1].status, 'partial'); assert.equal(f.c.data.triage.budget.total, 1);
   const outputs = Object.values(f.c.data.outbox).filter(item => ['result', 'artifact'].includes(item.category));
-  assert.equal(outputs.filter(item => item.category === 'artifact').length, 2); assert.equal(outputs.filter(item => item.category === 'result').length, 1);
+  assert.equal(outputs.filter(item => item.category === 'artifact').length, 1); assert.equal(outputs.filter(item => item.category === 'result').length, 0);
   for (const item of outputs) assert.equal(f.t.beforeSend(item, chats), 'send');
   await f.im(2, '继续分析 #T000001'); assert.equal(f.c.data.tasks.T000001.status, 'partial');
 });
@@ -291,7 +336,7 @@ test('local recovered partial uses original attempt and revision, preserves fail
   assert.equal(task.status, 'partial'); assert.equal(task.lastRunStopped, true); assert.equal(task.uncertain, false);
   assert.equal(task.attempt, old.attempt); assert.equal(task.inputRevision, old.inputRevision); assert.equal(task.reportRevision, 1);
   assert.equal(task.error, old.error); assert.deepEqual(task.failure, old.failure); assert.deepEqual(f.c.data.triage.budget, budget);
-  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'artifact').length, 2);
+  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'artifact').length, 1);
   const node = readNode(f.c.data.graph, task.resultReference, { projectId: '42', conversations: ['chat'], limit: 12000 });
   assert.doesNotMatch(node.text, /pathPrivate|private-triage/u);
   await assert.rejects(f.t.publishRecovered('T000001', partialResult(1), { attempt: 1, inputRevision: 1, processTreeStopped: true }), { code: 'TRIAGE_RECOVERY_STATE' });
@@ -305,16 +350,14 @@ test('an already completed native skill report publishes on its original reserva
   assert.equal(task.status, 'completed'); assert.equal(task.recovery.status, 'completed');
   assert.deepEqual(task.report, result.report); assert.deepEqual(f.c.data.triage.budget, budget);
   assert.equal(task.attempt, 1); assert.equal(task.reportRevision, 1);
-  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'artifact').length, 2);
+  assert.equal(Object.values(f.c.data.outbox).filter(item => item.category === 'artifact').length, 1);
 });
 
 test('recovered publishing refuses fake proof, wrong revision, missing or void reservation and live execution', async () => {
-  for (const variation of ['proof', 'skill', 'providers', 'tools', 'result-status', 'no-files', 'wrong-revision', 'wrong-attempt', 'no-stop', 'no-reservation', 'void', 'void-status', 'not-reserved', 'active', 'runs', 'revoked']) {
+  for (const variation of ['proof', 'skill', 'result-status', 'no-files', 'wrong-revision', 'wrong-attempt', 'no-stop', 'no-reservation', 'void', 'void-status', 'not-reserved', 'active', 'runs', 'revoked']) {
     const f = await recoverableFixture(), result = partialResult(1), options = { attempt: 1, inputRevision: 1, processTreeStopped: true };
     if (variation === 'proof') result.execution.proofValidated = false;
     if (variation === 'skill') result.execution.skillLoaded = false;
-    if (variation === 'providers') result.execution.providerRequests = 33;
-    if (variation === 'tools') result.execution.toolCalls = 97;
     if (variation === 'result-status') result.status = 'invented';
     if (variation === 'no-files') result.files = [];
     if (variation === 'wrong-revision') { options.inputRevision = 2; result.inputRevision = 2; }
@@ -333,23 +376,61 @@ test('recovered publishing refuses fake proof, wrong revision, missing or void r
   }
 });
 
-test('partial recovery preserves configured policy and refuses a count beyond its declared budget', async () => {
+test('recovered historical proofs ignore removed quotas and support reports above the old small-file cap', async () => {
   const policy = { modelRequests: 12, toolCalls: 32, inputCharacters: 192000, maxTokens: 4096 };
   const f = await recoverableFixture(), result = partialResult(1);
-  result.execution = { ...result.execution, providerRequests: 12, toolCalls: 32, limits: policy };
+  result.execution = { ...result.execution, providerRequests: 120, toolCalls: 320, limits: policy };
+  result.files[0].size = 250000;
   await f.t.publishRecovered('T000001', result, { attempt: 1, inputRevision: 1, processTreeStopped: true });
-  assert.deepEqual(f.c.data.tasks.T000001.execution.limits, policy);
-  const hard = await recoverableFixture(), hardResult = partialResult(1);
-  hardResult.execution = { ...hardResult.execution, providerRequests: 32, toolCalls: 96 };
-  await hard.t.publishRecovered('T000001', hardResult, { attempt: 1, inputRevision: 1, processTreeStopped: true });
-  assert.equal(hard.c.data.tasks.T000001.execution.providerRequests, 32);
-  for (const execution of [
-    { ...result.execution, providerRequests: 13 }, { ...result.execution, toolCalls: 33 },
-    { ...result.execution, limits: { ...policy, maxTokens: 8193 } },
-    { ...result.execution, limits: { ...policy, extra: 'untrusted' } },
-  ]) {
-    const rejected = await recoverableFixture();
-    await assert.rejects(rejected.t.publishRecovered('T000001', { ...partialResult(1), execution }, { attempt: 1, inputRevision: 1, processTreeStopped: true }), { code: 'TRIAGE_RECOVERY_INVALID' });
-    assert.equal(rejected.c.data.tasks.T000001.status, 'paused');
+  assert.ok(!Object.hasOwn(f.c.data.tasks.T000001.execution, 'limits'));
+  assert.equal(f.c.data.tasks.T000001.execution.providerRequests, 120); assert.equal(f.c.data.tasks.T000001.execution.toolCalls, 320);
+  assert.equal(f.c.data.tasks.T000001.files[0].size, 250000);
+});
+
+test('successful analyses emit one conclusion-and-text-file message without accepted, full report, JSON or usage chatter', async () => {
+  for (const conclusion of ['Skill原结论，保留原意。', '原结论'.repeat(4000)]) {
+    const report = { conclusion, responsibility: 'Skill原责任方', confidence: 'medium', evidence: [{ id: 'E0001', interpretation: '原依据' }],
+      timeline: [{ id: 'E0001', event: '原事件' }], alternatives: ['原其他可能'], nextSteps: ['原建议'], limitations: ['原缺口'] };
+    const f = fixture({}, { run: async (snapshot, { beforeModel }) => { await beforeModel(); return { ...partialResult(snapshot.inputRevision), status: 'completed',
+      text: '完整依据、时间线、用量只在报告下载中展示。' + conclusion, report }; } });
+    await f.im(1, '分析 DEMO-1'); assert.equal(Object.keys(f.c.data.outbox).length, 0);
+    await f.t.execute('T000001');
+    const messages = Object.values(f.c.data.outbox); assert.equal(messages.length, 1);
+    const [message] = messages;
+    assert.equal(message.category, 'artifact'); assert.equal(message.artifact.name, '报告.txt'); assert.match(message.text, /^DEMO-1\n责任方：Skill原责任方；置信度：中/u);
+    assert.ok(!message.text.includes('完整依据')); assert.equal(f.c.data.tasks.T000001.files.length, 2);
+    assert.equal(f.c.data.tasks.T000001.report.conclusion, conclusion);
+    if (conclusion.length > 10000) { assert.ok(message.text.length <= 10000); assert.match(message.text, /…完整内容见报告$/u); }
+    else assert.ok(message.text.endsWith(conclusion));
+    await f.im(2, '分析 DEMO-1'); assert.equal(Object.values(f.c.data.outbox).length, 1);
   }
+});
+
+test('local presentation refresh preserves the original model fields, session usage and reservations while replacing old output with one text attachment', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'teamplay-presentation-'));
+  t.after(async () => { assert.equal(dirname(root), resolve(tmpdir())); await rm(root, { recursive: true, force: true }); });
+  const report = { conclusion: '模型既有完整结论，不作重新判断。', confidence: 'medium', responsibility: '模型既有责任方', evidence: [{ id: 'E0001', interpretation: '原依据' }],
+    timeline: [{ id: 'E0001', event: '原事件' }], alternatives: ['原其他可能'], nextSteps: ['原下一步'], limitations: ['原缺口'] };
+  const usage = { elapsedMs: 123000, providerRequests: 8, toolCalls: 20, evidenceReadCalls: 5, evidenceLines: 200, parserRuns: 3 };
+  const f = fixture({ root }, { run: async (snapshot, { beforeModel }) => { await beforeModel(); return { ...partialResult(snapshot.inputRevision), status: 'completed', report,
+    text: '原完整报告', execution: { ...partialResult(1).execution, providerRequests: 8, toolCalls: 20, usage } }; } });
+  await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
+  const before = structuredClone(f.c.data.tasks.T000001), accounting = structuredClone(f.c.data.triage.budget);
+  for (const [key, category] of [['old-result', 'result'], ['old-json', 'artifact'], ['old-usage', 'usage']])
+    f.c.data.outbox[key] = { key, taskId: before.id, reportRevision: 1, category, status: 'sent' };
+  const text = '原完整报告\n' + report.conclusion + '\n本次用量：耗时2分3秒，模型8次，工具20次。', files = [];
+  for (const [name, mime, content] of [['report.json', 'application/json', JSON.stringify(report)], ['报告.txt', 'text/plain', text + '\n']]) {
+    const bytes = Buffer.from(content), pathPrivate = join(root, name); await writeFile(pathPrivate, bytes);
+    files.push({ name, mime, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), pathPrivate });
+  }
+  const result = { status: 'completed', inputRevision: 1, modelCalls: 1, report, text, files, execution: before.execution, manifest: before.manifest };
+  await f.t.refreshPresentation(before.id, result, { inputRevision: 1 });
+  const task = f.c.data.tasks.T000001;
+  assert.equal(task.status, 'completed'); assert.equal(task.attempt, before.attempt); assert.equal(task.inputRevision, before.inputRevision); assert.equal(task.reportRevision, before.reportRevision);
+  assert.deepEqual(task.report, before.report); assert.deepEqual(task.execution, before.execution); assert.deepEqual(task.usage, before.usage); assert.deepEqual(f.c.data.triage.budget, accounting);
+  const live = Object.values(f.c.data.outbox).filter(item => item.status !== 'superseded');
+  assert.equal(live.length, 1); assert.equal(live[0].artifact.name, '报告.txt'); assert.ok(live[0].text.endsWith(report.conclusion));
+  assert.equal(await readFile(live[0].artifact.pathPrivate, 'utf8'), text + '\n');
+  const key = live[0].key; await f.t.refreshPresentation(before.id, result, { inputRevision: 1 });
+  assert.deepEqual(Object.values(f.c.data.outbox).filter(item => item.status !== 'superseded').map(item => item.key), [key]);
 });

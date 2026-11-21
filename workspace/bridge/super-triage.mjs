@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { lstat, readFile, realpath } from 'node:fs/promises';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { reference, putNode } from './super-context.mjs';
 import { QaSource } from './qa-source.mjs';
 import { routeTriageTriggers } from './triage-route.mjs';
@@ -18,6 +21,23 @@ const normalizeZone = text => /^(?:UTC\+08:00|UTC\+8|GMT\+08:00)$/iu.test(text) 
 const CLOCK_TYPES = new Set(['ota', 'slave', 'qnx-uds', 'de', 'other']);
 const validZone = value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { return false; } };
 const record = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+function usageRecord(value) {
+  if (!record(value)) return null;
+  const numeric = number => typeof number === 'number' && Number.isFinite(number) && number >= 0;
+  const result = {};
+  for (const field of ['elapsedMs', 'providerRequests', 'toolCalls', 'evidenceReadCalls', 'evidenceLines', 'parserRuns']) if (numeric(value[field])) result[field] = value[field];
+  for (const field of ['toolCallsByName', 'tokens']) if (record(value[field])) result[field] = Object.fromEntries(Object.entries(value[field]).filter(([, number]) => numeric(number)));
+  return Object.keys(result).length ? result : null;
+}
+const MODEL_FIELDS = ['conclusion', 'confidence', 'responsibility', 'evidence', 'timeline', 'alternatives', 'nextSteps', 'limitations'];
+const modelFields = report => Object.fromEntries(MODEL_FIELDS.map(field => [field, report?.[field]]));
+const conclusionText = (task, report) => {
+  const text = report?.sourceReport
+    ? `${task.externalIssueNo || task.externalIssueId}\n${String(report?.conclusion ?? '')}`
+    : `${task.externalIssueNo || task.externalIssueId}\n责任方：${String(report?.responsibility ?? '')}；置信度：${({ low: '低', medium: '中', high: '高' })[report?.confidence] ?? String(report?.confidence ?? '')}\n\n${String(report?.conclusion ?? '')}`;
+  const continuation = '\n…完整内容见报告';
+  return text.length <= 10000 ? text : text.slice(0, 10000 - continuation.length).replace(/[\uD800-\uDBFF]$/u, '') + continuation;
+};
 function validRecovered(result) {
   try { validateExecutionProof(result?.execution, result?.execution?.backend); } catch { return false; }
   return ['completed', 'partial'].includes(result?.status) && result.modelCalls === 1 && typeof result.text === 'string' && result.text.length > 0
@@ -25,7 +45,7 @@ function validRecovered(result) {
     && new Set(result.files.map(file => file?.name)).size === 2
     && result.files.every(file => record(file) && ['report.json', '报告.txt'].includes(file.name)
       && file.mime === (file.name === 'report.json' ? 'application/json' : 'text/plain')
-      && Number.isSafeInteger(file.size) && file.size > 0 && file.size <= 200000
+      && Number.isSafeInteger(file.size) && file.size > 0 && file.size < 100000000
       && /^[a-f0-9]{64}$/u.test(file.sha256 ?? '') && typeof file.pathPrivate === 'string' && file.pathPrivate.length > 0);
 }
 
@@ -58,12 +78,13 @@ export class SuperTriage {
   constructor({ coordinator, adapter, sourceFactory, worker, options = {} }) {
     this.c = coordinator; this.adapter = adapter; this.worker = worker;
     this.options = { enabled: true, sourceId: 'qa', bindings: [], adminSenderIds: [], maxWorkers: 1,
-      pollMilliseconds: 60000, totalModelCalls: 1, dailyModelCalls: 1, ...options };
+      pollMilliseconds: 60000, ...options };
+    delete this.options.totalModelCalls; delete this.options.dailyModelCalls;
     this.options.maxWorkers = options.maxConcurrent ?? options.maxWorkers ?? 1;
     this.sourceFactory = sourceFactory ?? (settings => new QaSource(settings));
     this.runs = new Map(); this.polling = false; this.routing = false; this.stopping = false;
-    for (const name of ['totalModelCalls', 'dailyModelCalls', 'maxWorkers', 'pollMilliseconds'])
-      if (!Number.isSafeInteger(this.options[name]) || this.options[name] < (name.endsWith('ModelCalls') ? 0 : 1)) throw fail('TRIAGE_INVALID_BUDGET');
+    for (const name of ['maxWorkers', 'pollMilliseconds'])
+      if (!Number.isSafeInteger(this.options[name]) || this.options[name] < 1) throw fail('TRIAGE_INVALID_BUDGET');
     for (const [type, zone] of Object.entries(this.options.clockDomains ?? {}))
       if (!CLOCK_TYPES.has(type) || !validZone(zone)) throw fail('TRIAGE_CLOCK_DOMAIN_INVALID');
   }
@@ -87,6 +108,15 @@ export class SuperTriage {
     for (const binding of configured.values()) state.bindings.push({ ...binding, origin: 'config', enabled: true });
     for (const task of Object.values(data.tasks)) if (kind(task)) {
       task.inputs ??= []; task.reports ??= {}; task.inputRevision ??= 1;
+      const reservation = state.budget.reservations[`${task.id}:${task.attempt}`];
+      if (task.status === 'paused' && task.error === 'TRIAGE_MODEL_BUDGET' && task.lastRunStopped === true && task.uncertain !== true
+        && task.failure?.modelStarted === false && task.failure?.processTreeStopped === true && !task.stopRequested
+        && (!reservation || reservation.void === true || reservation.status === 'void_before_provider')) {
+        task.status = 'queued'; task.modelReserved = false; task.quotaRecovery = { at: this.now(), previousError: task.error };
+        delete task.error; task.updatedAt = this.now();
+        for (const item of Object.values(data.outbox)) if (item.taskId === task.id && item.key.startsWith(`triage-paused:${task.id}:${task.attempt}:`)
+          && ['pending', 'paused'].includes(item.status)) item.status = 'superseded';
+      }
       if (busy.has(task.status)) {
         task.status = 'paused'; task.uncertain = true; task.lastRunStopped = false;
         task.error = 'TRIAGE_INTERRUPTED'; task.updatedAt = this.now();
@@ -233,8 +263,8 @@ export class SuperTriage {
   #notice(data, trigger, text, key) {
     this.#outbox(data, { key, text, conversationId: trigger.conversationId, requesterId: trigger.requesterId, controlAck: true });
   }
-  #outbox(data, { key, text, conversationId, taskId, revision, category = 'result', requesterId, controlAck = false }) {
-    for (const [part, body] of textParts(text).entries()) {
+  #outbox(data, { key, text, conversationId, taskId, revision, category = 'result', requesterId, controlAck = false, single = false }) {
+    for (const [part, body] of (single ? [String(text)] : textParts(text)).entries()) {
       const itemKey = `${key}:${part}`;
       if (data.outbox[itemKey]) continue;
       data.outbox[itemKey] = { key: itemKey, kind: 'log-triage', taskId, reportRevision: revision, category, controlAck,
@@ -319,8 +349,6 @@ export class SuperTriage {
           imThreadReferences: [], sourceReferences: [], inputs: [], inputRevision: 0, reportRevision: 0, reports: {}, status: 'queued', attempt: 0,
           summary: `日志分析 ${trigger.externalIssueNo || trigger.externalIssueId}`, createdAt: this.now(), updatedAt: this.now() };
         data.triage.issueTasks[issueKey(trigger)] = id;
-        this.#outbox(data, { key: `triage-accepted:${id}`, text: `${trigger.externalIssueNo || trigger.externalIssueId} 已收到，正在检查日志资料。#${id}`,
-          conversationId: current.conversationId, taskId: id, category: 'notice' });
       }
       if (trigger.sourceKind === 'im') current.requesterId = trigger.requesterId;
       if (trigger.request === 'reanalyse' && !this.runs.has(current.id) && (!current.uncertain || current.lastRunStopped === true)) {
@@ -347,8 +375,13 @@ export class SuperTriage {
         this.#supersede(data, current);
         if (!this.runs.has(current.id) && !current.uncertain && !current.stopRequested) current.status = 'queued';
       } else if (trigger.sourceKind === 'im' && current.reportText) {
-        this.#outbox(data, { key: `triage-cached:${key}`, text: `#${current.id} · 分析版本 ${current.reportRevision}\n${current.reportText}`, conversationId: current.conversationId,
-          taskId: current.id, revision: current.reportRevision, category: 'details', requesterId: trigger.requesterId });
+        const file = current.files?.find(file => file.name === '报告.txt');
+        if (file) {
+          const delivery = `triage-delivery:${current.id}:${current.reportRevision}:${file.sha256}`;
+          this.#outbox(data, { key: delivery, text: conclusionText(current, current.report), conversationId: current.conversationId,
+            taskId: current.id, revision: current.reportRevision, category: 'artifact', single: true });
+          data.outbox[`${delivery}:0`].artifact ??= structuredClone(file);
+        } else this.#notice(data, trigger, '已有分析记录，尚无可下载的完整报告。', `triage-cached:${key}`);
       }
       data.subscriptions[graph.reference] = [current.id]; this.#taskNode(data, current);
     });
@@ -403,6 +436,7 @@ export class SuperTriage {
     const stored = { inputRevision: snapshot.inputRevision, attempt: snapshot.attempt, report: result.report ?? null, manifest: result.manifest ?? null,
       files: result.files ?? [], execution: result.execution ?? null,
       text: String(result.text ?? ''), status: result.status, at: this.now() };
+    this.#storeUsage(data, task, snapshot.attempt, result.execution?.usage);
     task.reports[snapshot.inputRevision] = stored;
     if (task.inputRevision !== snapshot.inputRevision) { task.status = 'queued'; task.updatedAt = this.now(); this.#taskNode(data, task); return; }
     task.status = result.status; task.reportRevision = snapshot.inputRevision;
@@ -411,15 +445,55 @@ export class SuperTriage {
     task.resultReference = reference('result', `triage:${id}:${snapshot.inputRevision}`);
     putNode(data.graph, { id: task.resultReference, kind: 'result', projectId: String(task.projectId), conversations: [task.conversationId],
       text: JSON.stringify({ ...stored, files: stored.files.map(({ pathPrivate, ...file }) => file) }), links: [task.reference, ...task.sourceReferences] });
-    this.#outbox(data, { key: `triage-result:${id}:${snapshot.inputRevision}`, text: `#${id} · 分析版本 ${snapshot.inputRevision}\n${stored.text}`,
-      conversationId: task.conversationId, taskId: id, revision: snapshot.inputRevision });
-    for (const file of stored.files) {
-      const key = `triage-file:${id}:${snapshot.inputRevision}:${file.sha256}`;
-      this.#outbox(data, { key, text: `#${id} · 分析版本 ${snapshot.inputRevision} · ${file.name}`,
-        conversationId: task.conversationId, taskId: id, revision: snapshot.inputRevision, category: 'artifact' });
-      data.outbox[`${key}:0`].artifact = structuredClone(file);
+    const file = stored.files.find(file => file.name === '报告.txt');
+    if (file) {
+      const key = `triage-delivery:${id}:${snapshot.inputRevision}:${file.sha256}`;
+      this.#outbox(data, { key, text: conclusionText(task, stored.report),
+        conversationId: task.conversationId, taskId: id, revision: snapshot.inputRevision, category: 'artifact', single: true });
+      data.outbox[`${key}:0`].artifact ??= structuredClone(file);
+    } else {
+      // Waiting for material (and historical zero-model notices) still needs a usable explanation.
+      this.#outbox(data, { key: `triage-result:${id}:${snapshot.inputRevision}`, text: `#${id} · 分析版本 ${snapshot.inputRevision}\n${stored.text}`,
+        conversationId: task.conversationId, taskId: id, revision: snapshot.inputRevision });
     }
     this.#taskNode(data, task);
+  }
+  #storeUsage(data, task, attempt, value) {
+    const usage = usageRecord(value);
+    if (!usage) return;
+    task.usageByAttempt ??= {}; task.usageByAttempt[attempt] = usage; task.usage = usage;
+  }
+  /** Local presentation-only refresh; no chat/control endpoint exposes this method. */
+  async refreshPresentation(id, result, { inputRevision } = {}) {
+    if (!Number.isSafeInteger(inputRevision) || inputRevision < 1 || result?.inputRevision !== inputRevision || result?.status !== 'completed' || !validRecovered(result)) throw fail('TRIAGE_PRESENTATION_INVALID');
+    result = structuredClone(result); result.execution = validateExecutionProof(result.execution, result.execution.backend);
+    const conversations = await this.c.api.request('/api/conversations'); this.c.conversations = structuredClone(conversations);
+    const task = this.data.tasks[id];
+    const matches = current => kind(current) && current.status === 'completed' && current.inputRevision === inputRevision && current.reportRevision === inputRevision
+      && isDeepStrictEqual(modelFields(current.report), modelFields(result.report))
+      && isDeepStrictEqual(validateExecutionProof(current.execution, current.execution?.backend), result.execution)
+      && this.authorized(current, conversations);
+    if (!matches(task)) throw fail('TRIAGE_PRESENTATION_INVALID');
+    const root = await realpath(this.options.root);
+    for (const file of result.files) {
+      if (!isAbsolute(file.pathPrivate)) throw fail('TRIAGE_PRESENTATION_INVALID');
+      const path = resolve(file.pathPrivate), name = relative(root, path);
+      if (!name || isAbsolute(name) || name === '..' || name.startsWith('..' + sep) || name.split(sep).at(-1) !== file.name) throw fail('TRIAGE_PRESENTATION_INVALID');
+      let cursor = root;
+      for (const part of name.split(sep)) { cursor = join(cursor, part); if ((await lstat(cursor)).isSymbolicLink()) throw fail('TRIAGE_PRESENTATION_INVALID'); }
+      const info = await lstat(path), bytes = await readFile(path);
+      if (!info.isFile() || info.nlink !== 1 || info.size !== file.size || bytes.length !== file.size || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw fail('TRIAGE_PRESENTATION_INVALID');
+      const content = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      if (file.name === '报告.txt' ? content.trimEnd() !== result.text.trimEnd() : !isDeepStrictEqual(JSON.parse(content), modelFields(result.report))) throw fail('TRIAGE_PRESENTATION_INVALID');
+    }
+    await this.c.transaction(data => {
+      const current = data.tasks[id]; if (!matches(current)) throw fail('TRIAGE_PRESENTATION_INVALID');
+      const textFile = result.files.find(file => file.name === '报告.txt');
+      const retainedKey = `triage-delivery:${id}:${inputRevision}:${textFile.sha256}:0`;
+      for (const item of Object.values(data.outbox)) if (item.taskId === id && item.reportRevision === inputRevision && item.key !== retainedKey
+        && ['result', 'artifact', 'usage'].includes(item.category)) item.status = 'superseded';
+      this.#storeResult(data, current, { inputRevision, attempt: current.attempt }, result);
+    });
   }
   /** Local operator recovery only; this is deliberately absent from HTTP/chat controls. */
   async publishRecovered(id, result, { attempt, inputRevision, processTreeStopped } = {}) {
@@ -465,7 +539,6 @@ export class SuperTriage {
           if (task.inputRevision !== snapshot.inputRevision) throw fail('TRIAGE_INPUT_CHANGED');
           const budget = data.triage.budget, day = this.now().slice(0, 10), key = `${id}:${snapshot.attempt}`;
           if (budget.reservations[key]) throw fail('TRIAGE_MODEL_ALREADY_RESERVED');
-          if (budget.total >= this.options.totalModelCalls || (budget.days[day] ?? 0) >= this.options.dailyModelCalls) throw fail('TRIAGE_MODEL_BUDGET');
           budget.total++; budget.days[day] = (budget.days[day] ?? 0) + 1;
           budget.reservations[key] = { taskId: id, attempt: snapshot.attempt, inputRevision: snapshot.inputRevision, at: this.now() };
           task.status = 'running'; task.modelReserved = true; this.#taskNode(data, task);
@@ -480,7 +553,10 @@ export class SuperTriage {
       if (result.modelCalls !== undefined && (!Number.isSafeInteger(result.modelCalls) || result.modelCalls < 0 || result.modelCalls > 1)) throw fail('TRIAGE_INVALID_RESULT');
       await this.c.transaction(data => {
         const task = data.tasks[id]; task.lastRunStopped = true;
-        if (task.stopRequested || run.controller.signal.aborted) { task.status = task.pauseRequested ? 'paused' : 'cancelled'; task.uncertain = false; this.#taskNode(data, task); return; }
+        if (task.stopRequested || run.controller.signal.aborted) {
+          this.#storeUsage(data, task, snapshot.attempt, result.execution?.usage);
+          task.status = task.pauseRequested ? 'paused' : 'cancelled'; task.uncertain = false; this.#taskNode(data, task); return;
+        }
         this.#storeResult(data, task, snapshot, result);
       });
     } catch (cause) {
@@ -489,13 +565,14 @@ export class SuperTriage {
         task.error = safeError(cause); task.updatedAt = this.now();
         task.failure = { phase: String(cause.phase ?? 'execution').slice(0, 50), kind: String(cause.kind ?? 'failed').slice(0, 80),
           modelStarted: cause.modelStarted === true, processTreeStopped: cause.processTreeStopped === true };
+        this.#storeUsage(data, task, task.attempt, cause.usage ?? cause.execution?.usage);
         const stopped = cause.processTreeStopped === true || !run.modelReserved && !cause.modelStarted;
         task.lastRunStopped = stopped;
         if (cause.code === 'TRIAGE_INPUT_CHANGED' && stopped && !task.stopRequested) { task.status = 'queued'; task.uncertain = false; }
         else if (task.stopRequested && stopped) { task.status = task.pauseRequested ? 'paused' : 'cancelled'; task.uncertain = false; }
         else { task.status = 'paused'; task.uncertain = !stopped || run.modelReserved || Boolean(cause.modelStarted); }
         this.#taskNode(data, task);
-        if (task.status === 'paused') this.#outbox(data, { key: `triage-paused:${id}:${task.attempt}`, text: `#${id} 分析已暂停，资料和记录已保留。${task.error === 'TRIAGE_MODEL_BUDGET' ? '本次分析额度已用完。' : '请由管理员检查后继续。'}`,
+        if (task.status === 'paused') this.#outbox(data, { key: `triage-paused:${id}:${task.attempt}`, text: `#${id} 分析已暂停，资料和记录已保留。请由管理员检查后继续。`,
           conversationId: task.conversationId, taskId: id, revision: task.inputRevision, category: 'notice' });
       });
     }

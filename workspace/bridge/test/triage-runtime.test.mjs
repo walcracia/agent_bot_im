@@ -4,6 +4,7 @@ import { mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, isAbsolute } from 'node:path';
 import { normalizeTriageConfig } from '../triage-config.mjs';
+import { createTriageRuntime } from '../triage-runtime.mjs';
 import { TriageModel, triageModelEnvironment, reportPrompt } from '../triage-model.mjs';
 import { normalizeExecutionLimits } from '../triage-limits.mjs';
 import { apply as reportOnlyPlugin } from '../triage-model-plugin.mjs';
@@ -19,13 +20,13 @@ async function temporary(t) {
   return directory;
 }
 
-test('QA is disabled by default and enabled config resolves explicit scope with bounded zero-default budgets', () => {
+test('QA is disabled by default and enabled config resolves explicit scope without quota or duration gates', () => {
   assert.equal(normalizeTriageConfig(null, tmpdir(), authorization), null);
   assert.equal(normalizeTriageConfig({ enabled: false }, tmpdir(), authorization), null);
   const input = configuration(); delete input.totalModelCalls; delete input.dailyModelCalls;
   const result = normalizeTriageConfig(input, tmpdir(), authorization);
-  assert.equal(result.totalModelCalls, 0); assert.equal(result.dailyModelCalls, 0); assert.equal(result.maxConcurrent, 1);
-  assert.equal(result.pollMilliseconds, 60000); assert.equal(result.modelTimeoutMs, 600000);
+  assert.ok(!Object.hasOwn(result, 'totalModelCalls')); assert.ok(!Object.hasOwn(result, 'dailyModelCalls')); assert.equal(result.maxConcurrent, 1);
+  assert.equal(result.pollMilliseconds, 60000); assert.equal(result.modelTimeoutMs, 0);
   assert.deepEqual(result.bindings, [{ sourceId: 'qa-demo', projectId: '7', projectCode: 'DEMO', conversationId: 'chat-demo' }]);
   for (const field of ['root', 'skillRoot', 'python']) assert.ok(isAbsolute(result[field]));
   assert.equal(input.bindings[0].projectCode, 'demo');
@@ -33,15 +34,14 @@ test('QA is disabled by default and enabled config resolves explicit scope with 
   assert.deepEqual(normalizeTriageConfig(input, tmpdir(), authorization).modelSelection, input.modelSelection);
 });
 
-test('skill execution policy is configurable through trusted config and cannot exceed finite hard bounds', () => {
-  const input = configuration(); input.executionLimits = { modelRequests: 20, toolCalls: 60, returnedCharacters: 256000 };
-  const actual = normalizeTriageConfig(input, tmpdir(), authorization).executionLimits;
-  assert.equal(actual.modelRequests, 20); assert.equal(actual.toolCalls, 60); assert.equal(actual.parserRuns, 4);
-  assert.deepEqual(normalizeExecutionLimits(), { modelRequests: 12, toolCalls: 32, inputCharacters: 192000, maxTokens: 4096,
-    returnedCharacters: 128000, evidenceCharacters: 96000, parserRuns: 4 });
-  for (const invalid of [{ modelRequests: 33 }, { toolCalls: 97 }, { inputCharacters: 384001 }, { maxTokens: 8193 },
-    { returnedCharacters: 384001 }, { evidenceCharacters: 256001 }, { parserRuns: 9 }, { arbitraryCommand: 'no' }])
-    assert.throws(() => normalizeExecutionLimits(invalid));
+test('historical quota settings are ignored without substituting large sentinel limits', () => {
+  const input = configuration(); input.executionLimits = { modelRequests: 1, toolCalls: 1, returnedCharacters: 1 };
+  input.workerLimits = { parserTimeoutMs: 1, downloadTimeoutMs: 1, extractionTimeoutMs: 1, maxProcessOutputBytes: 1, maxScanLines: 1, maxScanCharacters: 1 };
+  input.totalModelCalls = -1; input.dailyModelCalls = 'old-setting'; input.modelTimeoutMs = 1000;
+  const actual = normalizeTriageConfig(input, tmpdir(), authorization);
+  assert.ok(!Object.hasOwn(actual, 'executionLimits')); assert.ok(!Object.hasOwn(actual, 'totalModelCalls')); assert.ok(!Object.hasOwn(actual, 'dailyModelCalls'));
+  assert.ok(!Object.hasOwn(actual, 'workerLimits'));
+  assert.equal(actual.modelTimeoutMs, 0); assert.deepEqual(normalizeExecutionLimits(input.executionLimits), {});
 });
 
 test('QA configuration rejects unauthorized identities and ambiguous project bindings', () => {
@@ -71,11 +71,27 @@ test('QA configuration rejects inline credentials, arbitrary environment forward
   ]) { const input = configuration(); change(input); assert.throws(() => normalizeTriageConfig(input, tmpdir(), authorization)); }
 });
 
-test('QA budgets reject unbounded calls, fractional tokens of work and excess concurrency', () => {
-  for (const [field, value] of [['totalModelCalls', -1], ['dailyModelCalls', 1001], ['maxConcurrent', 2], ['pollMilliseconds', 0], ['modelTimeoutMs', 900001], ['totalModelCalls', 1.5]]) {
+test('QA keeps its existing explicit worker concurrency and source polling settings', () => {
+  for (const [field, value] of [['maxConcurrent', 2], ['pollMilliseconds', 0]]) {
     const input = configuration(); input[field] = value;
     assert.throws(() => normalizeTriageConfig(input, tmpdir(), authorization));
   }
+});
+
+test('QA runtime passes no total-duration timer or obsolete execution policy to its actual adapters', async t => {
+  const root = await temporary(t), input = configuration();
+  input.mcp.command = process.execPath; input.mcp.cwd = root; input.mcp.args = []; input.mcp.envNames = [];
+  input.root = root; input.workerLimits = { runTimeoutMs: 1000, parserTimeoutMs: 1, downloadTimeoutMs: 1, extractionTimeoutMs: 1,
+    maxProcessOutputBytes: 1, maxScanLines: 1, maxScanCharacters: 1 };
+  const options = normalizeTriageConfig(input, root, authorization);
+  // Direct callers with an old, already-normalized object cannot reactivate a quota either.
+  options.workerLimits = input.workerLimits;
+  const runtime = await createTriageRuntime(options, { executionLimits: { modelRequests: 1 }, cliPath: 'unused-without-run' });
+  t.after(() => runtime.close());
+  for (const field of ['runTimeoutMs', 'parserTimeoutMs', 'downloadTimeoutMs', 'extractionTimeoutMs', 'maxProcessOutputBytes', 'maxScanLines', 'maxScanCharacters'])
+    assert.equal(runtime.worker.limits[field], 0);
+  const runner = runtime.worker.executionService.runner;
+  assert.equal(runner.timeoutMs, 0); assert.ok(!Object.hasOwn(runner.harness, 'executionLimits'));
 });
 
 test('report process environment strips service credentials, arbitrary keys and DSH control variables', () => {

@@ -1,5 +1,7 @@
 # v0.1 接口合同
 
+v0.4.2 QA分析不再有用量额度门禁。execution可带usage，记录elapsedMs/providerRequests/toolCalls/toolCallsByName/evidenceReadCalls/evidenceLines/parserRuns及可得tokens；不再要求新调用limits。Runner带实际evidence，服务逐行/hash核验；原插件配方返回sourceReport原五段全文，并验证八字段内部映射一致，execution.recipe=chery-qa-plugin时真实Agent工具调用可为0。Outbox只发原结论+完整TXT一条消息，用量在下载里；JSON内部保存，IM认证附件协议不变。原额度配置仅历史兼容，不影响当前准入。
+
 v0.4.1沿用v0.4.0请求/八字段JSON结果/两报告产物协议及IM认证附件接口。completed结果不因preliminary输入模式改写confidence或responsibility，展示不再追加宿主诊断句。原始输入范围、预解析范围及限制仍保留payload/manifest。partial仍显式为非模型终稿。具体执行与验收见QA-ACCEPTANCE-v0.4.1。
 
 v0.3.3不改IM HTTP/媒体协议。桌面新增本地preload有限桥（未读数量、前台状态回调），主进程核验本地页面/main frame，不提供通用IPC/执行接口；QA Trigger/Route为待实施设计，没有新增可调用的后台QA接口。QA MCP接口与Desktop插件内部路由必须区分。

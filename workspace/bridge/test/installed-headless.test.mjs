@@ -34,7 +34,7 @@ if ($prompt -match 'MODE_MALFORMED') { Write-Output '{not-json'; return }
 if ($prompt -match 'MODE_ERROR') { @{ type = 'error'; code = 'synthetic-model-error' } | ConvertTo-Json -Compress }
 $finalId = if ($prompt -match 'MODE_MISMATCH') { 'session-wrong' } else { $id }
 $answer = @{ permission = $permission; tokenSeen = [bool]$tokenSeen; sessionId = $id; receivedText = $prompt.Trim() } | ConvertTo-Json -Compress
-@{ type = 'final'; sessionId = $finalId; reason = @{ kind = 'completed' }; text = $answer } | ConvertTo-Json -Depth 6 -Compress
+@{ type = 'final'; sessionId = $finalId; reason = @{ kind = 'completed' }; text = $answer; usage = @{ inputTokens = 12; outputTokens = 3; totalTokens = 15 } } | ConvertTo-Json -Depth 6 -Compress
 if ($prompt -match 'MODE_AFTER_FINAL') { @{ type = 'note'; text = 'late event' } | ConvertTo-Json -Compress }
 if ($prompt -match 'MODE_NONZERO') { $global:LASTEXITCODE = 7 }
 `;
@@ -143,8 +143,25 @@ installedTest('session map rejects another workspace and launch options are vali
   await assert.rejects(new InstalledHeadlessExecutor({ ...options, cwd: 'relative' }).start(), /absolute path/);
   await assert.rejects(new InstalledHeadlessExecutor({ ...options, auth: 'from-chat' }).start(), /auth/);
   await assert.rejects(new InstalledHeadlessExecutor({ ...options, permissionMode: 'from-chat' }).start(), /permissionMode/);
-  await assert.rejects(new InstalledHeadlessExecutor({ ...options, runTimeoutMs: 0 }).start(), /runTimeoutMs/);
-  await assert.rejects(new InstalledHeadlessExecutor({ ...options, classificationTimeoutMs: 0 }).start(), /classificationTimeoutMs/);
+  await assert.rejects(new InstalledHeadlessExecutor({ ...options, runTimeoutMs: -1 }).start(), /runTimeoutMs/);
+  await assert.rejects(new InstalledHeadlessExecutor({ ...options, classificationTimeoutMs: 99 }).start(), /classificationTimeoutMs/);
+});
+
+installedTest('zero QA timeout creates no analysis deadline, records native use and still supports owned cancellation', async t => {
+  const { executor, options, cwd } = await fixture(t, { runTimeoutMs: 0, classificationTimeoutMs: 0 });
+  await executor.handshake();
+  const answer = JSON.parse(await executor.classify('MODE_DELAY synthetic long analysis'));
+  assert.match(answer.receivedText, /MODE_DELAY/u);
+  assert.equal(executor.lastInvocation.completed, true); assert.equal(executor.lastInvocation.timeoutMs, 0);
+  assert.deepEqual(executor.lastInvocation.usage.tokens, { inputTokens: 12, outputTokens: 3, totalTokens: 15 });
+  assert.ok(executor.lastInvocation.usage.elapsedMs >= 700);
+  const pending = assert.rejects(executor.classify('MODE_HANG'), error => error.kind === 'cancelled' && error.processTreeStopped === true);
+  const pid = Number(await waitForFile(join(cwd, 'child.pid')));
+  await executor.close(); await pending;
+  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+  const records = await supervisionMetadata(options);
+  assert.equal(records.find(record => record.kind === 'version').timeoutMs, 30000);
+  assert.ok(records.filter(record => record.kind === 'classifier').every(record => record.timeoutMs === 0));
 });
 
 installedTest('timeout terminates the owned worker tree and preserves its native session for inspection', async t => {

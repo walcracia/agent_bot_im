@@ -1,6 +1,6 @@
 # 同频TeamPlay
 
-当前产品 v0.3.3。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent 核对结论及能力边界统一见[根 README](../README.md)。本页保留开发与管理操作。Windows新增托盘/未读提醒；QA新Bug的Trigger/Route流程本轮仅设计，见[流程设计](docs/QA-TRIGGER-ROUTE.md)，尚未启用监听。
+当前源码 v0.4.2，Windows客户端v0.3.3兼容。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent核对及能力边界统一见[根README](../README.md)。QA新增Bug及群贴编号经Trigger/Router调用本机DSH skill并回传报告；当前按[QA-MONITORING-v0.4.2](docs/QA-MONITORING-v0.4.2.md)只统计用量，不以额度/阅读/调用次数暂停。实际绑定和运行见最新HANDOFF/state，未配置机器不因clone自动启用。
 
 支持私聊、群聊、文字、图片、音频、视频、文件。图片直接查看，音视频播放，其余文件下载。每文件上限严格小于 100,000,000 字节。音视频无法在 Chromium 播放的编码可下载后打开。
 

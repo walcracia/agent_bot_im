@@ -20,10 +20,11 @@ export async function createTriageRuntime(options, harness) {
   }
   const client = new QaMcpClient({ ...options.mcp, env });
   const adapter = new QaAdapter({ client, ...options.sourceLimits });
-  const runner = new DshSkillRunner({ harness: { ...harness, modelSelection: options.modelSelection, executionLimits: options.executionLimits }, root: join(options.root, 'agent-runs'), timeoutMs: options.modelTimeoutMs });
+  const { executionLimits: _legacyLimits, ...reportHarness } = harness ?? {};
+  const runner = new DshSkillRunner({ harness: { ...reportHarness, modelSelection: options.modelSelection }, root: join(options.root, 'agent-runs'), timeoutMs: 0 });
   const executionService = new SkillExecutionService({ backend: options.backend ?? 'dsh', runner, root: options.root });
   const worker = new LogTriageWorker({ adapter, root: join(options.root, 'attempts'), skillRoot: options.skillRoot,
-    python: options.python, downloadOrigins: options.allowedDownloadOrigins, limits: options.workerLimits, executionService });
+    python: options.python, downloadOrigins: options.allowedDownloadOrigins, limits: { runTimeoutMs: 0 }, executionService });
   const sourceStop = new AbortController();
   return {
     adapter, worker,

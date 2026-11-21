@@ -97,6 +97,16 @@ $metadata['sessionId'] = $resolvedSessionId
 $metadata['finishedUtc'] = [DateTime]::UtcNow.ToString('o')
 [IO.File]::WriteAllText($paths['run.json'], ($metadata | ConvertTo-Json), $utf8)
 $summary = [ordered]@{ completed = [bool]$completed; sessionId = $resolvedSessionId; nativeExitCode = $nativeExitCode; finalReason = $reason; workspace = $workspacePath; eventCount = $eventCount }
-[IO.File]::WriteAllText($paths['result.json'], ($summary | ConvertTo-Json), $utf8)
+$usage = [ordered]@{ elapsedMs = [long]([DateTime]::UtcNow - [DateTime]::Parse($metadata.startedUtc).ToUniversalTime()).TotalMilliseconds }
+$tokens = [ordered]@{}
+if ($final.usage) {
+    foreach ($key in @('inputTokens', 'outputTokens', 'totalTokens', 'reasoningTokens')) {
+        $value = $final.usage.$key
+        if (($value -is [long] -or $value -is [int]) -and $value -ge 0) { $tokens[$key] = $value }
+    }
+}
+if ($tokens.Count -gt 0) { $usage['tokens'] = $tokens }
+$summary['usage'] = $usage
+[IO.File]::WriteAllText($paths['result.json'], ($summary | ConvertTo-Json -Depth 8), $utf8)
 if ($completed) { exit 0 }
 exit 1

@@ -70,12 +70,6 @@ class Extractor:
         if key in self.paths:
             raise ValueError('duplicate or case-colliding archive path')
         self.paths.add(key); self.entries += 1
-        if self.entries > self.limits['maxExtractedFiles']:
-            raise ValueError('archive file count exceeded')
-        if declared is not None and (declared > self.limits['maxExpandedFileBytes'] or declared + self.total > self.limits['maxExpandedBytes']):
-            raise ValueError('declared archive size exceeded')
-        if declared and compressed is not None and declared / max(compressed, 1) > self.limits['maxCompressionRatio']:
-            raise ValueError('archive compression ratio exceeded')
         destination = self.output / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         size = 0; digest = hashlib.sha256()
@@ -85,10 +79,6 @@ class Extractor:
                 if not chunk:
                     break
                 size += len(chunk); self.total += len(chunk)
-                if size > self.limits['maxExpandedFileBytes'] or self.total > self.limits['maxExpandedBytes']:
-                    raise ValueError('actual archive size exceeded')
-                if compressed is not None and size / max(compressed, 1) > self.limits['maxCompressionRatio']:
-                    raise ValueError('actual archive compression ratio exceeded')
                 target.write(chunk); digest.update(chunk)
             target.flush()
             created = os.fstat(target.fileno())
@@ -104,8 +94,6 @@ class Extractor:
         return destination, {'path': relative, 'bytes': size, 'sha256': digest.hexdigest()}
 
     def expand(self, source, prefix, depth=0):
-        if depth > self.limits['maxArchiveDepth']:
-            raise ValueError('nested archive depth exceeded')
         lower = source.name.lower()
         archive = zipfile.is_zipfile(source) or tarfile.is_tarfile(source) or lower.endswith('.gz')
         if not archive:
@@ -143,8 +131,6 @@ class Extractor:
             with gzip.open(source, 'rb') as stream:
                 child, _ = self.write(stream, prefix + '/' + name, compressed=source.stat().st_size)
             self.expand(child, prefix + '/' + name + '.contents', depth + 1)
-        if (self.total - before) / max(source.stat().st_size, 1) > self.limits['maxCompressionRatio']:
-            raise ValueError('total archive compression ratio exceeded')
         self.archives.append(source)
 
 
