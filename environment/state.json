@@ -36,7 +36,7 @@
     "Existing old coding A1/A2 and recorded low-priority lifecycle maintenance boundaries remain outside this business MVP"
   ],
   "updated_at": "2026-11-21",
-  "stage": "MVP and three-native-Agent regression verified; Git delivery pending",
+  "stage": "v0.5.0 source delivered, business service ready, QA paused by user",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -100,9 +100,9 @@
     "desktop_compatible_version": "0.3.3",
     "verification_report": "outputs/VERIFICATION-v0.5.0.md",
     "observation_only": true,
-    "product_release_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
+    "product_release_commit": "25037bb60fe7f057cbf4aea35c2b238789968b0e",
     "default_startup_bound": true,
-    "source_pushed": false,
+    "source_pushed": true,
     "qa_real_provider_requests_total_this_iteration": 15,
     "qa_report_evidence_references": 37,
     "qa_user_paused": true,
@@ -113,8 +113,10 @@
       "pi"
     ],
     "three_native_regressions_verified": true,
-    "last_published_commit": "5ff2eaf71675aa9b964ff109d1d35ead70792aed",
-    "assistant_display_name": "同频助手"
+    "last_published_commit": "25037bb60fe7f057cbf4aea35c2b238789968b0e",
+    "assistant_display_name": "同频助手",
+    "product_annotated_tag": "v0.5.0",
+    "product_tag_object": "26a9c3631bbcf9bc9b62dbb4e21bfe83751cd799"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -774,13 +776,13 @@
   "source_work_in_progress": {
     "version": "0.5.0",
     "design": "workspace/docs/WORKER-ROUTING-v0.5.0.md",
-    "stage": "verified-delivery-pending",
+    "stage": "delivered",
     "qa_user_paused": true,
     "business_happy_path_verified": true,
     "three_native_agent_regression_verified": true
   },
   "next_goal": {
-    "status": "verified; final source publication in progress",
+    "status": "complete",
     "design": "workspace/docs/WORKER-ROUTING-v0.5.0.md",
     "scope": [
       "general AI routing to registered business workers",

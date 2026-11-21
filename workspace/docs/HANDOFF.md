@@ -1,5 +1,13 @@
 # 当前接续状态
 
+## 2026-11-21 · v0.5.0 已上传与运行回执
+
+产品源码25037bb60fe7f057cbf4aea35c2b238789968b0e已推main；新annotated v0.5.0对象26a9c3631bbcf9bc9b62dbb4e21bfe83751cd799及peel到该源码由远端ls-remote确认。新源与三Agent回归、真实IM主流程、完整481桥接及文档已交付；未新增Release/EXE，原v0.3.3客户端兼容。QA按用户要求继续暂停，不把v0.4.2原配方的真实模型验收写成完成。
+
+本机服务/监听已按正常入口启动并重复复用，健康0.5.0；可在“智能协作验收”聊天提交业务请求。运行、原生账号与资料仍须重启实查，不随clone自动存在。源设计/业务流程在README和WORKER-ROUTING-v0.5.0，脱敏实证在outputs/VERIFICATION-v0.5.0，复验脚本environment/scripts/verify-agent-reviews.mjs。所有原失败和静态审查裁决保留；通用Worker与旧代码/QA边界按正文，不宣称未登记业务系统或任意项目自动发布已实现。
+
+本Git回执另用v0.5.0-handoff.1，不移动已发布产品tag；该回执提交自身是否已上传按Git实查，不从本段预推。
+
 ## 2026-11-21 · v0.5.0 最终验收完成，待Git交付
 
 三Agent最后原生回执已全齐：DSH15/15、Pi17/17、Hermes41/41，真实固定MCP各一次、nonce/native终态/源与stdout哈希均通过。原失败与未采纳static意见保留；根据Hermes审查另修旧Watchdog准备/交付状态遗漏，相关34/34通过。最后完整桥接481/481无跳过；标准workspace技能夹具路径修正后5/5无跳过，26 Python/9 desktop/16模拟启动及语法通过。公共可移植复验脚本已在environment/scripts，prepare0模型、无live拒绝已核验，不把新脚本准备冒充旧真实会话。
