@@ -3,10 +3,12 @@ import { inlineContext, putNode, readNode, reference } from './super-context.mjs
 import { taskControl } from './super-router.mjs';
 import { attachmentInput, explicitlyAddressed } from './core.mjs';
 import { SuperTriage } from './super-triage.mjs';
+import { SuperBusiness } from './super-business.mjs';
 import { publishTriageArtifact } from './triage-attachments.mjs';
 
 const RUNNING = new Set(['preparing', 'running', 'interrupting', 'delivering']);
 const TERMINAL = new Set(['completed', 'cancelled', 'closed', 'merged']);
+const codeTask = task => task?.kind !== 'log-triage' && task?.kind !== 'business';
 const labels = { queued: '排队中', preparing: '准备中', running: '处理中', interrupting: '正在停止', paused: '已暂停',
   delivering: '正在交付', ready: '待合并', completed: '已完成', cancelled: '已停止', closed: '已关闭', merged: '已合并' };
 const stamp = () => new Date().toISOString();
@@ -14,12 +16,13 @@ const explicitRequest = event => Boolean(event.addressed || /(?:^|\s)#T\d{6,}|�
 const terminalWorkRequest = event => /^(?:(?:请帮我|请你|请|麻烦|帮我)\s*)?(?:继续(?:修正|任务)?|恢复任务|修复|修改|补充|增加|实现|纠正|修正|改成|改为|添加|支持|(?:please\s+)?(?:fix|implement|change|add|resume|continue)\b)/iu.test(String(event.text ?? '').replace(/@[A-Za-z0-9_.-]+|#?T\d{6,}/giu, '').trim());
 
 export class SuperCoordinator {
-  constructor({ state, store, config, api, bot, router, pool, delivery, release, triage, now = stamp }) {
+  constructor({ state, store, config, api, bot, router, pool, delivery, release, triage, business, now = stamp }) {
     Object.assign(this, { state, store, config, api, bot, router, pool, delivery, release, now });
     this.generation = randomUUID(); this.writes = Promise.resolve(); this.active = new Map();
     this.outgoing = false; this.routing = false; this.pumping = false; this.stopping = false;
     this.releases = new Map();
     if (triage) this.triage = new SuperTriage({ coordinator: this, ...triage });
+    if (business) this.business = new SuperBusiness({ coordinator: this, ...business });
   }
   get data() { return this.state.superAgent; }
   async transaction(change) {
@@ -39,8 +42,9 @@ export class SuperCoordinator {
       data ??= state.superAgent = { version: 3, nextTask: 1, tasks: {}, graph: {}, inbox: {}, outbox: {}, subscriptions: {}, actions: {}, sources: {} };
       data.generation = this.generation; data.heartbeat = this.now();
       this.triage?.initialize(data);
+      this.business?.initialize(data);
       for (const task of Object.values(data.tasks)) {
-        if (task.kind === 'log-triage') continue;
+        if (!codeTask(task)) continue;
         if (task.releaseStatus === 'running') task.releaseStatus = 'recovering';
         if (RUNNING.has(task.status)) {
           task.status = 'paused'; task.error = '协调器在执行期间重启。保留原会话与修改，先核对执行端，再明确继续。';
@@ -85,8 +89,9 @@ export class SuperCoordinator {
               text: `IM conversation ${event.conversation_id}`, links: [...(prior?.links ?? []), ref] });
             data.inbox[key] = { key, event: intake, reference: ref, threadReference: thread, status: 'pending', attempts: 0 };
             if (this.triage?.captureIm(data, intake, ref, thread)) { state.cursor = event.id; continue; }
+            if (this.business?.captureIm(data, intake, ref, thread)) { state.cursor = event.id; continue; }
             if (this.config.codeEnabled === false) { data.inbox[key].status = 'routed'; data.inbox[key].decision = { action: 'ignore', reason: 'coding_disabled' }; state.cursor = event.id; continue; }
-            const own = Object.values(data.tasks).filter(task => task.kind !== 'log-triage' && task.conversationId === event.conversation_id);
+            const own = Object.values(data.tasks).filter(task => codeTask(task) && task.conversationId === event.conversation_id);
             const control = taskControl(event.text, own);
             const explicit = /(?:^|\s)#(T\d{6,})(?=\s|[，,:：]|$)/iu.exec(event.text);
             if (control) fast.push({ eventId: event.id, ...control });
@@ -97,7 +102,7 @@ export class SuperCoordinator {
       }
       data.heartbeat = this.now();
     });
-    const revoked = Object.values(this.data.tasks).filter(task => (task.kind !== 'log-triage' || this.triage)
+    const revoked = Object.values(this.data.tasks).filter(task => (task.kind !== 'log-triage' || this.triage) && (task.kind !== 'business' || this.business)
       && !TERMINAL.has(task.status) && task.status !== 'paused'
       && !(task.kind === 'log-triage' ? this.triage?.authorized(task, conversations) : this.authorized(task.event, conversations)));
     for (const task of revoked) {
@@ -113,11 +118,12 @@ export class SuperCoordinator {
     this.routing = true;
     try {
       await this.triage?.routePending();
-      const batch = Object.values(this.data.inbox).filter(item => !item.trigger && item.status === 'pending').slice(0, this.config.routerBatchSize ?? 8);
+      await this.business?.routePending();
+      const batch = Object.values(this.data.inbox).filter(item => !item.trigger && !item.business && item.status === 'pending').slice(0, this.config.routerBatchSize ?? 8);
       if (!batch.length) return;
       await this.transaction(data => { for (const item of batch) if (data.inbox[item.key].status === 'pending') data.inbox[item.key].status = 'routing'; });
       const conversations = [...new Set(batch.map(item => item.event.conversation_id))];
-      const tasks = Object.values(this.data.tasks).filter(task => task.kind !== 'log-triage' && conversations.includes(task.conversationId)).slice(-80);
+      const tasks = Object.values(this.data.tasks).filter(task => codeTask(task) && conversations.includes(task.conversationId)).slice(-80);
       const context = inlineContext(this.data.graph, [...batch.map(item => item.threadReference), ...tasks.slice(-12).map(task => task.reference)], { projectId: this.config.projectId, conversations });
       let decisions;
       try { decisions = await this.router.route(batch.map(item => item.event), { tasks, context }); }
@@ -219,15 +225,17 @@ export class SuperCoordinator {
   }
   kick() {
     if (this.stopping) return;
+    this.business?.kick();
     this.pump().catch(error => { this.lastError = String(error.message); });
     this.flushOutbox().catch(error => { this.lastError = String(error.message); });
-    for (const task of Object.values(this.data.tasks)) if (task.kind !== 'log-triage' && task.status === 'merged') this.queueRelease(task.id);
+    for (const task of Object.values(this.data.tasks)) if (codeTask(task) && task.status === 'merged') this.queueRelease(task.id);
   }
   async pump() {
     if (this.pumping || this.stopping || !this.conversations) return;
     this.pumping = true;
     try {
       for (const task of Object.values(this.data.tasks)) {
+        if (task.kind === 'business') continue;
         if (task.status !== 'queued' || this.active.has(task.id)) continue;
         if (task.kind === 'log-triage') {
           if (!this.triage?.eligible(task)) continue;
@@ -242,6 +250,7 @@ export class SuperCoordinator {
     } finally { this.pumping = false; }
   }
   async execute(id) {
+    if (this.data.tasks[id]?.kind === 'business') return this.business?.execute(id);
     if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.execute(id);
     let task;
     await this.transaction(data => { task = data.tasks[id]; if (task.status !== 'queued') return; task.status = 'preparing'; task.attempt++; task.startedAt = this.now(); task.updatedAt = this.now(); });
@@ -333,6 +342,7 @@ export class SuperCoordinator {
       { projectId: task.projectId, conversations: [task.conversationId] }, this.config.contextCharacters ?? 12000);
   }
   async pause(id, error) {
+    if (this.data.tasks[id]?.kind === 'business') return this.business?.pause(id, error);
     if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.pause(id, error);
     await this.transaction(data => {
       const task = data.tasks[id]; if (!task) return;
@@ -347,6 +357,7 @@ export class SuperCoordinator {
     });
   }
   async finishStopped(id) {
+    if (this.data.tasks[id]?.kind === 'business') return this.business?.cancel(id);
     if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.finishStopped(id);
     await this.transaction(data => { const task = data.tasks[id];
       if (!['closed', 'merged'].includes(task.status)) task.status = task.pauseRequested ? 'paused' : 'cancelled';
@@ -354,6 +365,7 @@ export class SuperCoordinator {
       if (!task.speculative || task.delivery?.number) this.enqueue(data, task.event, `#${id} ${labels[task.status]}，已有修改和记录保留。`, `stopped-${id}-${task.attempt}`); });
   }
   async stopTask(id, reason = 'Human requested stop') {
+    if (this.data.tasks[id]?.kind === 'business') return this.business?.cancel(id);
     if (this.data.tasks[id]?.kind === 'log-triage') return this.triage?.cancel(id, reason);
     if (!this.active.get(id)?.started) return;
     const result = await this.pool.cancel(id, reason);
@@ -371,24 +383,25 @@ export class SuperCoordinator {
       const conversations = await this.api.request('/api/conversations');
       for (const item of Object.values(this.data.outbox)) {
         if (item.status !== 'pending' || (item.nextAttempt && Date.parse(item.nextAttempt) > Date.parse(this.now()))) continue;
-        if (item.kind === 'log-triage') {
-          if (!this.triage) continue;
-          const verdict = await this.triage?.beforeSend(item, conversations) ?? 'pause';
+        const businessModule = item.kind === 'business' ? this.business : item.kind === 'log-triage' ? this.triage : null;
+        if (['log-triage', 'business'].includes(item.kind)) {
+          if (!businessModule) continue;
+          const verdict = await businessModule.beforeSend(item, conversations) ?? 'pause';
           if (verdict !== 'send') { await this.transaction(data => { data.outbox[item.key].status = verdict === 'drop' ? 'superseded' : 'paused'; }); continue; }
         }
         const allowed = this.config.conversationIds.includes(item.event.conversation_id)
           && conversations.some(conversation => conversation.id === item.event.conversation_id && conversation.members?.some(member => member.id === this.bot.id && member.is_bot));
         if (!allowed) { await this.transaction(data => { data.outbox[item.key].status = 'dropped'; }); continue; }
         try {
-          if (item.kind === 'log-triage' && item.category === 'artifact') {
-            const result = await publishTriageArtifact({ api: this.api, item, root: this.triage.options.root,
-              transaction: this.transaction.bind(this), beforeSend: this.triage.beforeSend.bind(this.triage) });
+          if (businessModule && item.category === 'artifact') {
+            const result = await publishTriageArtifact({ api: this.api, item, root: businessModule.options.root,
+              transaction: this.transaction.bind(this), beforeSend: businessModule.beforeSend.bind(businessModule) });
             if (result.paused) { await this.transaction(data => { data.outbox[item.key].status = result.verdict === 'drop' ? 'superseded' : 'paused'; }); continue; }
           } else await this.api.reply({ ...item.event, id: typeof item.event.id === 'number' ? item.event.id : 'supervisor' }, item.text, `super-${createHash('sha256').update(item.key).digest('hex').slice(0, 32)}`);
           await this.transaction(data => { data.outbox[item.key].status = 'sent'; data.outbox[item.key].sentAt = this.now(); });
         } catch (error) {
           await this.transaction(data => { const current = data.outbox[item.key]; current.attempts++; current.error = String(error.message).slice(0, 300);
-            if (item.kind === 'log-triage' && /HTTP 409/u.test(String(error.message))) { current.status = 'paused'; current.error = '消息校验冲突，需要核对；原报告已保留。'; return; }
+            if (businessModule && /HTTP 409/u.test(String(error.message))) { current.status = 'paused'; current.error = '消息校验冲突，需要核对；原报告已保留。'; return; }
             current.nextAttempt = new Date(Date.parse(this.now()) + Math.min(300000, 1000 * 2 ** Math.min(current.attempts, 8))).toISOString(); });
         }
       }
@@ -452,7 +465,7 @@ export class SuperCoordinator {
     for (const id of new Set(recheck)) if (this.delivery && !this.active.has(id) && this.data.tasks[id].status === 'ready') {
       this.refreshDelivery(id).catch(error => this.heartbeat('github', 'error', error.message));
     }
-    for (const task of Object.values(this.data.tasks)) if (task.status === 'merged') this.queueRelease(task.id);
+    for (const task of Object.values(this.data.tasks)) if (codeTask(task) && task.status === 'merged') this.queueRelease(task.id);
     this.kick();
   }
   async refreshDelivery(id) {
@@ -490,7 +503,7 @@ export class SuperCoordinator {
     this.releases.set(id, job);
   }
   snapshot() {
-    const all = Object.values(this.data.tasks).filter(task => task.kind !== 'log-triage');
+    const all = Object.values(this.data.tasks).filter(task => codeTask(task));
     const selected = [...all.filter(task => RUNNING.has(task.status)), ...all.filter(task => !RUNNING.has(task.status)).slice(-20)];
     const text = (value, size) => typeof value === 'string' ? value.slice(-size) : value;
     return { generation: this.generation, heartbeat: this.data.heartbeat, now: this.now(), pid: process.pid,
@@ -514,7 +527,7 @@ export class SuperCoordinator {
     await this.transaction(data => {
       if (data.actions[action.id]) { repeated = true; return; }
       task = action.taskId ? data.tasks[action.taskId] : null;
-      if (task?.kind === 'log-triage') throw new Error('Log analysis is controlled through its authorized chat, not coding supervision.');
+      if (task && !codeTask(task)) throw new Error('Business tasks are controlled through their authorized chat, not coding supervision.');
       if (action.taskId && !task) throw new Error('Unknown supervisor task.');
       if (['steer', 'pause'].includes(action.action) && !task) throw new Error('Task action needs a task.');
       if (action.action === 'steer') {
@@ -549,7 +562,7 @@ export class SuperCoordinator {
     this.inspecting = true;
     try {
       for (const id of this.active.keys()) {
-        if (this.data.tasks[id]?.kind === 'log-triage') continue;
+        if (!codeTask(this.data.tasks[id])) continue;
         const evidence = await this.pool.inspect(id);
         if (evidence) await this.transaction(data => {
           const task = data.tasks[id]; if (!task) return;
@@ -566,7 +579,7 @@ export class SuperCoordinator {
     try {
       for (const [id, run] of this.active) {
         const task = this.data.tasks[id]; if (!run.started || task.stopRequested || task.status !== 'running') continue;
-        if (task.kind === 'log-triage') continue;
+        if (!codeTask(task)) continue;
         const delivered = new Set([...(task.includedInputIds ?? []), ...(task.deliveredInputIds ?? [])]);
         for (const input of task.inputs.filter(item => !delivered.has(item.id))) {
           let receipt;
@@ -585,6 +598,7 @@ export class SuperCoordinator {
   async close() {
     this.stopping = true;
     await this.triage?.close();
+    await this.business?.close();
     await this.pool.close();
     await Promise.allSettled([...this.active.values()].map(item => item.promise));
     await this.outboxJob?.catch(() => {});

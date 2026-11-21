@@ -68,6 +68,15 @@ test('semantic assessment receives bounded actual goal/diff/tests and does not e
   assert.equal(f.requests[0].action, 'observe');
 });
 
+test('active preparation and delivery phases use the coordinator status vocabulary and remain observable', async () => {
+  for (const status of ['preparing', 'running', 'delivering']) {
+    const f = fixture(); f.value.tasks[0].status = status;
+    const result = await f.watchdog.tick();
+    assert.equal(result.assessed, 1, status);
+    assert.equal(JSON.parse(f.prompts[0].split('\n').at(-1)).status, status);
+  }
+});
+
 test('strict semantic output rejects cross-task, infrastructure, arbitrary fields and malformed commands', () => {
   for (const raw of ['{}', 'not json', '```json\n{}', decision('task-2'), decision('task-1', 'run_shell'),
     decision('task-1', 'restart_controller'), decision('task-1', 'steer'), decision('task-1', 'pause', { command: 'arbitrary' }),

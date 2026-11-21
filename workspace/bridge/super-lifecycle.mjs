@@ -102,7 +102,7 @@ export async function reusableWatchdog(path, { token, controllerUrl, statePath, 
     || !Number.isFinite(Date.parse(owner.heartbeat)) || Date.parse(owner.heartbeat) > now + 5000 || now - Date.parse(owner.heartbeat) > 90000) throw new Error('Existing Watchdog could not be verified; preserve it and its state.');
   let actual;
   try { actual = await watchdogProcess(owner); }
-  catch { throw new Error('Existing Watchdog process identity could not be verified; preserve it and its state.'); }
+  catch (cause) { throw new Error('Existing Watchdog process identity could not be verified; preserve it and its state.', { cause }); }
   if (!actual) return null; // The process may have exited between the existence check and the identity query.
   const samePath = (a, b) => typeof a === 'string' && typeof b === 'string'
     && (process.platform === 'win32' ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : resolve(a) === resolve(b));

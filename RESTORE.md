@@ -1,5 +1,13 @@
 # agent-IM 恢复与接续
 
+## v0.5.0 通用业务入口
+
+先读WORKER-ROUTING-v0.5.0、最新HANDOFF和state。superAgent.business启用只读AI按可信登记能力选择Worker/DSH/Hermes/Pi；B任务与旧代码/QA的T任务分开，独立目录和原生会话，Outbox回单条原结果+TXT。本机已配置三执行器与“智能协作验收”授权聊天，命令、账号、数据目录和技能只在忽略配置；新机器参考config.business.example.json按实际安装/认证设置，不能clone即假定可用。
+
+运行中补充持久保存后沿原会话下一轮；未知原生终态先核对，禁止新建会话冒充接续。三执行器取消方式不同，尤其Hermes关闭ACP客户端不表示gateway内Agent已停止。Pi原生MCP默认direct；Hermes外部未登记skill路径需管理员映射，不静默丢掉技能。QA仍disabled等用户接入VPN，不在恢复通用业务时打开。
+
+实际验收包括三自然语言请求→AI选不同Worker/Agent→真实完成→单条报告下载；三原生Agent回归及发现、修正、失败/最终计数以最新记录为准，不能用模拟协议或工具ACK替代。
+
 ## v0.4.2 无额度、会话观测
 
 先读QA-MONITORING-v0.4.2及最新HANDOFF/state，覆盖下方所有QA试点/会话额度与扫描阅读限制。用户已明确撤销这些人工停止条件，后续不要再因累计次数、模型/工具/读取/解析次数、总字符或人为总时长暂停分析，也不能换大数冒充取消。聊天只发原结论和一个完整TXT附件，用量在下载文件里；不另外刷用量消息。

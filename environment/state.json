@@ -1,13 +1,12 @@
 {
-  "version": "0.4.2",
+  "version": "0.5.0",
   "verified": [
-    "26 Python and 9 desktop tests passed",
-    "445 bridge tests: 444 passed, one skipped; 16 mocked startup checks and five syntax checks passed",
-    "70 related lifecycle/coordinator/triage tests passed after optional QA disable fix",
-    "Two earlier quota-blocked native Agent sessions completed; original outputs published without another model call",
-    "Three compact conclusion plus TXT messages, authenticated downloads and two viewport checks passed",
-    "Original plugin whole-target parser result and all three effort prompts match local source; new direct model path mock checks passed",
-    "Local start and repeat start verified with QA disabled by user"
+    "26 Python, 9 desktop, 16 mocked startup and syntax passed; final 481/481 bridge passed",
+    "Three authorized natural-language IM requests actually routed to different Workers and Pi/Hermes/DSH; completed with one TXT reply each and authenticated download/hash verification",
+    "All three native executors completed real file tasks; DSH Skill+MCP and Hermes registered Skill load separately proved",
+    "Final independent native Agent review suites: DSH15/15 Pi17/17 Hermes41/41 with actual MCP calls, nonce, native completion, source and stdout hashes",
+    "Initial Pi MCP visibility and Hermes test PATH failures retained; fixes verified; coordinator assessed other static findings without blindly applying them",
+    "Normal restart, repeat startup and persisted completed business reports verified; QA stayed disabled by user"
   ],
   "desktop": "outputs/desktop-v0.3.3/TeamRelay-win32-x64/TeamRelay.exe",
   "project": "agent-bot-im",
@@ -26,20 +25,18 @@
     "source_commit": "5cf6b093868e2c197880f1181f8081766a24c65a"
   },
   "known_failures": [
-    "Preflight string file ID rejected before model; sampling success-code crowding corrected using actual logs before execution",
-    "First native session reached max-tokens with no final; plugin/headless reasoning mismatch corrected to trusted task-local off",
-    "Expired QA login caused model-zero preparation/route failures; user completed standard PKCE SSO and actual authorized read passed; temporary old token override removed",
-    "Final native completed report had 37 valid citations, exceeding former 20-reference format gate; original result published after correction without new model or changed conclusion",
-    "Old prompt/status assertions updated for explicitly changed contract; one child Node22 PATH fixture failure retained, supported Node24 PATH full suite passed",
-    "An exit-time CIM identity rejection retained; process then verified normally stopped and original lifecycle entry reused, no force-kill or lock deletion"
+    "Initial Pi native review lacked a native MCP tool event because default MCP exposure was not directly declared; fixed and purposeful native retest passed",
+    "Initial Hermes native review had 40/41 tests due to missing PS7 in gateway child PATH; fixed tool environment and native retest passed41/41",
+    "DSH attempted a snapshot edit during review; operation failed and source hashes proved unchanged, formal source unaffected",
+    "Other static review suggestions are triaged in the sanitized report; do not weaken unknown-process retention to make tests pass"
   ],
   "pending": [
-    "User paused QA until company VPN: new original-plugin recipe real model and QA end-to-end validation unperformed",
-    "General AI worker routing and three actual agent integrations ongoing under next-goal design",
-    "Existing coding A1/A2 and Tencent/security work remain outside this QA iteration"
+    "QA original-plugin real model acceptance paused by user until company VPN; do not resume automatically",
+    "Arbitrary project automatic modification/release, OpenCode, OS sandbox and plugin marketplace are not implemented by the new generic business Worker",
+    "Existing old coding A1/A2 and recorded low-priority lifecycle maintenance boundaries remain outside this business MVP"
   ],
-  "updated_at": "2026-11-20",
-  "stage": "qa-skill-native-completed-im-download-verified-published",
+  "updated_at": "2026-11-21",
+  "stage": "MVP and three-native-Agent regression verified; Git delivery pending",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -72,8 +69,8 @@
   "current_checkout": {
     "date": "2026-11-21",
     "project_root": "D:\\Work\\codexproj\\agent-IM",
-    "source_base_commit": "002ea98d815c2024e0765abc12e25bf53b4b244f",
-    "source_version": "0.4.2",
+    "source_base_commit": "5ff2eaf71675aa9b964ff109d1d35ead70792aed",
+    "source_version": "0.5.0",
     "python": "3.12.16",
     "node": "24.19.0 project-local",
     "service_started": true,
@@ -101,14 +98,23 @@
     "cloud_security_implemented": false,
     "desktop_built": false,
     "desktop_compatible_version": "0.3.3",
-    "verification_report": "outputs/VERIFICATION-v0.4.2.md",
+    "verification_report": "outputs/VERIFICATION-v0.5.0.md",
     "observation_only": true,
     "product_release_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
     "default_startup_bound": true,
     "source_pushed": false,
     "qa_real_provider_requests_total_this_iteration": 15,
     "qa_report_evidence_references": 37,
-    "qa_user_paused": true
+    "qa_user_paused": true,
+    "generic_business_enabled": true,
+    "real_native_agents_verified": [
+      "dsh",
+      "hermes",
+      "pi"
+    ],
+    "three_native_regressions_verified": true,
+    "last_published_commit": "5ff2eaf71675aa9b964ff109d1d35ead70792aed",
+    "assistant_display_name": "同频助手"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -658,6 +664,71 @@
         "QA source has no reliable event cursor; same-ID attachment replacement needs explicit reanalysis"
       ],
       "current_checkout": {
+        "date": "2026-11-20",
+        "project_root": "D:\\Work\\codexproj\\agent-IM",
+        "source_base_commit": "002ea98d815c2024e0765abc12e25bf53b4b244f",
+        "source_version": "0.4.1",
+        "python": "3.12.16",
+        "node": "24.19.0 project-local",
+        "service_started": true,
+        "local_chat_listener_running": true,
+        "formal_watchdog_started": false,
+        "coding_enabled_in_pilot": false,
+        "qa_trigger_route_implemented": true,
+        "qa_auto_source_enabled": true,
+        "qa_business_data_queried": true,
+        "qa_project_binding": "One user-selected project/chat; exact mapping ignored locally",
+        "qa_baseline_issues": 230,
+        "qa_live_analysis_budget_total": 4,
+        "qa_live_analysis_budget_used": 4,
+        "qa_live_result_status": "completed",
+        "qa_real_completed_model_report": true,
+        "qa_agent_sessions": 3,
+        "qa_real_provider_requests": 4,
+        "qa_real_task_tool_calls": 4,
+        "qa_evidence_lines_read": 57,
+        "qa_artifacts_sent": 2,
+        "qa_artifacts_authenticated_downloads_verified": true,
+        "qa_recovery_extra_model_requests": 0,
+        "new_policy_real_model_validated": true,
+        "dsh_installation_modified": false,
+        "cloud_security_implemented": false,
+        "desktop_built": false,
+        "desktop_compatible_version": "0.3.3",
+        "verification_report": "outputs/VERIFICATION-v0.4.1.md",
+        "observation_only": true,
+        "product_release_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
+        "default_startup_bound": true,
+        "source_pushed": true,
+        "qa_real_provider_requests_total_this_iteration": 15,
+        "qa_report_evidence_references": 37
+      }
+    },
+    {
+      "version": "0.4.2",
+      "verified": [
+        "26 Python and 9 desktop tests passed",
+        "445 bridge tests: 444 passed, one skipped; 16 mocked startup checks and five syntax checks passed",
+        "70 related lifecycle/coordinator/triage tests passed after optional QA disable fix",
+        "Two earlier quota-blocked native Agent sessions completed; original outputs published without another model call",
+        "Three compact conclusion plus TXT messages, authenticated downloads and two viewport checks passed",
+        "Original plugin whole-target parser result and all three effort prompts match local source; new direct model path mock checks passed",
+        "Local start and repeat start verified with QA disabled by user"
+      ],
+      "known_failures": [
+        "Preflight string file ID rejected before model; sampling success-code crowding corrected using actual logs before execution",
+        "First native session reached max-tokens with no final; plugin/headless reasoning mismatch corrected to trusted task-local off",
+        "Expired QA login caused model-zero preparation/route failures; user completed standard PKCE SSO and actual authorized read passed; temporary old token override removed",
+        "Final native completed report had 37 valid citations, exceeding former 20-reference format gate; original result published after correction without new model or changed conclusion",
+        "Old prompt/status assertions updated for explicitly changed contract; one child Node22 PATH fixture failure retained, supported Node24 PATH full suite passed",
+        "An exit-time CIM identity rejection retained; process then verified normally stopped and original lifecycle entry reused, no force-kill or lock deletion"
+      ],
+      "pending": [
+        "User paused QA until company VPN: new original-plugin recipe real model and QA end-to-end validation unperformed",
+        "General AI worker routing and three actual agent integrations ongoing under next-goal design",
+        "Existing coding A1/A2 and Tencent/security work remain outside this QA iteration"
+      ],
+      "current_checkout": {
         "date": "2026-11-21",
         "project_root": "D:\\Work\\codexproj\\agent-IM",
         "source_base_commit": "002ea98d815c2024e0765abc12e25bf53b4b244f",
@@ -701,24 +772,15 @@
     }
   ],
   "source_work_in_progress": {
-    "version": "0.4.2",
-    "design": "workspace/docs/QA-MONITORING-v0.4.2.md",
-    "stage": "QA implementation verified; real plugin acceptance paused by user; next goal active",
-    "login_change_verified": true,
-    "old_startup_quotas_removed": true,
-    "backend_restarted": true,
-    "artificial_quota_stops_removed": true,
-    "actual_reports_pending": false,
-    "source_base_commit": "5ca29f3713f4fc6f74bb22019b9721c6adeddd4a",
-    "compact_chat_verified": true,
-    "plugin_parity_real_verification_pending": true,
-    "service_live_after_resume": false,
-    "latest_user_architecture": "IM routes business tasks to workers; workers use agents, skills and MCP capabilities",
+    "version": "0.5.0",
+    "design": "workspace/docs/WORKER-ROUTING-v0.5.0.md",
+    "stage": "verified-delivery-pending",
     "qa_user_paused": true,
-    "qa_vpn_required": true
+    "business_happy_path_verified": true,
+    "three_native_agent_regression_verified": true
   },
   "next_goal": {
-    "status": "active",
+    "status": "verified; final source publication in progress",
     "design": "workspace/docs/WORKER-ROUTING-v0.5.0.md",
     "scope": [
       "general AI routing to registered business workers",

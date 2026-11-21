@@ -1,5 +1,13 @@
 # DSH 异机桥接
 
+## v0.5.0 通用业务入口
+
+授权聊天的需求由BusinessRouter读取WorkerRegistry描述，选择已登记Worker和可用DSH/Hermes/Pi，再由SuperBusiness处理B任务/原生会话/独立目录/Outbox。三种原生接口均已实际接通，三条自然语言请求及单条结果+TXT认证下载已经通过；最终三Agent回归及失败见根验收记录。
+
+将[config.business.example.json](config.business.example.json)内容填入本机配置的superAgent.business，按实际安装改command/dataHome及模型/技能后enabled=true；保留原conversationIds/senderIds/DPAPI绑定。命令和资源映射来自可信配置，不由模型返回。运行仍用environment/scripts/start.ps1，重启/恢复先看根RESTORE及HANDOFF。原native账号、CLI、技能和业务数据不随clone提供。
+
+Worker资源通过workerResources[workerId].agents[agentId]传skillPaths/mcpServers，MCP凭据不放入Router或任务提示。Pi默认direct曝光，未支持deferred/codemode明确拒绝；Hermes技能限原home已登记路径，经CLI零模型建会话后ACP精确load。通用代码检查针对所给材料，旧项目代码worktree/PR流程仍单独维护。
+
 ## QA当前入口：v0.4.2
 
 按[QA-MONITORING-v0.4.2](../docs/QA-MONITORING-v0.4.2.md)配置授权项目/聊天。旧totalModelCalls、dailyModelCalls、executionLimits和分析超时字段不再限制当前QA执行，不需要补额度；保留历史计数以便追溯。生产采用完整原DSH插件配方与直接模型调用，聊天一条原结论+完整TXT，用量在下载里；JSON内部保留，原行/hash仍核验。用户已于2026-11-21暂停日志分析等公司VPN，本机triage关闭，新原配方真实模型验收待恢复；不要从旧四工具完成记录推断等价。通用三执行器接入另见WORKER-ROUTING-v0.5.0；原代码worker超时约定不在QA更改范围。

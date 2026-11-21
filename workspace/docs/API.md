@@ -71,3 +71,8 @@ JSON 接口 `/api`，时间为 UTC ISO-8601（UI 按用户本地时区）；ID �
 SkillExecutionService返回schemaVersion、taskId、inputRevision、skillId、backend、status(completed/partial)、result(严格8字段报告)、files(报告名/MIME/字节/SHA256/私有路径)、execution(会话数、生成/工具计数、技能与证明、可选可信limits)。私有路径只供执行/上传器，图引用和普通消息删除该字段。报告通过原附件上传、消息attachment_id与成员认证ticket提供下载。
 
 DSH任务MCP只暴露load_skill/list_inputs/read_evidence/run_parser四个日志工具；工具参数不能改命令、认证、工作目录、项目、limits或输出路径。实际预算由执行器配置，重复证据/相同解析范围缓存。status=partial表示预算终止后的可核验程序初排，并非模型终稿；未知终态、凭据或输入校验失败仍拒绝。完整契约/启用见QA-OPERATIONS-v0.4.0。
+# v0.5.0 业务执行协议
+
+superAgent.business由可信配置登记Worker/Agent/资源，BusinessRouter输出eventId/action/taskId/workerId/agentId/summary/instructions七字段且逐项核对。路径、命令、权限及MCP凭据不允许来自路由结果。SuperBusiness使用B任务与共享version3账本的business.nextTask，保留输入revision、已消费输入、原native session和每次结果；不进入旧代码交付队列。
+
+三执行器统一run({taskId,cwd,prompt,sessionId?,skillPaths?,mcpServers?},{signal})→{backend,sessionId,text,completed,usage}，各自验证原生终态与精确session。providerRequests和modelTurns按原生实得口径分开，不猜用量。正常结果只生成服务拥有的完整报告.txt，Outbox kind=business/category=artifact沿原IM鉴权上传下载；原IM接口不变。共享文件上传器只接受固定受控报告名/路径/hash/小于100MB，task/body/revision再次核验。

@@ -1,5 +1,33 @@
 # 当前接续状态
 
+## 2026-11-21 · v0.5.0 最终验收完成，待Git交付
+
+三Agent最后原生回执已全齐：DSH15/15、Pi17/17、Hermes41/41，真实固定MCP各一次、nonce/native终态/源与stdout哈希均通过。原失败与未采纳static意见保留；根据Hermes审查另修旧Watchdog准备/交付状态遗漏，相关34/34通过。最后完整桥接481/481无跳过；标准workspace技能夹具路径修正后5/5无跳过，26 Python/9 desktop/16模拟启动及语法通过。公共可移植复验脚本已在environment/scripts，prepare0模型、无live拒绝已核验，不把新脚本准备冒充旧真实会话。
+
+本机正常stop/start及重复start、/health0.5.0已核验；三B任务仍attempt1/completed，成员认证报告下载复读通过，未重做模型。现有同一助手显示名改为“同频助手”以匹配通用业务，身份/绑定保留且更名前值有忽略备份；未更改其他用户。QA两本机配置继续disabled，无VPN时不重开；旧日志原配方真实验收仍未执行。当前源版本0.5.0，兼容0.3.3客户端，未重建EXE/部署腾讯。
+
+主目标本轮MVP、三原生测试、原则/设计/过程与接续资料已完成；最后执行明确清单暂存/新annotated v0.5.0/push/远端branch和peel核对，再写Git回执。不要用下方阶段中“待回执/正在执行”推翻本节最终事实。报告outputs/VERIFICATION-v0.5.0；真实业务数据与native资料仍只在忽略目录。
+
+## 2026-11-21 · v0.5.0 正向已通过，三Agent回归/交付收尾
+
+统一业务模块已集成business-config/runtime、可信WorkerRegistry、只读BusinessRouter、SuperBusiness及三native executors。授权IM中三独立自然语义真实选择数据核对/Pi、会议待办/Hermes原生Skill、代码检查/DSH，均原生完成；各单条结果+完整TXT，成员认证下载/内容/hash通过。实际记录environment/verification/v050/im-business-receipts.json。主服务此时仍是最后一次启动快照，最终须正常stop/start确认0.5.0健康/监听与复用；QA始终disabled。
+
+第一轮三原生Agent真实回归已各调用固定MCP/写review，并核对nonce/输出和源清单。DSH14/14；Pi暴露真实MCP默认codemode不可见问题（未达nativeMCP证明，保留失败）；Hermes40/41因gateway子环境缺PS7路径，根正常环境PS7实存且完整verify通过。修正Pi默认direct并明确拒绝暂未支持的deferred/codemode、大小写/标点裸B编号只查状态、身份核验保留cause；回归工具固定可信PS7和Node24路径，不放宽生产身份保护。
+
+第二轮统一冻结generation=2026-11-21T04-53-33-017Z-29fd89f3-7d02-45fe-a280-2565c4f04e6b：DSH15/15、Pi17/17、Hermes实际固定MCP套件exit0(41)；Hermes仍等待原Agent最终review回执。来源快照及旧失败均保留。DSH一次试图修改快照，操作失败，最终manifest不变；不得省略该偏离。其他static发现须root逐项核实，多条与实际spread/准入/正则不符，不能盲采纳删未知进程资源。最后裸编号标点补充由根相关12/12验证，未再为微调重复真实模型。
+
+全verify修正前477 bridge通过/1跳过、26 Python/9 desktop/16 mocked启动与语法通过；修正后25相关通过，最终完整verify正在environment/verification/v050/verify-confirmed.log。源尚未作为0.5.0提交/推送；v0.4.2回执见下。接下来：收最终Hermes审查、裁决findings、完成最终完整测试与实际启动/主流程回读、更新文档/脱敏报告、明确文件暂存commit/annotated v0.5.0/push并查远端；当前新MVP不宣称任意项目自动改代码/发布、OS沙箱或未登记业务系统都已接通。
+
+## 2026-11-21 · 已交付v0.4.2，通用路由v0.5.0实施中
+
+v0.4.2源码5ff2eaf71675aa9b964ff109d1d35ead70792aed已推main；新annotated tag对象be3d66f18a74ed0d883493b1e6c85d7f8eff6063及peel到此源码由远端ls-remote核验。未新增EXE/Release。旧仓库Git代理端口已失效，仅对本次Git命令使用当前Windows代理，未改全局代理。真实新日志配方仍按用户要求暂停等VPN，此Git交付不表示已跑该真实模型。
+
+本机停止/重启/重复启动已恢复，IM和DSH监听listening/ready，triage在两本机启动配置保持disabled。禁用模块崩溃前只影响了原partial的一项旧任务状态，该副作用已留备份后精确恢复；历史三完成报告的成员认证下载及单条呈现再次通过。未删worker锁/重做模型。
+
+下一轮实现文件当前尚未提交：worker-registry/business-router（9项合成）、PiExecutor（5项合成）、HermesExecutor（基础7项、增加原生已注册skill中）、DshExecutor（3项合成）；共同run接口为taskId/cwd/prompt/sessionId/skillPaths/mcpServers→backend/sessionId/text/completed/usage。三个真实基础主流程均成功：Pi读取合成数字写42，DSH同材料写42，Hermes合成文档计算写81；各一次原生任务，终态/实际文件核验。私有原生证据在environment/verification/v050，不进Git。它们尚未通过真实IM自然语言路由，不可称产品主流程已全部完成。
+
+SuperBusiness新模块正在写共享账本B任务、受授权输入与Outbox单条报告，root负责后续optional business配置/runtime、coordinator接缝和真实AI路由验收。用户目标还要求三个Agent对产品回归并据结果修正；目前只是适配器真实冒烟，不能替代回归完成。DSH/Hermes/Pi skills/MCP支持按实际协议逐步补齐，任何不支持项明确说明，不伪称加载。
+
 ## 2026-11-21 · v0.4.2 接续：原插件流程对齐中
 
 最新：原配方源已完成。low/mid/high各档原函数及system/user逐字对比；同附件全量CLI得到79日志/692发现，与原缓存payload规范路径后相同。Service/Worker传原全文、caption机械提取原结论；DSH direct扩展隔离外层Agent提示，只发原插件prepareCall参数，模型0的双层流测试通过。全verify最新444通过/1跳过(桥接445总)、26 Python/9 desktop/16 mocked启动和语法通过。

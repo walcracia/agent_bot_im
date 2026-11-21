@@ -1,5 +1,11 @@
 # 验收计划
 
+## v0.5.0
+
+WORKER-ROUTING设计先冻结，真实三执行器文件/Skill/MCP接缝、授权IM自然语义分流到三不同Agent、单条结果+完整TXT及认证下载已通过。三原生Agent各实际调用固定MCP回归：DSH15、Pi17、Hermes41全部通过，报告/nonce/native事件/源未变交叉核验。首轮Pi缺nativeMCP证明及Hermes缺测试PS路径失败保留并修正重验，具体裁决见outputs/VERIFICATION-v0.5.0。
+
+常规verify为26 Python/9 desktop/480桥接(479通过1跳过)/16模拟启动/语法；最终源完整桥接481/481、相关34/34及标准workspace技能夹具5/5通过。原生复验使用environment/scripts/verify-agent-reviews.mjs，prepare零模型，run-agent必须live。新机需实际安装/原模型认证/技能，不把原始账号/日志或当前服务状态带入Git。
+
 ## v0.4.2
 
 详见QA-MONITORING-v0.4.2和outputs/VERIFICATION-v0.4.2。完整26 Python/9 desktop/桥接444通过1跳过/16模拟启动/语法通过；停用可选QA模块的后续相关70项通过。真实两项旧四工具Agent完成与单条呈现/下载已验证；原插件整包解析与提示逐字比较属于新的零模型证据，不能混为真实等价验收。公司VPN未连，用户已暂停日志分析，原配方真实模型及QA全程待恢复后执行。

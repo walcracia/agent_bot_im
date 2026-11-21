@@ -1,6 +1,6 @@
 # 通用业务路由与多执行器：增量设计
 
-2026-11-21。用户已明确要求实现通用AI分流，接通本机DSH、Hermes、Pi并让三者参与回归。本文是下一轮设计与可观察验收，当前未实现项不能写作可用。当前日志插件对齐仍先按QA-MONITORING-v0.4.2收尾。
+2026-11-21。用户已明确要求实现通用AI分流，接通本机DSH、Hermes、Pi并让三者参与回归。本文记录设计与可观察验收，未执行项不能写作通过。日志插件对齐按QA-MONITORING-v0.4.2保留，真实QA部分由用户暂停等待VPN。
 
 ## 角色与选择边界
 
@@ -19,4 +19,29 @@ Agent是执行器；Skill是可加载的流程与规则；MCP是业务数据/工
 
 ## 当前实查与待定
 
-本机DSH已有固定技能及原生执行适配；Hermes/Pi正在按实际安装和原生协议发现，不预先宣称全部可用。外部内网/模型认证/业务材料不足时优先询问用户，同时继续不依赖它们的设计、隔离实现和验证。实施过程、各执行器能力与每次真实测试另记PROCESS/HANDOFF/state，避免把计划当作完成记录。
+三执行器原生接口及各自基础真实文件任务已通过；DSH原生Skill+MCP及Hermes已登记Skill加载另有真实证据。授权IM中三独立请求已由真实AI分别选择数据核对/Pi、文档待办/Hermes、代码检查/DSH，单条结果和认证TXT下载均通过。三原生Agent交叉回归正在执行，发现与修正单列，不能用冒烟代替回归。外部内网/模型认证/业务材料不足时优先询问用户，同时继续不依赖它们的设计、隔离实现和验证。实施过程、各执行器能力与每次真实测试另记PROCESS/HANDOFF/state，避免把计划当作完成记录。
+
+## 执行与恢复契约
+
+`superAgent.business`使用[配置示例](../bridge/config.business.example.json)，管理员先填实际CLI/数据目录、原模型认证和技能映射，再启用enabled；群和成员仍由原IM绑定白名单控制。新机器不会因为clone而取得原账号、Skill或CLI。普通界面不显示这些配置细节。
+
+业务请求由只读BusinessRouter按WorkerRegistry能力选择。B任务、输入版本、已消费输入、原生session、每次结果与Outbox写共享事务账本；业务并发不进入旧代码交付队列。运行中补充持久保存，当前轮结束后沿原会话处理；旧输入版本只存档不发布成最新。恢复时未知原生终态先暂停核对，不新建Agent冒充接续。
+
+执行接口统一为`run({taskId,cwd,prompt,sessionId?,skillPaths?,mcpServers?},{signal})`，返回backend/sessionId/text/completed/usage。完成须原生终态：DSH completed+exit0、Pi agent_settled/最后stop/idle+exit0、Hermes prompt end_turn。ACK、关闭客户端或model轮数都不单独算完成。未知用量不编数；modelTurns不冒称精确HTTP次数。
+
+资源映射来自`workerResources[workerId].agents[agentId]`。DSH用任务overlay的customSkillDirs/stdio MCP；Pi显式Skill与任务专用MCP，默认exposure=direct，当前不支持的codemode/deferred明确拒绝；Hermes Skill只接受原home已登记路径，机械映射原生ID并零模型bootstrap，再ACP精确load。MCP凭据仅给所需原生工具进程，不放Router或业务提示。
+
+每任务独立目录，Agent原文仅过滤秘密后回一条结果+完整TXT，用量在下载文件；模型声称的其他文件路径不自动上传。通用代码检查针对给定材料，项目worktree/PR仍由旧代码Worker维护。本轮不宣称任意项目自动修改/发布或插件市场已经实现，工作目录隔离也不是OS沙箱。
+
+## 三原生Agent复验入口
+
+可提交脚本为environment/scripts/verify-agent-reviews.mjs及agent-review-mcp.mjs；原生账号沿用本机配置，不复制密钥。先在Node24.9+和PS7环境准备只含源码/测试的三份独立快照：
+
+```powershell
+node environment/scripts/verify-agent-reviews.mjs --config environment/config/bridge-installed.local.json --prepare --source-frozen
+node environment/scripts/verify-agent-reviews.mjs --config environment/config/bridge-installed.local.json --run-agent dsh --live
+node environment/scripts/verify-agent-reviews.mjs --config environment/config/bridge-installed.local.json --run-agent pi --live
+node environment/scripts/verify-agent-reviews.mjs --config environment/config/bridge-installed.local.json --run-agent hermes --live
+```
+
+prepare为零模型本机准备；run-agent必须显式live才发真实模型。输出默认environment/verification/agent-reviews，完整原生/账号路径不提交。每代冻结工具源码、固定套件命令、Node/PS路径与源码哈希；审查Agent须实际调用MCP，报告nonce/测试stdout/SHA与native工具事件交叉核验，源变化即拒绝验收。Agent审查建议由协调者复核，不等于已复现缺陷。

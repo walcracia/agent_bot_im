@@ -73,3 +73,6 @@ npm run build
 根目录脚本 `environment/scripts/publish-iteration.ps1 -Version <新标签> -Message <说明> -Files <本轮文件列表>` 可先验证再 commit/tag/push；执行前审查其暂存范围及工作树。脚本拒绝混入已有暂存内容，只推送本次指定标签，不改全局凭证配置；本机 Git 凭证管理需事先可用。必须选择未使用的新 tag，已有 v0.1.1 不可重用。GitHub 默认仓库 `walcracia/agent_bot_im`，代码中没有令牌。通用接续要求见根 AGENTS 和 `proj_multihandoff`。
 
 限制：没有实时音视频通话、转码、集群或端到端加密。早期Qwen答复格式失败保留在 bridge/LOCAL-MODEL-TEST.md；后续v0.3.0已增加真实小夹具编码、并行、原生steer与工具daemon验收，见[历史报告](../outputs/VERIFICATION-v0.3.0.md)。任意复杂任务、全部媒体理解、真正异机长期运行及腾讯部署仍未因此获得验证；本轮没有真实模型调用或正式监听启动。
+# v0.5.0 通用业务运行
+
+本机已将DSH/Hermes/Pi接到可信Worker登记与只读AI路由，在授权聊天提出具体需求即可按能力派发，结果一条消息+完整TXT返回。配置方式见bridge/README与根RESTORE；操作仍使用统一start/stop入口，客户端v0.3.3兼容。本机QA分析按用户要求保持关闭等待公司VPN，不能因启用通用路由恢复它。实际回归、未实现范围和交付SHA以根README/HANDOFF及outputs最新报告为准。

@@ -10,7 +10,7 @@ import { InstalledHeadlessExecutor } from './installed-headless.mjs';
 import { replaceOwnedFile } from './file-replace.mjs';
 
 const ACTIONS = new Set(['observe', 'steer', 'pause', 'restart_controller', 'notify']);
-const RUNNING = new Set(['running', 'starting', 'working']);
+const RUNNING = new Set(['preparing', 'running', 'delivering', 'starting', 'working']);
 const ID = /^[A-Za-z0-9_.:-]{1,160}$/;
 const DEFAULTS = { intervalMs: 60000, staleHeartbeatMs: 90000, taskAgeMs: 120000, cooldownMs: 300000,
   maxAssessmentsPerTick: 4, maxConsecutiveModelFailures: 3, requestTimeoutMs: 15000, maxSnapshotBytes: 1048576 };

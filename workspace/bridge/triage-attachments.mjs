@@ -16,7 +16,7 @@ const publicMetadata = artifact => ({ name: artifact.name, size: artifact.size, 
 const sameMetadata = (metadata, artifact) => metadata && metadata.name === artifact.name && metadata.size === artifact.size && metadata.sha256 === artifact.sha256;
 
 function identity(item) {
-  if (!item || item.kind !== 'log-triage' || item.category !== 'artifact' || typeof item.key !== 'string' || !item.key || item.key.length > 300
+  if (!item || !['log-triage', 'business'].includes(item.kind) || item.category !== 'artifact' || typeof item.key !== 'string' || !item.key || item.key.length > 300
     || typeof item.clientId !== 'string' || !/^[A-Za-z0-9_.:-]{1,160}$/.test(item.clientId)
     || typeof item.event?.conversation_id !== 'string' || !item.event.conversation_id || item.event.conversation_id.length > 200
     || typeof item.text !== 'string' || item.text.length > 10000) throw invalid();
@@ -25,7 +25,7 @@ function identity(item) {
     || !isAbsolute(artifact.pathPrivate) || basename(artifact.pathPrivate) !== artifact.name
     || !Number.isSafeInteger(artifact.size) || artifact.size < 1 || artifact.size > MAX_BYTES || artifact.size >= 100000000
     || !/^[a-f0-9]{64}$/.test(artifact.sha256 ?? '')) throw invalid();
-  return sha256(JSON.stringify({ key: item.key, clientId: item.clientId, conversationId: item.event.conversation_id,
+  return sha256(JSON.stringify({ kind: item.kind, key: item.key, clientId: item.clientId, conversationId: item.event.conversation_id,
     taskId: item.taskId ?? null, reportRevision: item.reportRevision ?? null, bodyHash: item.bodyHash ?? null,
     text: item.text, artifact: { ...publicMetadata(artifact), mime: artifact.mime, pathPrivate: artifact.pathPrivate } }));
 }

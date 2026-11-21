@@ -2,7 +2,7 @@
 
 小团队私有聊天工具：Windows 客户端，支持私聊、群聊、文字、图片、音频、视频和文件。每个附件严格小于 **100,000,000 字节**。团队可以在授权群里讨论需求，让 DeepSeek Harness（DSH）在指定代码项目中执行、测试，再把结果送回聊天与 GitHub。
 
-当前源码版本 **v0.4.2**。QA 日志分析按固定 skill 直接生成并回传报告，启用需显式绑定项目与聊天；用量只统计，不设分析额度。Windows v0.3.3 客户端继续兼容，下载见 [v0.3.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+当前源码版本 **v0.5.0**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天；QA日志按用户要求暂停等待VPN。Windows v0.3.3 客户端继续兼容，下载见 [v0.3.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
 
 ## 产品定位：统一业务入口与任务路由中心
 
@@ -24,19 +24,33 @@ flowchart LR
   Trigger --> Router[Router：识别业务与任务]
   Router --> Log[日志分析Worker]
   Router --> Code[代码Worker]
-  Router -.后续接入.-> Other[其他业务Worker]
+  Router --> Other[登记的业务Worker]
   Log --> LogRecipe[原DSH插件：Skill与模型调用]
   Code --> CodeAgent[代码Agent与项目工具]
-  Other -.-> Capability[对应Agent、Skill、MCP]
+  Other --> Capability[DSH / Hermes / Pi + Skill / MCP]
   LogRecipe --> Result[业务结果与文件]
   CodeAgent --> Result
-  Capability -.-> Result
+  Capability --> Result
   Result --> Chat[原聊天]
 ```
 
-**当前实现与目标分开。** QA日志入口已有明确规则的typed Router，代码入口已有只读AI分类与任务归属判断；它们尚不是一个能根据任意需求动态选择所有Worker的通用AI路由器。DSH是当前日志执行后端，Pi、Hermes、OpenCode只有适配注册协议，不能视为已经接通。后续插件需登记业务能力、触发方式、Worker入口、所需Agent/Skill/MCP、输入输出与授权范围，Router才能在这些明确能力中选择；聊天内容或模型输出不能自行安装插件或扩大权限。
+**当前实现范围。** 新业务入口通过只读AI和可信能力注册表动态选择Worker与可用Agent，使用独立B编号、任务目录及原生会话。DSH、Hermes、Pi已真实接通，QA仍使用专用typed规则和完整原插件流程；OpenCode未实现。管理员登记用途、输入输出、可选Agent和Skill/MCP资源，模型不能自行安装插件、增加执行器、拼接宿主命令或扩大权限。
 
 插件化和多Agent是扩展方式；持续接收补充、保存任务身份、恢复执行和把结果可靠送回团队，仍是这里落实Super-agent思想的一部分。以下QA流程说明当前如何触发、归属和执行，后文的编码流程与审计保留其实际能力边界。
+
+## 通用业务协作
+
+授权IM中三独立自然语言请求已真实跑通：收款核对→Pi，会议待办→Hermes原生文档Skill，代码片段检查→DSH；各回传一条原结果+完整TXT，成员下载内容/hash通过。普通短问候不调用模型，已存在任务的补充保留原Worker/Agent与会话。完整用量留在下载里。
+
+| 执行器 | 已核实的原生能力与本机分工 |
+| --- | --- |
+| DSH | 独立headless会话、工作目录锁、Skill和stdio MCP；原DSH日志配方与代码工具。 |
+| Pi | RPC、精确session恢复、显式Skill/MCP、settled/stop/idle终态；结构化数据核对和文件任务。 |
+| Hermes | ACP及原生取消，已登记Skill零模型bootstrap后精确load；文档待办、引用和未明确字段保留。 |
+
+后台使用CLI/原生协议，desktop继续可手动使用。Hermes的执行所有权在原生gateway，关闭客户端不能当作任务已停止；适配器等待原生取消终态。工作目录隔离不等于OS沙箱。通用代码检查针对给定材料，已绑定项目worktree/PR仍由旧代码Worker维护，不宣称任意项目自动修改/发布已经打通。
+
+扩展与恢复见[通用路由设计](workspace/docs/WORKER-ROUTING-v0.5.0.md)。本机配置的superAgent.business登记workers/agents/workerResources；能力描述和可用候选参与AI选择，命令、MCP凭据和资源映射不进入Router提示。三Agent原生回归、失败与修正见[v0.5.0验收报告](outputs/VERIFICATION-v0.5.0.md)。
 
 ## Windows 托盘与新消息
 

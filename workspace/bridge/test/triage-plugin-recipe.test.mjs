@@ -5,12 +5,13 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, access } from 'node:fs/promise
 import { tmpdir, homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
 import { buildPluginAnalysisInput, buildPluginPrompt, preparePluginAnalysis, mapPluginReport } from '../triage-plugin-recipe.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const docs = ['skill main', 'guide rules', 'time alignment', 'glossary', 'vehicle', 'component'];
 const originalPath = join(homedir(), '.dsh/profiles/desktop/node_modules/@local/chery-qa/index.js');
-const skillRoot = resolve('environment/tools/ota-log-triage-1.3.2');
+const skillRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../environment/tools/ota-log-triage-1.3.2');
 const exists = path => access(path).then(() => true, () => false);
 const report = `# OTA 日志分析报告
 
