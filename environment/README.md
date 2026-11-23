@@ -1,5 +1,11 @@
 # 本机环境
 
+## v0.5.1 最新入口
+
+使用项目Python3.12与Node24.19（将environment/tools/node-v24.19.0-win-x64前置本次PATH），统一start.ps1恢复服务及授权监听。用户于2026-11-23恢复QA测试，需实查公司网络和标准SSO；下方暂停/试点额度等说明为历史。QA当前不设累计、模型、读取及人为总时长额度，DSH可信配置reasoningEffort必须max，认证仍由原生DSH管理。三执行器的安装/账号/真实数据不随Git复制。
+
+每轮交付用`environment/scripts/deliver-windows.ps1`；旧build-portable入口兼容转发。输出为版本目录、版本ZIP及SHA，核验包和隔离原生启动；`-VerifyOnly`复查已有包而不覆盖。完整结果见最新HANDOFF/state及outputs验收记录，不从历史运行快照推断当前在线。
+
 ## v0.4.0 本检出
 
 当前源码v0.4.0，检出D:/Work/codexproj/agent-IM。本机Python3.12.16与隔离Node24.19.0，最终26 Python/409桥接/9桌面/16模拟启动及语法通过。运行前按本文件下方方式将environment/tools/node-v24.19.0-win-x64前置到本次进程PATH。默认start.ps1确认本机服务及当前DPAPI绑定的QA日志Super-agent；真实配置/数据/认证不随Git。

@@ -76,3 +76,9 @@ DSH任务MCP只暴露load_skill/list_inputs/read_evidence/run_parser四个日志
 superAgent.business由可信配置登记Worker/Agent/资源，BusinessRouter输出eventId/action/taskId/workerId/agentId/summary/instructions七字段且逐项核对。路径、命令、权限及MCP凭据不允许来自路由结果。SuperBusiness使用B任务与共享version3账本的business.nextTask，保留输入revision、已消费输入、原native session和每次结果；不进入旧代码交付队列。
 
 三执行器统一run({taskId,cwd,prompt,sessionId?,skillPaths?,mcpServers?},{signal})→{backend,sessionId,text,completed,usage}，各自验证原生终态与精确session。providerRequests和modelTurns按原生实得口径分开，不猜用量。正常结果只生成服务拥有的完整报告.txt，Outbox kind=business/category=artifact沿原IM鉴权上传下载；原IM接口不变。共享文件上传器只接受固定受控报告名/路径/hash/小于100MB，task/body/revision再次核验。
+
+## v0.5.1 执行控制补充
+
+HTTP消息及附件API不变。可信DSH modelSelection在业务执行、业务Router、QA及回归统一reasoningEffort=max；显式旧off/high需管理员更新配置，不静默回退。QA plugin-request保留原maxTokens配方值，plugin-receipt另记录recipeMaxTokens、reasoningEffort、原生maxTokens/maxTokensSource、system/user/report哈希和原生终态；不产生第二个改写报告的模型请求。
+
+Pi原生session-dir通过registerPiSessionDirectory登记到原home/sessions；resume映射仍指向原文件。Hermes/title通过原生session/prompt控制命令完成，单独记录session-title，不计模型业务prompt。原生来源不修改。Windows打包入口deliver-windows.ps1支持-VerifyOnly复核已有版本，不覆盖已存在产物。

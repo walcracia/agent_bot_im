@@ -1,5 +1,11 @@
 # agent-IM 恢复与接续
 
+## v0.5.1 最新覆盖
+
+先读DELIVERY-v0.5.1及最新HANDOFF/state。2026-11-23用户恢复日志测试，覆盖下方“等VPN不恢复”；启动前仍实查授权读取，不能凭匿名附件可下载判断登录。DSH业务/Router/QA/显式回归统一max，覆盖下方旧首档/off；原插件材料和提示不改，原生模型输出容量记录在receipt，不设新分析额度。
+
+每轮验证完成都执行`environment/scripts/deliver-windows.ps1`生成当前版本便携目录/ZIP/SHA并实际启动验收，源码tag及对应Release均需远端确认。客户端包不包含服务器或DSH/Pi/Hermes。Pi/Hermes原生记录的登记/命名及桌面筛选见本轮设计；不能复制或伪造会话历史。
+
 ## v0.5.0 通用业务入口
 
 先读WORKER-ROUTING-v0.5.0、最新HANDOFF和state。superAgent.business启用只读AI按可信登记能力选择Worker/DSH/Hermes/Pi；B任务与旧代码/QA的T任务分开，独立目录和原生会话，Outbox回单条原结果+TXT。本机已配置三执行器与“智能协作验收”授权聊天，命令、账号、数据目录和技能只在忽略配置；新机器参考config.business.example.json按实际安装/认证设置，不能clone即假定可用。

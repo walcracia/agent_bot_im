@@ -27,6 +27,10 @@ rl.on('line',async line=>{const m=JSON.parse(line);
  if(m.method==='session/load'){resumed=true;return answer(m.id,{sessionId:mode==='wrong-resume'?'different-native-session':id});}
  if(m.method==='session/set_model')return answer(m.id,{});
  if(m.method==='session/prompt'){
+  if(m.params.prompt?.[0]?.text?.startsWith('/title ')){
+   await writeFile(join(process.cwd(),'native-title-command.json'),JSON.stringify(m.params));
+   return answer(m.id,{stopReason:'end_turn'});
+  }
   active=m;await writeFile(join(process.cwd(),'prompt-admitted'),String(m.id));
   if(mode==='exit-after-admit'){process.exit(0);return;}
   if(mode==='wait-cancel')return;
@@ -68,6 +72,12 @@ test('native prompt terminal, final assistant text, usage and viewer exit are re
  const run=(await readdir(f.options.runsPath)).find(x=>x.startsWith('TDEMO-'));
  const receipt=JSON.parse(await readFile(join(f.options.runsPath,run,'result.json')));assert.equal(receipt.nativeTerminal,'end_turn');assert.equal(receipt.viewerExit.code,0);
  const log=await readFile(join(f.options.runsPath,run,'protocol.jsonl'),'utf8');assert.match(log,/"mcpServers":\[\{"name":"demo"/);
+ const title=JSON.parse(await readFile(join(f.cwd,'native-title-command.json'),'utf8'));
+ assert.equal(title.prompt[0].text,'/title 同频 · TDEMO');
+ assert.equal(title.sessionId,result.sessionId);
+ const named=JSON.parse(await readFile(join(f.options.runsPath,run,'session-title.json'),'utf8'));
+ assert.equal(named.modelPromptsSent,0);
+ assert.ok(log.indexOf('/title 同频 · TDEMO')<log.indexOf('请读fixture'));
 });
 
 test('resume uses only exact native ID bound to the original task and workspace',async t=>{

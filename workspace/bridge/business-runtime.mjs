@@ -8,6 +8,7 @@ import { triageModelEnvironment } from './triage-model.mjs';
 import { DshExecutor } from './dsh-executor.mjs';
 import { HermesExecutor } from './hermes-executor.mjs';
 import { PiExecutor } from './pi-executor.mjs';
+import { dshModelPatch, dshModelSelection } from './dsh-model-selection.mjs';
 
 const POLICY = fileURLToPath(new URL('./business-route-policy.mjs', import.meta.url));
 const FACTORIES = { dsh: DshExecutor, hermes: HermesExecutor, pi: PiExecutor };
@@ -24,11 +25,8 @@ export async function createBusinessRuntime(options, harness) {
   }
   const registry = new WorkerRegistry({ workers: options.workers, agents });
   const patchPath = join(options.root, 'router.patch.yml');
-  const selection = options.routerModel;
-  if (selection && (!/^[A-Za-z0-9_.-]+$/u.test(selection.provider ?? '') || !/^[A-Za-z0-9_./:-]+$/u.test(selection.model ?? '')
-    || selection.reasoningEffort !== undefined && !/^[A-Za-z0-9_.-]+$/u.test(selection.reasoningEffort))) throw new Error('Invalid trusted Router model.');
-  const model = selection ? '- id: agent-default-model\n  config:\n    provider: ' + JSON.stringify(selection.provider) + '\n    model: ' + JSON.stringify(selection.model)
-    + (selection.reasoningEffort ? '\n    reasoningEffort: ' + JSON.stringify(selection.reasoningEffort) : '') + '\n' : '';
+  const selection = dshModelSelection(options.routerModel ?? harness?.modelSelection);
+  const model = dshModelPatch(selection);
   await writeFile(patchPath, model + '- insert:\n    - id: teamplay-business-router-readonly\n      name: ' + JSON.stringify(pathToFileURL(POLICY).href) + '\n', { mode: 0o600 });
   const classifier = new InstalledHeadlessExecutor({ ...harness, cwd: options.root, runsPath: join(options.root, 'router-runs'),
     sessionMapPath: join(options.root, 'router-sessions.json'), env: triageModelEnvironment(harness?.env),

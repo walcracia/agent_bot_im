@@ -13,6 +13,7 @@ const installedTest = (name, callback) => test(name, { skip: process.platform !=
 // against a script that emits the documented native JSONL outcomes.
 const fakeCli = String.raw`
 if ($args -contains '--version') { $global:LASTEXITCODE = 0; Write-Output 'fake-dsh 0.2.2-test'; return }
+[IO.File]::WriteAllText((Join-Path (Get-Location).Path 'native-args.json'), (ConvertTo-Json -InputObject @($args) -Compress))
 $prompt = $input | Out-String
 $id = 'session-new'
 $index = [Array]::IndexOf($args, '--session-id')
@@ -77,15 +78,41 @@ function assertFinishedMetadata(metadata, status) {
   assert.ok(Date.parse(metadata.finishedUtc) >= Date.parse(metadata.startedUtc));
 }
 
-installedTest('installed version handshake is zero-model and classifier permissions are always read-only', async t => {
-  const { executor, options } = await fixture(t, { permissionMode: 'danger-full-access' });
+installedTest('installed version handshake is zero-model and classifiers default to max with read-only permissions', async t => {
+  const { executor, options, cwd } = await fixture(t, { permissionMode: 'danger-full-access' });
   const info = await executor.handshake();
   assert.equal(info.cliVersion, 'fake-dsh 0.2.2-test');
   assert.equal(info.modelRequests, 0);
+  const versionDirectory = (await readdir(options.runsPath)).find(name => name.startsWith('version-'));
+  await assert.rejects(readFile(join(options.runsPath, versionDirectory, 'model.patch.yml')), { code: 'ENOENT' });
   const answer = JSON.parse(await executor.classify('Classify the synthetic discussion.'));
   assert.equal(answer.permission, 'read-only');
   assert.equal(answer.tokenSeen, false);
+  const args = JSON.parse(await readFile(join(cwd, 'native-args.json'), 'utf8'));
+  const modelPatch = args[args.indexOf('--patch') + 1];
+  assert.equal(await readFile(modelPatch, 'utf8'), '- id: agent-default-model\n  config:\n    reasoningEffort: "max"\n');
   await assert.rejects(readFile(options.sessionMapPath), { code: 'ENOENT' });
+});
+
+installedTest('installed model controls are task-owned and wrapper overrides retain their exact later order', async t => {
+  const selection = { provider: 'base-provider', model: 'base-model', reasoningEffort: 'max' };
+  const { executor, options, cwd, directory } = await fixture(t, { modelSelection: selection });
+  const wrapperPaths = [join(directory, 'wrapper-model.patch.yml'), join(directory, 'wrapper-policy.patch.yml')];
+  const wrapperTexts = ['- id: agent-default-model\n  config:\n    provider: wrapper-provider\n    model: wrapper-model\n    reasoningEffort: max\n', '- id: trusted-fixture-policy\n  disabled: false\n'];
+  await Promise.all(wrapperPaths.map((path, index) => writeFile(path, wrapperTexts[index])));
+  options.extraPatches = wrapperPaths;
+  const session = await executor.session('team-relay-model-controls', false);
+  await session.run([{ type: 'text', text: 'Synthetic legacy code worker.' }]);
+  const args = JSON.parse(await readFile(join(cwd, 'native-args.json'), 'utf8'));
+  const patches = args.flatMap((value, index) => value === '--patch' ? [args[index + 1]] : []);
+  assert.equal(patches.length, 3);
+  assert.ok(patches[0].startsWith(executor.lastInvocation.runDirectory));
+  assert.deepEqual(patches.slice(1), wrapperPaths);
+  const patch = await readFile(patches[0], 'utf8');
+  assert.match(patch, /provider: "base-provider"/u); assert.match(patch, /model: "base-model"/u);
+  assert.match(patch, /reasoningEffort: "max"/u); assert.doesNotMatch(patch, /maxTokens/u);
+  assert.deepEqual(await Promise.all(wrapperPaths.map(path => readFile(path, 'utf8'))), wrapperTexts);
+  assert.deepEqual(options.modelSelection, selection);
 });
 
 installedTest('worker preserves literal task text and native session mapping across new executor instances', async t => {

@@ -256,6 +256,16 @@ export class HermesExecutor {
       }
       if (this.model) await request('session/set_model', { sessionId: nativeSession, modelId: this.provider ? this.provider + ':' + this.model : this.model }, true);
       signal.throwIfAborted();
+      {
+        // Hermes handles /title through its native rename mutation, before the
+        // model admission path. Keep the real acp/tool provenance: Desktop's
+        // All/Automation history lists it even though Recents filters it out.
+        const title = `同频 · ${taskId}`;
+        const renamed = await request('session/prompt', { sessionId: nativeSession, prompt: [{ type: 'text', text: `/title ${title}` }] }, true);
+        if (renamed?.stopReason !== 'end_turn') throw new Error('Hermes did not complete the native session title command.');
+        await writeFile(join(runDirectory, 'session-title.json'), JSON.stringify({ sessionId: nativeSession, title, control: '/title', modelPromptsSent: 0 }), { flag: 'wx', mode: 0o600 });
+      }
+      signal.throwIfAborted();
       promptStarted = true;
       const terminal = await request('session/prompt', { sessionId: nativeSession, prompt: [{ type: 'text', text: prompt }] });
       terminalSeen = true; terminalReason = terminal?.stopReason; terminalUsage = terminal?.usage;

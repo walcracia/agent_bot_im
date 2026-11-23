@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join, dirname } from 'node:path';
 import { normalizeBusinessConfig } from '../business-config.mjs';
@@ -23,6 +23,8 @@ test('registered model choices cannot introduce commands and executable paths st
   const runtime = await createBusinessRuntime(options, {});
   try {
     assert.equal(runtime.executors.size, 1);
+    const patch = await readFile(join(options.root, 'router.patch.yml'), 'utf8');
+    assert.match(patch, /reasoningEffort: "max"/u); assert.doesNotMatch(patch, /maxTokens/u);
     const snapshot = runtime.registry.snapshot(); assert.deepEqual(snapshot.workers[0].availableAgents, ['pi']);
     assert.equal(JSON.stringify(snapshot).includes(command), false);
     assert.equal(JSON.stringify(snapshot).includes('dataHome'), false);

@@ -102,3 +102,9 @@ verify-desktop-asar.mjs检查16条目/12源码与资产字节；verify-desktop-z
 PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907；在该merge的独立checkout构建并发布https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.1，新annotated v0.3.1与两资产远端digest已核验。ZIP 74文件/162326214字节，SHA256 5f350874756a1bcdf0011b4d9034c27fd48e5efc069784c4abeee624f6438aa8，CRC/每文件hash、ASAR9条目/6源文件字节、PE/manifest 0.3.1均通过。发布初次创建draft后即时API尚未确认，随后只读确认既有owned draft，原账本继续上传；没有重建或重复创建Release。
 
 此前18200未在线且账本0活动任务，本轮默认start恢复已有绑定，当前IM v0.3.1、DSH listening/ready及独立Watchdog身份实查通过；没有重启/中断真实worker。只更新本项目失效代理引用到当前系统已有回环端口，不改全局网络。新App可用原账号连接http://127.0.0.1:18200。实际运行须接续时重查，不把Git当成账号/服务/二进制恢复。
+
+## 2026-11-23 · v0.5.1
+
+完整verify：26 Python、9 desktop、485 bridge、16模拟启动和语法通过。补Installed基础max后相关31/31通过；最终bridge486中479通过/7启动凭据因测试命令未前置Node24子PATH失败，修正环境后该文件16/16通过，原失败完整保留，产品未为此改动。最终源486项由完整运行和对应复验覆盖，不将失败的一次运行说成通过。
+
+真实QA：标准SSO/授权读取、原检查点扫描、一次聊天触发、原插件79日志/44片段/60关键块/744行、原system/user逐字一致、单DSH max/native终态、单条原结论+TXT及成员认证下载/hash通过。4 Pi/5 Hermes原生历史注册/命名零模型且非标题历史/用量未变。Windows0.5.1 ASAR/PE/ZIP全部hash及真实隔离Electron8项通过。正常重启与复用、源ready及完成任务无重放通过。命令、范围和私有证据位置见outputs/VERIFICATION-v0.5.1，不把模拟协议当原生调用。

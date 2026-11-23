@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { DshExecutor } from '../../workspace/bridge/dsh-executor.mjs';
 import { HermesExecutor } from '../../workspace/bridge/hermes-executor.mjs';
 import { PiExecutor } from '../../workspace/bridge/pi-executor.mjs';
+import { dshModelSelection } from '../../workspace/bridge/dsh-model-selection.mjs';
 
 const repo = await realpath(resolve(dirname(fileURLToPath(import.meta.url)), '../..'));
 const toolSource = fileURLToPath(new URL('./agent-review-mcp.mjs', import.meta.url));
@@ -90,11 +91,10 @@ async function configuredAgents() {
       picked[field] = selected[field];
     }
     if (backend === 'dsh') {
-      const effort = raw.harness?.modelSelection?.reasoningEffort;
-      if (effort !== undefined) {
-        if (typeof effort !== 'string' || !/^[A-Za-z0-9_.-]+$/u.test(effort)) throw Error('Invalid trusted reasoning effort.');
-        picked.harness = { modelSelection: { reasoningEffort: effort } };
-      }
+      const selection = dshModelSelection({ ...raw.harness?.modelSelection,
+        ...(picked.provider ? { provider: picked.provider } : {}), ...(picked.model ? { model: picked.model } : {}),
+        ...(selected.reasoningEffort === undefined ? {} : { reasoningEffort: selected.reasoningEffort }) });
+      Object.assign(picked, selection);
     }
     result[backend] = picked;
   }

@@ -10,7 +10,7 @@ Worker资源通过workerResources[workerId].agents[agentId]传skillPaths/mcpServ
 
 ## QA当前入口：v0.4.2
 
-按[QA-MONITORING-v0.4.2](../docs/QA-MONITORING-v0.4.2.md)配置授权项目/聊天。旧totalModelCalls、dailyModelCalls、executionLimits和分析超时字段不再限制当前QA执行，不需要补额度；保留历史计数以便追溯。生产采用完整原DSH插件配方与直接模型调用，聊天一条原结论+完整TXT，用量在下载里；JSON内部保留，原行/hash仍核验。用户已于2026-11-21暂停日志分析等公司VPN，本机triage关闭，新原配方真实模型验收待恢复；不要从旧四工具完成记录推断等价。通用三执行器接入另见WORKER-ROUTING-v0.5.0；原代码worker超时约定不在QA更改范围。
+按[QA-MONITORING-v0.4.2](../docs/QA-MONITORING-v0.4.2.md)配置授权项目/聊天。旧totalModelCalls、dailyModelCalls、executionLimits和分析超时字段不再限制当前QA执行，不需要补额度；保留历史计数以便追溯。生产采用完整原DSH插件配方与直接模型调用，聊天一条原结论+完整TXT，用量在下载里；JSON内部保留，原行/hash仍核验。2026-11-23用户允许恢复测试，已完成标准SSO和授权读取，沿原检查点恢复已绑定项目；DSH统一max，覆盖旧首档/off，原配方材料及system/user不改，输出空间取原生目录值并留审计。不要从旧四工具完成记录推断等价，本轮实际验收见DELIVERY-v0.5.1和最新HANDOFF。通用三执行器接入另见WORKER-ROUTING-v0.5.0；原代码worker超时约定不在QA更改范围。
 
 ## 当前入口：v0.3.2 同频TeamPlay
 

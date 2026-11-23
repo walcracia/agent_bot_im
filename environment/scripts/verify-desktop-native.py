@@ -15,7 +15,7 @@ import playwright
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def run(output: Path, executable: Path):
+def run(output: Path, executable: Path, node: Path):
     output.mkdir(parents=True, exist_ok=True)
     spec = importlib.util.spec_from_file_location('native_server_fixture', ROOT / 'environment/scripts/verify-ui-v0.1.2.py')
     runner = importlib.util.module_from_spec(spec)
@@ -40,7 +40,6 @@ def run(output: Path, executable: Path):
                   'playwright': str(Path(playwright.__file__).parent / 'driver/package/index.mjs')}
         private_config = Path(temp) / 'fixture.json'
         private_config.write_text(json.dumps(config), encoding='utf-8')
-        node = ROOT / 'environment/tools/node-v24.19.0-win-x64/node.exe'
         # The child needs only fixture credentials; no model/IM production environment is required.
         result = subprocess.run([str(node), str(ROOT / 'environment/scripts/verify-desktop-native.mjs'), str(private_config)], cwd=ROOT, timeout=180)
         if result.returncode:
@@ -48,8 +47,10 @@ def run(output: Path, executable: Path):
 
 
 if __name__ == '__main__':
+    version = json.loads((ROOT / 'workspace/package.json').read_text(encoding='utf-8'))['version']
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output-dir', type=Path, default=ROOT / 'environment/verification/desktop-native-v0.3.3')
-    parser.add_argument('--exe', type=Path, default=ROOT / 'outputs/desktop-v0.3.3/TeamRelay-win32-x64/TeamRelay.exe')
+    parser.add_argument('--output-dir', type=Path, default=ROOT / f'environment/verification/desktop-native-v{version}')
+    parser.add_argument('--exe', type=Path, default=ROOT / f'outputs/desktop-v{version}/TeamRelay-win32-x64/TeamRelay.exe')
+    parser.add_argument('--node', type=Path, default=ROOT / 'environment/tools/node-v24.19.0-win-x64/node.exe')
     args = parser.parse_args()
-    run(args.output_dir.resolve(), args.exe.resolve())
+    run(args.output_dir.resolve(), args.exe.resolve(), args.node.resolve(strict=True))

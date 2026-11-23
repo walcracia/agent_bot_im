@@ -8,6 +8,7 @@ import { SKILL_TOOL_NAMES } from './triage-skill-plugin.mjs';
 import { collectBudgetPartial } from './triage-partial.mjs';
 import { preparePluginAnalysis, mapPluginReport } from './triage-plugin-recipe.mjs';
 import { redact } from './triage-report.mjs';
+import { dshModelPatch, dshModelSelection } from './dsh-model-selection.mjs';
 
 const POLICY = fileURLToPath(new URL('./triage-skill-plugin.mjs', import.meta.url));
 const TOOLS = fileURLToPath(new URL('./triage-tools.mjs', import.meta.url));
@@ -116,9 +117,7 @@ export class DshSkillRunner extends TriageModel {
       || ![5000, 6000, 8000].includes(prepared.maxTokens) || prepared.proof?.skillLoaded !== true
       || prepared.proof?.parserRuns !== 1 || !Array.isArray(prepared.evidence) || !prepared.evidence.length)
       throw new Error('Original plugin preparation proof is incomplete.');
-    const selection = this.harness.modelSelection;
-    if (selection && (!/^[A-Za-z0-9_.-]{1,80}$/u.test(selection.provider ?? '') || !/^[A-Za-z0-9_./:-]{1,120}$/u.test(selection.model ?? '')))
-      throw new Error('Invalid trusted DSH model selection.');
+    const selection = dshModelSelection(this.harness.modelSelection);
     const requestPath = join(directory, 'plugin-request.json'), receiptPath = join(directory, 'plugin-receipt.json');
     const sourceReportPath = join(directory, 'plugin-report.md'), patchPath = join(directory, 'plugin-direct.patch.yml');
     await writeFile(join(directory, 'plugin-preparation.json'), JSON.stringify(prepared), { flag: 'wx', mode: 0o600 });
@@ -127,8 +126,7 @@ export class DshSkillRunner extends TriageModel {
       files: request.inputFiles, recipe: this.recipe }), { flag: 'wx', mode: 0o600 });
     await writeFile(requestPath, JSON.stringify({ recipe: this.recipe, taskId: request.taskId, inputRevision: request.inputRevision,
       system: prepared.system, user: prepared.user, maxTokens: prepared.maxTokens, ...(selection ? { modelSelection: selection } : {}) }), { flag: 'wx', mode: 0o600 });
-    const modelPatch = selection ? '- id: agent-default-model\n  config:\n    provider: ' + JSON.stringify(selection.provider)
-      + '\n    model: ' + JSON.stringify(selection.model) + '\n' : '';
+    const modelPatch = dshModelPatch(selection);
     const patch = ['- insert:', '    - id: teamplay-chery-qa-plugin-direct', '      name: ' + JSON.stringify(pathToFileURL(DIRECT).href), '      config:',
       ...Object.entries({ requestPath, receiptPath, sourceReportPath }).map(([key, value]) => '        ' + key + ': ' + JSON.stringify(value.replaceAll('\\', '/')))].join('\n') + '\n';
     await writeFile(patchPath, modelPatch + patch, { flag: 'wx', mode: 0o600 });
@@ -155,7 +153,9 @@ export class DshSkillRunner extends TriageModel {
         || receipt.guard !== true || receipt.tools !== 0 || receipt.source !== 'chery-qa' || receipt.requests !== 1 || receipt.completed !== true
         || receipt.systemSha256 !== digest(prepared.system) || receipt.userSha256 !== digest(prepared.user)
         || receipt.sourceReportSha256 !== digest(sourceReport) || sourceReport !== String(nativeText).trim()
-        || receipt.maxTokens !== prepared.maxTokens || selection && (receipt.provider !== selection.provider || receipt.model !== selection.model))
+        || receipt.recipeMaxTokens !== prepared.maxTokens || receipt.maxTokensSource !== 'native-model-default'
+        || !Number.isSafeInteger(receipt.maxTokens) || receipt.maxTokens < 1 || receipt.reasoningEffort !== selection.reasoningEffort
+        || selection.provider && (receipt.provider !== selection.provider || receipt.model !== selection.model))
         throw new Error('Direct plugin receipts do not match the original request/report.');
       sourceReport = redact(sourceReport).trim();
       result = mapPluginReport(sourceReport, prepared.evidence);
@@ -198,13 +198,8 @@ export class DshSkillRunner extends TriageModel {
       '    - id: teamplay-triage-skill-policy', '      name: ' + JSON.stringify(pathToFileURL(POLICY).href),
       '      config:', '        receiptPath: ' + JSON.stringify(providerProof.replaceAll('\\', '/')),
     ].join('\n') + '\n';
-    const selection = this.harness.modelSelection;
-    if (selection && (!/^[A-Za-z0-9_.-]{1,80}$/u.test(selection.provider ?? '') || !/^[A-Za-z0-9_./:-]{1,120}$/u.test(selection.model ?? '')
-      || selection.reasoningEffort !== undefined && !/^[A-Za-z0-9_.-]{1,80}$/u.test(selection.reasoningEffort)))
-      throw new Error('Invalid trusted DSH model selection.');
-    const modelPatch = selection ? '- id: agent-default-model\n  config:\n    provider: ' + JSON.stringify(selection.provider)
-      + '\n    model: ' + JSON.stringify(selection.model) + '\n'
-      + (selection.reasoningEffort === undefined ? '' : '    reasoningEffort: ' + JSON.stringify(selection.reasoningEffort) + '\n') : '';
+    const selection = dshModelSelection(this.harness.modelSelection);
+    const modelPatch = dshModelPatch(selection);
     await writeFile(patchPath, modelPatch + patch, { flag: 'wx', mode: 0o600 });
     const options = { ...this.harness, cwd: directory, runsPath: join(directory, 'runs'), sessionMapPath: join(directory, 'sessions.json'),
       auth: 'stored', permissionMode: 'read-only', env: triageModelEnvironment(this.harness?.env), extraPatches: [patchPath],

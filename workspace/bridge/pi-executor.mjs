@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { appendFile, lstat, mkdir, readFile, realpath, unlink, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { appendFile, lstat, mkdir, readFile, realpath, symlink, unlink, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { triageModelEnvironment } from './triage-model.mjs';
 
@@ -19,6 +19,26 @@ const elapsed = (promise, milliseconds, message) => {
 const tokenDifference = (before, after) => Object.fromEntries(Object.entries({ inputTokens: 'input', outputTokens: 'output', cacheReadTokens: 'cacheRead', cacheWriteTokens: 'cacheWrite', totalTokens: 'total' })
   .filter(([, source]) => Number.isFinite(after?.tokens?.[source]) && after.tokens[source] >= (before?.tokens?.[source] ?? 0))
   .map(([key, source]) => [key, after.tokens[source] - (before?.tokens?.[source] ?? 0)]));
+
+/** Pi Desktop scans dataHome/sessions/<directory>/*.jsonl, including directory
+ * links. Register the original task directory, never a copied transcript or a
+ * second session. The task-owned file and resume mapping stay authoritative. */
+export async function registerPiSessionDirectory({ dataHome, nativeRoot, taskId }) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/u.test(taskId ?? '')) throw failure('Invalid Pi task ID for session registration.');
+  nativeRoot = await realpath(absolute(nativeRoot));
+  if (!(await lstat(nativeRoot)).isDirectory()) throw failure('Pi native session directory is missing.');
+  const catalog = join(absolute(dataHome), 'sessions');
+  await mkdir(catalog, { recursive: true, mode: 0o700 });
+  const catalogInfo = await lstat(catalog);
+  if (!catalogInfo.isDirectory() || catalogInfo.isSymbolicLink()) throw failure('Pi session catalog must be a regular directory.');
+  const fingerprint = createHash('sha256').update(process.platform === 'win32' ? nativeRoot.toLowerCase() : nativeRoot).digest('hex').slice(0, 16);
+  const directory = join(catalog, `--TeamPlay-${taskId}-${fingerprint}--`);
+  try { await symlink(nativeRoot, directory, process.platform === 'win32' ? 'junction' : 'dir'); }
+  catch (cause) { if (cause.code !== 'EEXIST') throw cause; }
+  if (!(await lstat(directory)).isSymbolicLink() || !samePath(await realpath(directory), nativeRoot))
+    throw failure('Pi session registration conflicts with an existing directory.');
+  return directory;
+}
 
 /** A task owns this RPC child and exact native session; no Desktop/private HTTP API. */
 export class PiExecutor {
@@ -51,9 +71,10 @@ export class PiExecutor {
       const header = JSON.parse((await readFile(nativeFile, 'utf8')).split('\n')[0]);
       if (header.type !== 'session' || header.id !== sessionId || !samePath(await realpath(header.cwd), cwd)) throw failure('Pi native session identity changed.');
     }
+    await registerPiSessionDirectory({ dataHome: this.dataHome, nativeRoot, taskId });
     for (const path of skillPaths) if (!(await lstat(absolute(path))).isFile() && !(await lstat(path)).isDirectory()) throw failure('Pi skill path is missing.');
     const cleanupMcp = await this.prepareMcp(cwd, mcpServers);
-    const args = ['--offline', '--mode', 'rpc', '--session-dir', nativeRoot, '--no-extensions', '--no-skills', '--no-context-files', '--no-prompt-templates'];
+    const args = ['--offline', '--mode', 'rpc', '--session-dir', nativeRoot, '--name', `同频 · ${taskId}`, '--no-extensions', '--no-skills', '--no-context-files', '--no-prompt-templates'];
     args.push(...(restoring ? ['--session', nativeFile] : ['--session-id', sessionId]));
     args.push(...(mcpServers ? ['-e', 'builtin:mcp', '--approve'] : ['--no-mcp', '--no-approve']));
     for (const path of skillPaths) args.push('--skill', absolute(path));

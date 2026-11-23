@@ -2,7 +2,9 @@
 
 小团队私有聊天工具：Windows 客户端，支持私聊、群聊、文字、图片、音频、视频和文件。每个附件严格小于 **100,000,000 字节**。团队可以在授权群里讨论需求，让 DeepSeek Harness（DSH）在指定代码项目中执行、测试，再把结果送回聊天与 GitHub。
 
-当前源码版本 **v0.5.0**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天；QA日志按用户要求暂停等待VPN。Windows v0.3.3 客户端继续兼容，下载见 [v0.3.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.3.3)；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+当前源码版本 **v0.5.1**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天。本轮恢复QA日志测试，DSH统一使用DeepSeek `max` 思考；每轮完成都生成并验证Windows便携包。设计和本轮验收见 [v0.5.1设计](workspace/docs/DELIVERY-v0.5.1.md)，交付状态以最新HANDOFF/state为准；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+
+Windows包：[v0.5.1 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.1)。完整解压后运行`TeamRelay-win32-x64/TeamRelay.exe`；包只含客户端，后台仍用仓库的`environment/scripts/start.ps1`。构建和验收见[v0.5.1报告](outputs/VERIFICATION-v0.5.1.md)。
 
 ## 产品定位：统一业务入口与任务路由中心
 
@@ -52,6 +54,10 @@ flowchart LR
 
 扩展与恢复见[通用路由设计](workspace/docs/WORKER-ROUTING-v0.5.0.md)。本机配置的superAgent.business登记workers/agents/workerResources；能力描述和可用候选参与AI选择，命令、MCP凭据和资源映射不进入Router提示。三Agent原生回归、失败与修正见[v0.5.0验收报告](outputs/VERIFICATION-v0.5.0.md)。
 
+DSH的业务执行、业务路由、日志调用及显式回归统一要求`reasoningEffort=max`，不支持时明确报错，不静默降档。日志原插件取证和system/user保持原样；思考与正文使用原生模型目录的输出容量，旧配方的输出值另留审计。没有恢复分析次数或阅读额度。
+
+Pi会话通过原生共享home的`sessions`登记任务目录，保留原JSONL和会话ID；任务命名为“同频 · 任务ID”。Pi桌面在“项目”搜索“同频”；Hermes用Ctrl+K搜索“同频”，或在“会话→全部”查找。Hermes默认侧栏隐藏tool/acp，只有tool来源会列入“自动化”，来源不被伪装成人工聊天。原生账号和会话均在本机，不随Git或Windows包分发。
+
 ## Windows 托盘与新消息
 
 最小化仍留在任务栏；关闭窗口后收到托盘，继续接收消息。点击托盘图标回到聊天，右键可“打开同频TeamPlay”或“退出”。后台新消息让托盘未读标记交替闪动，并请求Windows任务栏闪烁；回到窗口停止闪烁，其他聊天的未读继续保留。首次登录历史未读、自发及重复消息不重复提醒。实际图标位置/任务栏动画由Windows控制。
@@ -97,13 +103,13 @@ Trigger身份包含来源、项目、问题、绑定结果群和内容版本。�
 
 本轮最新执行规范见 [QA-MONITORING-v0.4.2](workspace/docs/QA-MONITORING-v0.4.2.md)末节。日志Worker提交完整校验材料，按原DSH插件配方组织分析：完整解包目标、固定skill CLI和相同 `windowArgs`，保留完整 `verdict/findings/suggestions`；按原findings顺序回读上下文，再独立扫描原 `filesUsed` 的关键行。标准 `mid` 档使用原配方的44个证据块、60个关键块、三份技能文档、`compactVerdict` 及原system/user文本。这些是原插件的材料组织方式，不是IM额外施加的会话额度。
 
-执行链路为 **完整原插件配方 → DSH宿主 `llm.prepareCall/stream` 直接调用当前指定模型 → 保存原五段报告**。首档推理参数与原插件一致，不再让“四工具Agent自选少量材料＋八字段JSON提示”替代原插件流程，也不增加第二个模型改写结果。若内部兼容结构仍用八字段，只做原报告标题、段落和真实行引用的确定性映射。原插件的HTTP路由、登录和清理逻辑不移入IM，不修改用户原DSH安装。
+执行链路为 **完整原插件配方 → DSH宿主 `llm.prepareCall/stream` 直接调用当前指定模型 → 保存原五段报告**。本轮按用户最新要求使用`max`思考，覆盖旧插件的首档/off；材料与提示原样保留，不再让“四工具Agent自选少量材料＋八字段JSON提示”替代原插件流程，也不增加第二个模型改写结果。若内部兼容结构仍用八字段，只做原报告标题、段落和真实行引用的确定性映射。原插件的HTTP路由、登录和清理逻辑不移入IM，不修改用户原DSH安装。
 
 默认编号分析保持原插件的空现象输入；QA标题和描述留在来源账本，只有聊天明确补充的“问题说明”才作为现象参数。故障时间可选，参数按原配方处理，不由宿主改写责任方、置信度或主要因果链。材料路径、hash、真实行引用、凭据隔离和当前任务权限继续核验；不把参考截图结论写入代码或提示词。
 
 累计/每日分析数、模型调用、工具阅读次数、累计字符及人为分析总时长不再作为停止条件，用量仅统计。旧额度账本保留作历史与幂等记录；只自动接续确认模型尚未启动、且仅因旧额度暂停的任务，不自动重做其他失败或已取消任务。模型及操作系统的实际能力仍属于运行条件。
 
-**验收状态单独记录。** 新配方的整包CLI及三档system/user逐字对比已通过；此前四工具Agent会话完成、历史`partial`或传输通过，不能证明分析等价。2026-11-21公司QA内网不可达，用户已暂停日志分析等VPN；新原配方真实DSH模型及完整交付尚未验收，本机QA关闭。详见[v0.4.2报告](outputs/VERIFICATION-v0.4.2.md)，最新运行与失败见[HANDOFF](workspace/docs/HANDOFF.md)。
+**验收状态单独记录。** 新配方的整包CLI及三档system/user逐字对比已通过；此前四工具Agent会话完成、历史`partial`或传输通过，不能证明分析等价。2026-11-23用户允许恢复，已重新完成QA登录及授权读取，沿原检查点恢复已绑定项目监听，原插件整包+max真实正向验收已完成：一次实际请求、原提示逐字一致、一条原结论及完整TXT认证下载/hash均通过。历史失败见[v0.4.2报告](outputs/VERIFICATION-v0.4.2.md)，本轮最终结果见[HANDOFF](workspace/docs/HANDOFF.md)。
 
 ### 聊天只展示结论，完整报告下载阅读
 

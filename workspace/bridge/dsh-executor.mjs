@@ -4,6 +4,7 @@ import { lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { InstalledHeadlessExecutor } from './installed-headless.mjs';
 import { triageModelEnvironment } from './triage-model.mjs';
+import { dshModelPatch, dshModelSelection } from './dsh-model-selection.mjs';
 
 const absolute = value => {
   if (typeof value !== 'string' || !isAbsolute(value) || /[\0\r\n]/u.test(value)) throw new Error('DSH paths must be explicit absolute paths.');
@@ -81,13 +82,11 @@ async function observeUsage(invocation, started) {
 
 /** Uniform Worker facade around the existing owned-process/native-session adapter. */
 export class DshExecutor {
-  constructor({ command, dataHome, runsPath, model, provider, harness = {}, executorFactory }) {
+  constructor({ command, dataHome, runsPath, model, provider, reasoningEffort, harness = {}, executorFactory }) {
     this.command = absolute(command); this.runsPath = absolute(runsPath);
     this.dataHome = dataHome === undefined ? undefined : absolute(dataHome);
-    this.selection = { ...harness.modelSelection, ...(model ? { model } : {}), ...(provider ? { provider } : {}) };
-    if (Object.keys(this.selection).length && (!/^[A-Za-z0-9_.-]{1,80}$/u.test(this.selection.provider ?? '')
-      || !/^[A-Za-z0-9_./:-]{1,120}$/u.test(this.selection.model ?? '')
-      || this.selection.reasoningEffort !== undefined && !/^[A-Za-z0-9_.-]{1,80}$/u.test(this.selection.reasoningEffort))) throw new Error('DSH model selection requires an explicit trusted provider and model.');
+    this.selection = dshModelSelection({ ...harness.modelSelection, ...(model ? { model } : {}), ...(provider ? { provider } : {}),
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }) });
     Object.assign(this, { harness, executorFactory }); this.active = new Set();
   }
 
@@ -106,7 +105,7 @@ export class DshExecutor {
     await writeFile(resourcePath, resources, { flag: 'wx', mode: 0o600 }); patches.push(resourcePath);
     if (Object.keys(this.selection).length) {
       const patch = join(taskRoot, `model-${randomUUID()}.patch.yml`);
-      await writeFile(patch, '- id: agent-default-model\n  config:\n' + Object.entries(this.selection).map(([key, value]) => `    ${key}: ${JSON.stringify(value)}\n`).join(''), { flag: 'wx', mode: 0o600 });
+      await writeFile(patch, dshModelPatch(this.selection), { flag: 'wx', mode: 0o600 });
       patches.push(patch);
     }
     const env = triageModelEnvironment(this.harness.env ?? process.env);

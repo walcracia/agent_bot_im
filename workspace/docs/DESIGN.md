@@ -105,3 +105,11 @@ DSH实际接缝为官方 `@deepseek-ai/dsh-sdk-client@0.2.2-rc.1` 的stdio JSON-
 例如QA新Bug由轮询Trigger发现，Router按项目/群绑定派给日志Worker；Worker经QA MCP取材料，调用完整原DSH日志插件配方，聊天只回原结论与完整报告下载。代码任务、数据查询可注册各自Worker，不要求每个任务同时调用多个Agent，也不要求每条普通消息调用模型。
 
 当前QA按typed规则路由，已有代码任务使用分类器；通用AI基于能力描述动态选择任意Worker、跨Worker自动编排仍是后续范围。先完成当前日志链路的原插件等价验收，不把这个产品方向描述成已全部实现。
+
+## v0.5.1 模型控制、原生历史及每轮打包
+
+本轮实施范围先冻结于DELIVERY-v0.5.1。DSH模型控制由共享dsh-model-selection统一max，原生不支持则明确失败；QA仍整包CLI和原system/user，只把思考与正文容量交还原生目录值，旧recipe值独立审计。
+
+Pi原JSONL保留任务目录，向原生共享home/sessions登记独立目录junction并核对目标，桌面同一scanner可枚举；Hermes保留tool/acp来源，原生/title零模型命名，使用全部/自动化列表查看。命名是控制操作，不混入Worker最终文本。已有真实会话补登记先备份、核对原nativeID、非标题历史及用量不变，不复制历史或伪造会话。
+
+每轮Windows便携目录/版本ZIP/SHA由deliver-windows统一生成，旧入口兼容；ASAR白名单/字节、PE、ZIP全文件hash及隔离真实EXE/托盘/报告下载全部通过才可发Release。源码tag和包必须对应版本，包不含服务、Agent、账号或原始材料。

@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, readdir, rm, writeFile } from 'node:fs/promises';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { PiExecutor } from '../pi-executor.mjs';
+import { PiExecutor, registerPiSessionDirectory } from '../pi-executor.mjs';
 
 async function setup(t, settings = {}) {
   const root = await mkdtemp(join(tmpdir(), 'teamplay-pi-'));
@@ -65,9 +65,25 @@ test('Pi waits for native settled/final text, uses JSON stdin and preserves exac
   assert.equal(one.options.env.PI_CODING_AGENT_DIR, f.dataHome); assert.ok(!Object.keys(one.options.env).some(key => /^(QA_|GITHUB_|TEAM_RELAY_)/u.test(key)));
   const mapping = JSON.parse(await readFile(join(f.runsPath, 'T123456', `session-${first.sessionId}.json`), 'utf8'));
   assert.equal(mapping.sessionFile, one.nativeFile);
+  assert.equal(one.args[one.args.indexOf('--name') + 1], '同频 · T123456');
+  const folders = await readdir(join(f.dataHome, 'sessions'));
+  assert.equal(folders.length, 1);
+  const registered = join(f.dataHome, 'sessions', folders[0]);
+  assert.equal(await realpath(registered), await realpath(join(f.runsPath, 'T123456', 'sessions')));
+  assert.equal(await readFile(join(registered, (await readdir(registered))[0]), 'utf8'), await readFile(one.nativeFile, 'utf8'));
   const second = await f.executor.run({ taskId: 'T123456', cwd: f.cwd, prompt: '继续检查', sessionId: first.sessionId });
   assert.equal(second.sessionId, first.sessionId);
   const two = f.invocations[1]; assert.ok(two.args.includes('--session')); assert.ok(!two.args.includes('--continue')); assert.ok(!two.args.includes('--resume'));
+  assert.deepEqual(await readdir(join(f.dataHome, 'sessions')), folders);
+});
+
+test('Pi catalog registration refuses a conflicting directory and leaves original sessions untouched', async t => {
+  const f = await setup(t), nativeRoot = join(f.runsPath, 'original'); await mkdir(nativeRoot, { recursive: true });
+  const original = join(nativeRoot, 'native.jsonl'); await writeFile(original, 'original native history\n');
+  const registration = await registerPiSessionDirectory({ dataHome: f.dataHome, nativeRoot, taskId: 'BCATALOG' });
+  await (await import('node:fs/promises')).unlink(registration); await mkdir(registration);
+  await assert.rejects(registerPiSessionDirectory({ dataHome: f.dataHome, nativeRoot, taskId: 'BCATALOG' }), /conflicts/u);
+  assert.equal(await readFile(original, 'utf8'), 'original native history\n');
 });
 
 test('Pi cancellation clears queued work then aborts and confirms native idle/exit', async t => {

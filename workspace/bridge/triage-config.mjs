@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { dshModelSelection } from './dsh-model-selection.mjs';
 
 function integer(value, fallback, min, max, label) {
   value ??= fallback;
@@ -23,11 +24,7 @@ export function normalizeTriageConfig(value, base, config) {
   for (const field of ['executionLimits', 'workerLimits', 'totalModelCalls', 'dailyModelCalls']) delete result[field];
   result.backend ??= 'dsh';
   if (result.backend !== 'dsh') throw new Error('Only the installed DSH skill adapter is currently configured.');
-  if (result.modelSelection !== undefined && (!result.modelSelection || typeof result.modelSelection !== 'object'
-    || Object.keys(result.modelSelection).some(key => !['model', 'provider', 'reasoningEffort'].includes(key))
-    || !/^[A-Za-z0-9_.-]{1,80}$/u.test(result.modelSelection.provider ?? '')
-    || !/^[A-Za-z0-9_./:-]{1,120}$/u.test(result.modelSelection.model ?? '')
-    || result.modelSelection.reasoningEffort !== undefined && !/^[A-Za-z0-9_.-]{1,80}$/u.test(result.modelSelection.reasoningEffort))) throw new Error('Invalid QA model selection.');
+  result.modelSelection = dshModelSelection(result.modelSelection);
   if (!/^[A-Za-z0-9_.-]{1,80}$/u.test(result.sourceId ?? '')) throw new Error('QA sourceId is required.');
   result.pollMilliseconds = integer(result.pollMilliseconds, 60000, 1000, 3600000, 'poll interval');
   result.maxConcurrent = integer(result.maxConcurrent, 1, 1, 1, 'concurrency');

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 
 const config = JSON.parse(await readFile(process.argv[2], 'utf8'));
 const { _electron } = await import(pathToFileURL(config.playwright).href);
@@ -105,6 +106,32 @@ try {
   await waitFor(async () => !(await native()).minimized, 'second instance restores existing window');
   assert.equal((await native()).windows, 1);
   report.checks.push('A second packaged process with the same profile exits and restores the single original window');
+  // Exercise the actual report card/download UI against a real isolated attachment endpoint.
+  const reportText = '合成验收报告\n结论：资料核对完成。\n此文件不含真实聊天或日志。\n';
+  const form = new FormData(); form.append('file', new Blob([reportText], { type: 'text/plain' }), 'desktop-report.txt');
+  const uploaded = await fetch(config.base + `/api/conversations/${config.groups[0]}/attachments`, {
+    method: 'POST', headers: { Authorization: 'Bearer ' + config.tokens.alice }, body: form,
+    signal: AbortSignal.timeout(15000)
+  });
+  assert.equal(uploaded.ok, true, 'isolated report upload');
+  const attachment = await uploaded.json();
+  const reportMessage = await request(`/api/conversations/${config.groups[0]}/messages`, config.tokens.alice,
+    { text: '合成结论：资料核对完成。', attachment_id: attachment.id, client_id: 'native-report-download' });
+  const downloaded = join(config.output, 'downloaded-report.txt');
+  await application.evaluate(({ BrowserWindow }, destination) => {
+    globalThis.__downloadProbe = { state: 'waiting' };
+    BrowserWindow.getAllWindows()[0].webContents.session.once('will-download', (_event, item) => {
+      item.setSavePath(destination);
+      item.once('done', (_done, state) => { globalThis.__downloadProbe = { state, name: item.getFilename(), bytes: item.getReceivedBytes() }; });
+    });
+  }, downloaded);
+  await page.bringToFront();
+  await page.locator(`[data-message-id="${reportMessage.id}"]`).waitFor();
+  await page.locator(`[data-message-id="${reportMessage.id}"] button[title="下载 desktop-report.txt"]`).click();
+  await waitFor(() => application.evaluate(() => globalThis.__downloadProbe.state === 'completed'), 'native report download completion');
+  assert.equal((await readFile(downloaded)).toString('utf8'), reportText);
+  report.download = { status: 'passed', bytes: Buffer.byteLength(reportText), sha256: createHash('sha256').update(reportText).digest('hex') };
+  report.checks.push('Single conclusion plus TXT report arrives over real IM; packaged download button saves exact attachment bytes');
   await page.bringToFront(); await page.locator('#nav-logout').click();
   await page.waitForSelector('#login-view:not([hidden])');
   assert.equal((await native()).flashes.at(-1), false); assert.equal(report.errors.length, 0);

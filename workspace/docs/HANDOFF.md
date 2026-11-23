@@ -1,5 +1,17 @@
 # 当前接续状态
 
+## 2026-11-23 · v0.5.1 验收完成，待Git及Release回执
+
+最新范围先读DELIVERY-v0.5.1，覆盖旧QA暂停和DSH首档/off。标准SSO由用户完成，实际授权读取及原检查点扫描成功；同一已选问题通过原插件整包解析及原system/user（逐字匹配）完成新版本，一次真实DSH/max、原生completed/exit0、一条原结论+完整TXT及认证下载/hash通过。79日志/44片段/60关键块/744行，约85.4秒；完整私有收据environment/verification/v051/plugin-live-receipt.json。保持无人工分析/阅读额度，未重复模型追逐截图答案。
+
+4 Pi、5 Hermes原历史已零模型登记/命名，原非标题消息、恢复映射及token/API计数不变；Pi实际Desktop HTTP返回4原ID，Hermes官方完整会话/消息读回5原ID。Pi“项目”搜索“同频”；HermesCtrl+K搜索“同频”或“会话→全部”，自动化仅tool。原生备份与凭证environment/verification/v051-session-visibility。
+
+Windows0.5.1便携目录/ZIP/SHA已真实构建验收：ASAR16/12源字节、PE/ZIP74全hash、隔离原生8项及报告点击下载通过；四张两尺寸截图集中看图无需修改。ZIP162325628字节，sha256 d79bed49480a8ab7ce083cbd981f9ebbaa7f53793c72e892472acd7e49b31118。客户端不含后台/三Agent/账号；以后每轮必须运行deliver-windows，不能仅称旧版兼容。
+
+完整verify已26 Python/9 desktop/485 bridge/16模拟启动和语法通过。补核发现旧代码/Watchdog的InstalledHeadless基础路径不读取modelSelection；已最小补自有max配置、wrapper原顺序后置、版本握手零模型不改，相关31/31通过。最终桥接486中479通过/7启动凭据因命令漏前置Node24子PATH失败；纠正环境后对应文件16/16通过，保留原失败，不为此改产品代码。最终源486项覆盖通过，不能把失败的一次全桥接写全绿。主服务正常stop/start/重复start后0.5.1/listener ready、QA ready231检查点、已完成任务无模型重放。基础补丁后也已正常重载监听，0.5.1/ready，不打断任务。
+
+最后待明确47文件清单commit+新annotated v0.5.1+push/远端核对及Release包digest；本节未预称已上传。产品与大包不进源码Git，秘密/业务资料全部留忽略目录；旧A1/A2/OpenCode/OS沙箱等边界不变。
+
 ## 2026-11-21 · v0.5.0 已上传与运行回执
 
 产品源码25037bb60fe7f057cbf4aea35c2b238789968b0e已推main；新annotated v0.5.0对象26a9c3631bbcf9bc9b62dbb4e21bfe83751cd799及peel到该源码由远端ls-remote确认。新源与三Agent回归、真实IM主流程、完整481桥接及文档已交付；未新增Release/EXE，原v0.3.3客户端兼容。QA按用户要求继续暂停，不把v0.4.2原配方的真实模型验收写成完成。

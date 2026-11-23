@@ -31,8 +31,8 @@ test('direct recipe dispatches the original plugin envelope once through prepare
   } };
   const llm = { prepareCall: async (config, signal, configure) => {
     prepared++;
-    assert.equal(config.maxTokens, 6000); assert.equal(config.model, 'selected-model');
-    const controls = configure({ maxTokens: config.maxTokens }, { reasoning: { efforts: [{ id: 'off' }, { id: 'high' }] } });
+    assert.equal(config.maxTokens, undefined); assert.equal(config.model, 'selected-model'); assert.equal(config.reasoningEffort, 'max');
+    const controls = configure({ reasoningEffort: config.reasoningEffort }, { defaultMaxTokens: 256000, reasoning: { efforts: [{ id: 'off' }, { id: 'high' }, { id: 'max' }] } });
     return { config: { ...config, ...controls }, stream: options => callbacks['llm/stream'](options, () => provider.stream(options)) };
   } };
   const ctx = { llm, tools: { guard: guard => guards.push(guard) }, on: (event, callback) => callbacks[event] = callback,
@@ -46,11 +46,13 @@ test('direct recipe dispatches the original plugin envelope once through prepare
   assert.equal(prepared, 1); assert.equal(innerDispatches, 1); assert.equal(outerDispatches, 0);
   assert.equal(observed.system, f.input.system); assert.equal(observed.messages.length, 1);
   assert.deepEqual(observed.messages[0], { role: 'user', content: [{ type: 'text', text: f.input.user }], source: { kind: 'chery-qa' } });
-  assert.equal(observed.reasoningEffort, 'off'); assert.equal(observed.maxTokens, 6000);
+  assert.equal(observed.reasoningEffort, 'max'); assert.equal(observed.maxTokens, 256000);
   assert.equal(observed.tools, undefined); assert.equal(observed.temperature, undefined); assert.equal(observed.topP, undefined);
   assert.equal(chunks[0].text, source); assert.equal(await readFile(f.paths.sourceReportPath, 'utf8'), source);
   const receipt = JSON.parse(await readFile(f.paths.receiptPath, 'utf8'));
   assert.equal(receipt.completed, true); assert.equal(receipt.tools, 0); assert.equal(receipt.requests, 1);
+  assert.equal(receipt.reasoningEffort, 'max'); assert.equal(receipt.maxTokens, 256000);
+  assert.equal(receipt.recipeMaxTokens, 6000); assert.equal(receipt.maxTokensSource, 'native-model-default');
   assert.equal(receipt.sourceReportSha256, hash(source)); assert.equal(receipt.systemSha256, hash(f.input.system));
   assert.deepEqual(receipt.usage.tokens, { inputTokens: 10, outputTokens: 20, totalTokens: 30 });
   assert.deepEqual(await collect(callbacks['llm/stream'](outer, next)), chunks);
@@ -61,17 +63,19 @@ test('production runner uses the direct recipe with no Agent tools, preserves so
   const f = await fixture(t);
   const evidence = [{ id: 'E0001', file: 'app.log', line: 1, sha256: 'a'.repeat(64), text: 'Synthetic failure' }];
   let sessions = 0, options;
-  const runner = new DshSkillRunner({ root: f.root, harness: { modelSelection: { provider: 'selected-provider', model: 'selected-model', reasoningEffort: 'high' }, env: { GH_TOKEN: 'secret' } },
+  const runner = new DshSkillRunner({ root: f.root, harness: { modelSelection: { provider: 'selected-provider', model: 'selected-model', reasoningEffort: 'max' }, env: { GH_TOKEN: 'secret' } },
     prepareAnalysis: async () => ({ ...f.input, evidence, proof: { skillLoaded: true, parserRuns: 1, evidenceReadCalls: 2 } }),
     executorFactory: config => ({
       lastInvocation: { completed: true, launcherExited: true, nativeExitCode: 0, finalReason: 'completed', sessionId: 'session-synthetic', processTreeStopped: true },
       classify: async () => {
         sessions++; options = config;
         const input = JSON.parse(await readFile(join(config.cwd, 'plugin-request.json'), 'utf8'));
+        assert.equal(input.modelSelection.reasoningEffort, 'max');
         await writeFile(join(config.cwd, 'plugin-report.md'), source);
         await writeFile(join(config.cwd, 'plugin-receipt.json'), JSON.stringify({ recipe: 'chery-qa-plugin', taskId: 'T000001', inputRevision: 1,
           guard: true, tools: 0, source: 'chery-qa', requests: 1, completed: true, systemSha256: hash(input.system), userSha256: hash(input.user),
-          sourceReportSha256: hash(source), maxTokens: 6000, provider: 'selected-provider', model: 'selected-model', usage: { tokens: { inputTokens: 10 } } }));
+          sourceReportSha256: hash(source), recipeMaxTokens: 6000, maxTokens: 256000, reasoningEffort: 'max', maxTokensSource: 'native-model-default',
+          provider: 'selected-provider', model: 'selected-model', usage: { tokens: { inputTokens: 10 } } }));
         return source;
       }, close: async () => {},
     }) });
@@ -85,6 +89,21 @@ test('production runner uses the direct recipe with no Agent tools, preserves so
   assert.deepEqual(result.evidence, evidence); assert.equal(options.env.GH_TOKEN, undefined);
   assert.equal(options.runTimeoutMs, 0); assert.equal(options.classificationTimeoutMs, 0);
   const patch = await readFile(options.extraPatches[0], 'utf8');
-  assert.match(patch, /triage-plugin-direct/u); assert.doesNotMatch(patch, /dsh-mcp-client|triage-tools|reasoningEffort/u);
+  assert.match(patch, /triage-plugin-direct/u); assert.match(patch, /reasoningEffort: "max"/u);
+  assert.doesNotMatch(patch, /dsh-mcp-client|triage-tools|maxTokens/u);
   await runner.close();
+});
+
+test('direct recipe refuses a model without max support before provider dispatch', async t => {
+  const f = await fixture(t), callbacks = {};
+  let dispatched = 0;
+  const llm = { prepareCall: async (config, signal, configure) => {
+    const controls = configure({}, { defaultMaxTokens: 256000, reasoning: { efforts: [{ id: 'off' }, { id: 'high' }] } });
+    return { config: { ...config, ...controls }, stream: async function* () { dispatched++; } };
+  } };
+  apply({ tools: { guard() {} }, on: (name, callback) => callbacks[name] = callback,
+    get: name => name === 'llm' ? llm : { currentSelection: () => ({ provider: 'selected-provider', model: 'selected-model' }) } }, f.paths);
+  await assert.rejects(collect(callbacks['llm/stream']({}, async function* () {})), /does not support max/u);
+  const receipt = JSON.parse(await readFile(f.paths.receiptPath, 'utf8'));
+  assert.equal(dispatched, 0); assert.equal(receipt.requests, 0); assert.equal(receipt.completed, false);
 });

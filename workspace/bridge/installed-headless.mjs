@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { replaceOwnedFile } from './file-replace.mjs';
+import { dshModelPatch } from './dsh-model-selection.mjs';
 
 const RUNNER = fileURLToPath(new URL('./installed-runner.ps1', import.meta.url));
 const NATIVE_SESSION = /^session-[A-Za-z0-9_-]+$/;
@@ -252,7 +253,15 @@ export class InstalledHeadlessExecutor {
     const timeoutMs = versionOnly ? (this.runTimeoutMs === 0 ? 30000 : Math.min(this.runTimeoutMs, 30000)) : kind === 'classifier' ? this.classificationTimeoutMs : this.runTimeoutMs;
     await mkdir(runDirectory, { mode: 0o700 });
     const taskFile = join(runDirectory, 'task.txt');
-    if (!versionOnly) await writeFile(taskFile, prompt, { flag: 'wx', mode: 0o600 });
+    let extraPatches;
+    if (!versionOnly) {
+      await writeFile(taskFile, prompt, { flag: 'wx', mode: 0o600 });
+      const modelPatchPath = join(runDirectory, 'model.patch.yml');
+      await writeFile(modelPatchPath, dshModelPatch(this.options.modelSelection), { flag: 'wx', mode: 0o600 });
+      // The common base covers older Router/Worker/Watchdog callers too. Keep
+      // task-specific model/resource/policy overrides in their original order.
+      extraPatches = [modelPatchPath, ...(this.options.extraPatches ?? []).map(patch => absolute(patch, 'extraPatch'))];
+    }
     const nativeSessionId = logicalId && Object.hasOwn(this.map.sessions, logicalId) ? this.map.sessions[logicalId].nativeSessionId : undefined;
     await writeFile(join(runDirectory, 'bridge-run.json'), JSON.stringify({ kind, logicalId, nativeSessionId, cwd: this.cwd, eventId, timeoutMs }), { flag: 'wx', mode: 0o600 });
     const args = ['-NoProfile', '-NonInteractive', '-File', this.runnerPath, '-Workspace', this.cwd, '-CliPath', this.cliPath, '-RunDirectory', runDirectory];
@@ -260,7 +269,7 @@ export class InstalledHeadlessExecutor {
     else {
       args.push('-TaskFile', taskFile, '-Auth', this.auth, '-PermissionMode', permissionMode);
       if (nativeSessionId) args.push('-SessionId', nativeSessionId);
-      if (this.options.extraPatches?.length) args.push('-ExtraPatchesJson', JSON.stringify(this.options.extraPatches.map(patch => absolute(patch, 'extraPatch'))));
+      args.push('-ExtraPatchesJson', JSON.stringify(extraPatches));
     }
     const env = scrubEnvironment(this.options.env ?? process.env);
     if (this.closed) throw new Error('Installed DSH executor was closed before process launch.');

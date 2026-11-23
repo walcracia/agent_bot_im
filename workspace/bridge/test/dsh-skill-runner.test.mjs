@@ -74,7 +74,7 @@ test('an introduction and complete multiline json fence are accepted without con
 test('DSH runner verifies native/skill proof and returns dynamic read evidence and observed use beyond former caps', async t => {
   const f = await fixture(t);
   let invalid = false, seen;
-  const runner = new DshSkillRunner({ recipe: 'legacy-four-tools', root: f.root, harness: { cliPath: '/trusted/cli', env: { GH_TOKEN: 'excluded' }, modelSelection: { provider: 'selected-provider', model: 'selected-model', reasoningEffort: 'off' } },
+  const runner = new DshSkillRunner({ recipe: 'legacy-four-tools', root: f.root, harness: { cliPath: '/trusted/cli', env: { GH_TOKEN: 'excluded' }, modelSelection: { provider: 'selected-provider', model: 'selected-model', reasoningEffort: 'max' } },
     executorFactory: config => ({
       lastInvocation: { completed: true, launcherExited: true, nativeExitCode: 0, finalReason: 'completed', sessionId: 'session-synthetic', processTreeStopped: true },
       classify: async prompt => {
@@ -102,7 +102,7 @@ test('DSH runner verifies native/skill proof and returns dynamic read evidence a
   const patch = await readFile(seen.extraPatches[0], 'utf8');
   assert.match(patch, /dsh-mcp-client/u); assert.match(patch, /TEAMPLAY_TRIAGE_CONTEXT_FILE/u);
   assert.match(patch, /agent-default-model/u); assert.match(patch, /selected-provider/u); assert.match(patch, /selected-model/u);
-  assert.match(patch, /reasoningEffort: "off"/u);
+  assert.match(patch, /reasoningEffort: "max"/u);
   assert.doesNotMatch(patch, /executionLimits|maxTokens/u);
   invalid = true;
   await assert.rejects(runner.runSkill(request()), error => error.modelStarted === true);
