@@ -142,7 +142,7 @@ export class DshSkillRunner extends TriageModel {
       signal?.throwIfAborted(); nativeStarted = true;
       // This is only a local transport turn. The task-local extension dispatches
       // the original plugin's prepared system/user, never this transport text.
-      nativeText = await executor.classify('Run the prepared plugin analysis.');
+      nativeText = await executor.classify('执行已准备的插件分析。');
       signal?.throwIfAborted();
       receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
       const native = executor.lastInvocation;

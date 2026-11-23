@@ -82,3 +82,7 @@ superAgent.business由可信配置登记Worker/Agent/资源，BusinessRouter输�
 HTTP消息及附件API不变。可信DSH modelSelection在业务执行、业务Router、QA及回归统一reasoningEffort=max；显式旧off/high需管理员更新配置，不静默回退。QA plugin-request保留原maxTokens配方值，plugin-receipt另记录recipeMaxTokens、reasoningEffort、原生maxTokens/maxTokensSource、system/user/report哈希和原生终态；不产生第二个改写报告的模型请求。
 
 Pi原生session-dir通过registerPiSessionDirectory登记到原home/sessions；resume映射仍指向原文件。Hermes/title通过原生session/prompt控制命令完成，单独记录session-title，不计模型业务prompt。原生来源不修改。Windows打包入口deliver-windows.ps1支持-VerifyOnly复核已有版本，不覆盖已存在产物。
+
+## v0.5.2 说明语言
+
+接口结构不变，BusinessRouter的summary/instructions和原生审查的summary/findings.detail等说明文字要求简体中文；JSON字段与枚举保持原值。任务输入/原始引用/固定skill提示及结果不做宿主翻译。

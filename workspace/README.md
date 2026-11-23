@@ -1,6 +1,6 @@
 # 同频TeamPlay
 
-当前源码与Windows客户端 v0.5.1。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent核对及能力边界统一见[根README](../README.md)。QA新增Bug及群贴编号经Trigger/Router调用本机DSH skill并回传报告；当前按[QA-MONITORING-v0.4.2](docs/QA-MONITORING-v0.4.2.md)只统计用量，不以额度/阅读/调用次数暂停。实际绑定和运行见最新HANDOFF/state，未配置机器不因clone自动启用。
+当前源码与Windows客户端 v0.5.2。产品设计、团队/IM/DSH/代码项目业务流程、Super-agent核对及能力边界统一见[根README](../README.md)。QA新增Bug及群贴编号经Trigger/Router调用本机DSH skill并回传报告；当前按[QA-MONITORING-v0.4.2](docs/QA-MONITORING-v0.4.2.md)只统计用量，不以额度/阅读/调用次数暂停。实际绑定和运行见最新HANDOFF/state，未配置机器不因clone自动启用。
 
 支持私聊、群聊、文字、图片、音频、视频、文件。图片直接查看，音视频播放，其余文件下载。每文件上限严格小于 100,000,000 字节。音视频无法在 Chromium 播放的编码可下载后打开。
 
@@ -14,7 +14,7 @@
 .\environment\scripts\start.ps1
 ```
 
-浏览器访问 `http://127.0.0.1:18200`，或打开本次构建的 `outputs/desktop-v0.5.1/TeamRelay-win32-x64/TeamRelay.exe`（Release解压后为 `TeamRelay-win32-x64/TeamRelay.exe`）。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。最小化留在任务栏；关闭窗口隐藏到托盘继续接收消息，右键托盘选择“退出”才退出客户端；不停止独立服务器或DSH。
+浏览器访问 `http://127.0.0.1:18200`，或打开本次构建的 `outputs/desktop-v0.5.2/TeamRelay-win32-x64/TeamRelay.exe`（Release解压后为 `TeamRelay-win32-x64/TeamRelay.exe`）。Windows 客户端为便携文件夹，须完整保留文件夹内容；不需要安装 Python。其他电脑填写真实服务器 HTTPS 地址。最小化留在任务栏；关闭窗口隐藏到托盘继续接收消息，右键托盘选择“退出”才退出客户端；不停止独立服务器或DSH。
 
 2026-11-07 原开发机曾显式生成隔离演示数据，随机账号放在 `environment/config/demo-accounts.json`。该文件不进仓库，干净 clone 不含演示账号或运行数据库。首次使用请按下方创建管理员；切勿用演示数据直接上线。
 

@@ -108,3 +108,7 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 完整verify：26 Python、9 desktop、485 bridge、16模拟启动和语法通过。补Installed基础max后相关31/31通过；最终bridge486中479通过/7启动凭据因测试命令未前置Node24子PATH失败，修正环境后该文件16/16通过，原失败完整保留，产品未为此改动。最终源486项由完整运行和对应复验覆盖，不将失败的一次运行说成通过。
 
 真实QA：标准SSO/授权读取、原检查点扫描、一次聊天触发、原插件79日志/44片段/60关键块/744行、原system/user逐字一致、单DSH max/native终态、单条原结论+TXT及成员认证下载/hash通过。4 Pi/5 Hermes原生历史注册/命名零模型且非标题历史/用量未变。Windows0.5.1 ASAR/PE/ZIP全部hash及真实隔离Electron8项通过。正常重启与复用、源ready及完成任务无重放通过。命令、范围和私有证据位置见outputs/VERIFICATION-v0.5.1，不把模拟协议当原生调用。
+
+## 2026-11-23 · v0.5.2
+
+完整verify单次26 Python/9桌面/486桥接（0跳过）/16模拟启动及语法通过，Node24明确前置子PATH。中文模板脚本另做语法检查；纯提示文案不新增镜像测试，不重复真实模型调用。Windows0.5.2 ASAR/PE/ZIP74全hash与实际隔离Electron8项含报告点击保存通过，正常stop/start及重复复用确认服务0.5.2/listener ready。原插件system/user和原报告映射未改；三原生Agent实际业务/回归和QA验收保留v0.5.0/v0.5.1历史属性。

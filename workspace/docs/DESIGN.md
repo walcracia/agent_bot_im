@@ -113,3 +113,7 @@ DSH实际接缝为官方 `@deepseek-ai/dsh-sdk-client@0.2.2-rc.1` 的stdio JSON-
 Pi原JSONL保留任务目录，向原生共享home/sessions登记独立目录junction并核对目标，桌面同一scanner可枚举；Hermes保留tool/acp来源，原生/title零模型命名，使用全部/自动化列表查看。命名是控制操作，不混入Worker最终文本。已有真实会话补登记先备份、核对原nativeID、非标题历史及用量不变，不复制历史或伪造会话。
 
 每轮Windows便携目录/版本ZIP/SHA由deliver-windows统一生成，旧入口兼容；ASAR白名单/字节、PE、ZIP全文件hash及隔离真实EXE/托盘/报告下载全部通过才可发Release。源码tag和包必须对应版本，包不含服务、Agent、账号或原始材料。
+
+## v0.5.2 中文交互
+
+按AGENT-LANGUAGE-v0.5.2，三执行器的协调消息及回归任务提示统一中文，Router说明字段和通用Worker显式要求中文结果；接口字段与固定原插件流程不改。仅QA外层运输说明改中文，不改变进入模型的system/user或报告处理。

@@ -13,7 +13,7 @@ const config=JSON.parse(await readFile(configPath,'utf8'));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const inside=(root,file)=>{const r=relative(root,file);return r&&!isAbsolute(r)&&r!=='..'&&!r.startsWith('..'+sep);};
 const send=(id,result)=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,result})+'\n');
-const tool={name:'run_regression',description:`Execute only the frozen ${config.suite} regression suite using the fixed Node argv. Returns a real test stdout SHA and unpredictable execution nonce. Call it before reviewing these source files; copy its receipt into review.json.`,inputSchema:{type:'object',properties:{suite:{type:'string',enum:[config.suite]}},required:['suite'],additionalProperties:false},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}};
+const tool={name:'run_regression',description:`使用固定Node参数，只执行已经冻结的${config.suite}回归套件。返回真实测试输出的SHA256和不可预测的执行nonce。审查源码前必须先调用，并将真实回执原样写入review.json。`,inputSchema:{type:'object',properties:{suite:{type:'string',enum:[config.suite]}},required:['suite'],additionalProperties:false},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false}};
 async function verifySnapshot(){
  const manifest=JSON.parse(await readFile(config.manifestPath,'utf8'));
  if(hash(JSON.stringify(manifest.files))!==config.sourceManifestSHA256)throw Error('Manifest identity changed.');

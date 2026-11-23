@@ -1,5 +1,13 @@
 # 当前接续状态
 
+## 2026-11-23 · v0.5.2 中文交互已验收，待Git/Release
+
+用户要求协调者与DSH/Pi/Hermes使用中文传递信息，已写入AGENTS长期约定和AGENT-LANGUAGE设计，开发子Agent同样遵循。自有三原生回归模板、MCP工具说明、本地模型哨兵提示改中文；BusinessRouter/Worker显式要求说明中文，QA只改宿主运输句，原插件system/user/原报告/字段/枚举/命令/代码引用不改。只读审查核对旧Router/代码Worker/Watchdog原已中文。本轮无真实模型调用，不伪造“已让三原生模型重新测试”。
+
+完整verify单次26 Python/9桌面/486桥接（0跳过）/16模拟启动及语法通过；Windows0.5.2 ASAR16/12源字节、PE、ZIP74全hash及实际隔离原生8项通过。ZIP162325625字节，SHA256 a1e46338510c12c899114c6f06149a69b695533706d34bc0ba19aad4393f3106。本机outputs/desktop-v0.5.2/TeamRelay-win32-x64/TeamRelay.exe，完整便携目录保留；不包含后台或Agent账号。
+
+正常stop/start和重复start确认服务0.5.2及原绑定监听ready，保留已有QA/业务账本；旧真实验收见v0.5.0/v0.5.1。源码/设计/报告和对应Windows Release尚待本轮远端回执，不从该阶段记录预称已上传。
+
 ## 2026-11-23 · v0.5.1 已发布与最终运行回执
 
 产品源码bc156a89647ff8ac8ebaca66e8fa65628cef51f7已推main；新annotated v0.5.1对象e505d8abe4b5b11433382e046e4c8506286675c5及peel已由远端确认。Release正式isDraft=false，两资产uploaded、size/digest逐一与本地核对：Windows ZIP162325628字节，SHA256 d79bed49480a8ab7ce083cbd981f9ebbaa7f53793c72e892472acd7e49b31118；SHA文本99字节，digest31e6783b8ab6a65748c28bb2ea52e6629d58636b4a80d7699ab703dacaaebc7f。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.1；完整便携目录本机outputs/desktop-v0.5.1/TeamRelay-win32-x64。

@@ -18,7 +18,7 @@ try {
   await executor.start();
   const session = await executor.session(`local-model-${randomUUID()}`, false);
   const result = await Promise.race([
-    session.run([{ type: 'text', text: 'Reply exactly LOCAL_DSH_OK. Do not call tools.' }]),
+    session.run([{ type: 'text', text: '只回复 LOCAL_DSH_OK，不调用工具。' }]),
     new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Local model smoke exceeded 120 seconds; stopping.')), 120000); }),
   ]);
   if (result.finishReason !== 'completed' || result.finalResponse.trim() !== 'LOCAL_DSH_OK')

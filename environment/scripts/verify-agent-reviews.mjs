@@ -193,12 +193,12 @@ async function runAgent(agentId){
  const runsPath=join(agent.root,'native-runs'),Executor={dsh:DshExecutor,pi:PiExecutor,hermes:HermesExecutor}[agentId];
  const executor=new Executor({...agent.executor,runsPath,...(agentId==='dsh'?{harness:{...agent.executor.harness,powershellPath:plan.powershellCommand}}:{})});
  const request={taskId:'REVIEW-'+agentId.toUpperCase(),cwd:agent.snapshotRoot,mcpServers,prompt:[
-  'You are performing an independent regression and source review of this isolated TeamPlay source snapshot.',
-  'First call the provided regression MCP tool run_regression with suite='+JSON.stringify(agent.suite)+'. You must actually call it; do not run substitute shell test commands or invent a receipt.',
-  'Then read the relevant workspace/bridge source modules and tests for that suite and report concrete issues if any. Do not modify source/tests, install dependencies, contact business systems, or use delegation.',
-  'Write review.json in this current snapshot root as strict JSON with fields agentId,suite,nonce,sourceManifestSHA256,stdoutSHA256,exitCode,summary,findings. Copy receipt values exactly from the actual MCP result. agentId='+JSON.stringify(agentId)+'.',
-  'findings must be an array of objects {file,line,severity,detail}; file is a snapshot-relative source path, line is a positive integer, severity is high|medium|low. An empty array is correct if you found no actionable issue. State the limits of your review in summary. Do not fabricate failures.',
-  'When done, respond briefly. Source manifest '+agent.sourceManifestSHA256+'. Fixed test files: '+cfg.tests.join(', ')+'.'
+  '你正在对这份隔离的同频TeamPlay源码快照进行独立回归和源码审查。与协调者沟通、反馈进度及说明结论均使用简体中文。',
+  '首先实际调用提供的regression MCP工具run_regression，参数suite='+JSON.stringify(agent.suite)+'。必须真实调用，不得用其他shell测试命令替代，不得编造回执。',
+  '随后阅读该套件对应的workspace/bridge源码和测试，报告具体问题。不得修改源码或测试、安装依赖、访问业务系统或委派其他Agent。',
+  '在当前快照根目录写review.json，使用严格JSON，字段为agentId,suite,nonce,sourceManifestSHA256,stdoutSHA256,exitCode,summary,findings。回执值必须从真实MCP结果原样复制。agentId='+JSON.stringify(agentId)+'。',
+  'findings是对象数组，每项为{file,line,severity,detail}；file是快照内相对源码路径，line为正整数，severity只能是high|medium|low。没有可处理的问题时使用空数组。summary和detail使用简体中文，summary需说明审查范围和局限，不得编造失败。JSON字段、枚举、工具名、命令、路径、源码及原始引用保持原样。',
+  '完成后用中文简短回复。源码清单SHA256：'+agent.sourceManifestSHA256+'。固定测试文件：'+cfg.tests.join(', ')+'。'
  ].join('\n')};
  try{
   const result=await executor.run(request);if(!result.completed)throw Error('Native Agent did not complete.');
