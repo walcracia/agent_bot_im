@@ -11,3 +11,5 @@ Windows0.5.2真实构建：ASAR16条目/12源文件逐字节，PE x64/产品名/
 便携包`outputs/TeamRelay-v0.5.2-windows-x64.zip`为162325625字节，SHA256为`a1e46338510c12c899114c6f06149a69b695533706d34bc0ba19aad4393f3106`；校验清单99字节，自身SHA256为`32766af93eb4e3bc04763d88c781134e67a4ca41c0e4155f900d62d577e3d503`。EXE为`outputs/desktop-v0.5.2/TeamRelay-win32-x64/TeamRelay.exe`，保留整个目录。包仅含客户端，不含后台、三Agent、凭据或真实材料。
 
 本机正常stop/start及重复start确认服务0.5.2和监听ready，旧QA/业务账本保留。私有完整证据见environment/verification/v052、desktop-artifacts-v0.5.2及desktop-native-v0.5.2。Git及Release最终回执以HANDOFF/state和远端实查为准。
+
+最终回执：源码db71a125e2e3d0cc2f3a4c00673cc9b3103847de及annotated v0.5.2对象1f479b7e3c0b6d2f5fb97a5de454036b3f92ee72/peel远端一致。Release已正式发布，ZIP和校验清单两资产uploaded、size/digest与本地一致；https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.2。交接回执不移动产品tag。

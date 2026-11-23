@@ -1,5 +1,11 @@
 # 当前接续状态
 
+## 2026-11-23 · v0.5.2 中文交互与便携包已发布
+
+长期规则已写AGENTS：协调者与DSH、Pi、Hermes及开发子Agent的任务、进度、审查与结果说明统一简体中文。模板/工具说明已同步，机器字段、命令、源码引用及固定原插件提示/报告保持原样。本轮完整26 Python/9桌面/486桥接/16模拟启动及语法全通过，无新模型调用；实际Windows包ASAR/PE/ZIP及原生8项通过，正常重启/复用0.5.2/listener ready。
+
+源码db71a125e2e3d0cc2f3a4c00673cc9b3103847de、annotated v0.5.2对象1f479b7e3c0b6d2f5fb97a5de454036b3f92ee72及peel已远端核对。Release isDraft=false、两资产uploaded且size/digest与本地一致；ZIP162325625字节，SHA256 a1e46338510c12c899114c6f06149a69b695533706d34bc0ba19aad4393f3106。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.2，本机EXE在outputs/desktop-v0.5.2/TeamRelay-win32-x64。详见AGENT-LANGUAGE及VERIFICATION-v0.5.2。交接回执另用v0.5.2-handoff.1，产品tag不移动；回执自身以Git实查为准，下方待上传为阶段历史。
+
 ## 2026-11-23 · v0.5.2 中文交互已验收，待Git/Release
 
 用户要求协调者与DSH/Pi/Hermes使用中文传递信息，已写入AGENTS长期约定和AGENT-LANGUAGE设计，开发子Agent同样遵循。自有三原生回归模板、MCP工具说明、本地模型哨兵提示改中文；BusinessRouter/Worker显式要求说明中文，QA只改宿主运输句，原插件system/user/原报告/字段/枚举/命令/代码引用不改。只读审查核对旧Router/代码Worker/Watchdog原已中文。本轮无真实模型调用，不伪造“已让三原生模型重新测试”。

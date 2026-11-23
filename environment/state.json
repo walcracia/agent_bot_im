@@ -13,14 +13,14 @@
     "branch": "main",
     "source_version": "0.5.2",
     "release_tag": "v0.5.2",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Local acceptance complete; commit/tag/push/Release pending",
-    "release_url": null,
-    "release_commit": null,
-    "annotated_tag_object": null,
-    "handoff_tag": null,
-    "source_commit": null,
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "Source/main and annotated tag object/peel confirmed; published Release two assets uploaded with exact local sizes/digests",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.2",
+    "release_commit": "db71a125e2e3d0cc2f3a4c00673cc9b3103847de",
+    "annotated_tag_object": "1f479b7e3c0b6d2f5fb97a5de454036b3f92ee72",
+    "handoff_tag": "v0.5.2-handoff.1",
+    "source_commit": "db71a125e2e3d0cc2f3a4c00673cc9b3103847de",
     "windows_zip_sha256": "a1e46338510c12c899114c6f06149a69b695533706d34bc0ba19aad4393f3106",
     "checksum_sha256": "32766af93eb4e3bc04763d88c781134e67a4ca41c0e4155f900d62d577e3d503"
   },
@@ -35,7 +35,7 @@
     "Future scope: old coding A1/A2, arbitrary project automatic publication, OpenCode and OS sandbox remain outside this completed iteration"
   ],
   "updated_at": "2026-11-23",
-  "stage": "v0.5.2 Chinese templates and Windows acceptance passed; Git/Release pending",
+  "stage": "v0.5.2 Chinese interaction source/tag and Windows Release remotely confirmed",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -98,7 +98,7 @@
     "verification_report": "outputs/VERIFICATION-v0.5.2.md",
     "observation_only": true,
     "default_startup_bound": true,
-    "source_pushed": false,
+    "source_pushed": true,
     "qa_real_provider_requests_total_this_iteration": 0,
     "qa_report_evidence_references": "Full original plugin:79 logs/44 snippets/60 key blocks; real source line verification",
     "qa_user_paused": false,
@@ -117,7 +117,10 @@
       "additional_model_calls": 0
     },
     "windows_zip": "outputs/TeamRelay-v0.5.2-windows-x64.zip",
-    "windows_zip_sha256": "a1e46338510c12c899114c6f06149a69b695533706d34bc0ba19aad4393f3106"
+    "windows_zip_sha256": "a1e46338510c12c899114c6f06149a69b695533706d34bc0ba19aad4393f3106",
+    "product_release_commit": "db71a125e2e3d0cc2f3a4c00673cc9b3103847de",
+    "product_annotated_tag": "v0.5.2",
+    "product_tag_object": "1f479b7e3c0b6d2f5fb97a5de454036b3f92ee72"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -940,18 +943,17 @@
   "source_work_in_progress": {
     "version": "0.5.2",
     "design": "workspace/docs/AGENT-LANGUAGE-v0.5.2.md",
-    "stage": "verified-awaiting-delivery",
+    "stage": "delivered",
     "real_model_calls_this_iteration": 0
   },
   "next_goal": {
-    "status": "in-progress",
+    "status": "complete",
     "design": "workspace/docs/AGENT-LANGUAGE-v0.5.2.md",
     "scope": [
       "Chinese coordination with DSH/Pi/Hermes/development subagents",
       "Preserve machine contracts and original skill output",
       "Versioned Windows build and verified Git/Release delivery"
-    ],
-    "remaining": "Git/Release delivery"
+    ]
   },
   "interaction_language": {
     "coordinator_and_agents": "zh-CN",
