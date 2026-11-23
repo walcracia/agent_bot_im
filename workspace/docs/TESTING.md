@@ -112,3 +112,11 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 ## 2026-11-23 · v0.5.2
 
 完整verify单次26 Python/9桌面/486桥接（0跳过）/16模拟启动及语法通过，Node24明确前置子PATH。中文模板脚本另做语法检查；纯提示文案不新增镜像测试，不重复真实模型调用。Windows0.5.2 ASAR/PE/ZIP74全hash与实际隔离Electron8项含报告点击保存通过，正常stop/start及重复复用确认服务0.5.2/listener ready。原插件system/user和原报告映射未改；三原生Agent实际业务/回归和QA验收保留v0.5.0/v0.5.1历史属性。
+
+## 2026-11-23 · v0.5.3验证阶段
+
+相关DSH56/56、Pi9/9、Hermes10/10；完整verify首轮旧business-config Pi夹具缺model/provider失败，其余结果保留。修正夹具后完整verify单次26 Python/9桌面/490桥接/16模拟启动及语法通过，无跳过。项目Node24前置子进程PATH；日志environment/logs/verify-v0.5.3{,-final}.log。
+
+Windows0.5.3已实际构建，ASAR16/12源字节、PE x64/产品版本、ZIP74全hash及隔离原生8项（含报告保存）通过，见最终VERIFICATION-v0.5.3。三真实中文业务、原生会话可见和High实际证明、同频下载，以及原失败和恢复结果在该最终报告单列；不能用本阶段的部分成功提前声称三者全通过。
+
+最终三真实中文业务/三原生可见均通过，完整TXT一条回传与认证下载/hash通过。Hermes失败会话恢复并未通过或修复；旧测试明确取消，独立新任务正常完成。DSH沙箱工具尝试失败与其正确语义建议区分；完整项目回归独立通过。最终报告outputs/VERIFICATION-v0.5.3.md。

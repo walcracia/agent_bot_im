@@ -117,3 +117,7 @@ Pi原JSONL保留任务目录，向原生共享home/sessions登记独立目录jun
 ## v0.5.2 中文交互
 
 按AGENT-LANGUAGE-v0.5.2，三执行器的协调消息及回归任务提示统一中文，Router说明字段和通用Worker显式要求中文结果；接口字段与固定原插件流程不改。仅QA外层运输说明改中文，不改变进入模型的system/user或报告处理。
+
+## v0.5.3 模型控制
+
+统一Qwen4 Max与High，具体原生目录、协议及验收见MODEL-QWEN-v0.5.3；覆盖本文件旧DSH/max。只改可信执行控制，原QA材料/skill提示/原报告、权限及会话语义不变。

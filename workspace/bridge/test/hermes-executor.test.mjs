@@ -7,7 +7,7 @@ import { HermesExecutor } from '../hermes-executor.mjs';
 
 const fake = String.raw`
 import readline from 'node:readline'; import{writeFile}from'node:fs/promises';import{join}from'node:path';
-const mode=process.argv[2],id='hermes-fixture-session-1';let active,resumed=false;
+const mode=process.argv[2],id='hermes-fixture-session-1';let active,resumed=false,modelId='fixture:default';
 const send=x=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',...x})+'\n');
 if(process.argv.includes('chat')){
  const query=process.argv[process.argv.indexOf('--query-file')+1];
@@ -25,7 +25,10 @@ rl.on('line',async line=>{const m=JSON.parse(line);
  if(m.method==='initialize')return answer(m.id,{protocolVersion:1,agentCapabilities:{loadSession:true}});
  if(m.method==='session/new')return answer(m.id,{sessionId:id});
  if(m.method==='session/load'){resumed=true;return answer(m.id,{sessionId:mode==='wrong-resume'?'different-native-session':id});}
- if(m.method==='session/set_model')return answer(m.id,{});
+ if(m.method==='session/set_model'){modelId=m.params.modelId;return answer(m.id,{});}
+ if(m.method==='session/set_config_option')return answer(m.id,{configOptions:[
+  {id:'model',currentValue:mode==='wrong-model'?'fixture:wrong':modelId},
+  {id:'reasoning_effort',currentValue:mode==='wrong-effort'?'medium':m.params.value}]});
  if(m.method==='session/prompt'){
   if(m.params.prompt?.[0]?.text?.startsWith('/title ')){
    await writeFile(join(process.cwd(),'native-title-command.json'),JSON.stringify(m.params));
@@ -88,6 +91,33 @@ test('resume uses only exact native ID bound to the original task and workspace'
  await assert.rejects(f.executor.run({taskId:'TDEMO',cwd:f.cwd,prompt:'not exact',sessionId:'latest'}),/exact session/);
 });
 
+test('new and resumed native sessions confirm Qwen4 Max and High before title and business prompts',async t=>{
+ const f=await fixture(t),executor=new HermesExecutor({...f.options,model:'qwen4-max',provider:'custom:alibaba-token-plan-cn',reasoningEffort:'high'});
+ t.after(()=>executor.close());
+ const first=await executor.run({taskId:'BMODEL',cwd:f.cwd,prompt:'请核对模型设置。'});
+ const again=await executor.run({taskId:'BMODEL',cwd:f.cwd,prompt:'请沿原会话继续核对。',sessionId:first.sessionId});
+ assert.equal(again.sessionId,first.sessionId);
+ for(const run of (await readdir(f.options.runsPath)).filter(x=>x.startsWith('BMODEL-'))){
+  const directory=join(f.options.runsPath,run);
+  const selected=JSON.parse(await readFile(join(directory,'model-selection.json'),'utf8'));
+  assert.deepEqual(selected,{sessionId:first.sessionId,requestedModelId:'custom:alibaba-token-plan-cn:qwen4-max',modelId:'custom:alibaba-token-plan-cn:qwen4-max',reasoningEffort:'high',verified:true});
+  const nativeResult=JSON.parse(await readFile(join(directory,'result.json'),'utf8'));assert.deepEqual(nativeResult.modelSelection,selected);
+  const sent=(await readFile(join(directory,'protocol.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line)).filter(e=>e.direction==='send').map(e=>e.value);
+  assert.deepEqual(sent.filter(e=>e.method==='session/set_model').map(e=>e.params),[{sessionId:first.sessionId,modelId:selected.modelId}]);
+  assert.deepEqual(sent.filter(e=>e.method==='session/set_config_option').map(e=>e.params),[{sessionId:first.sessionId,configId:'reasoning_effort',value:'high'}]);
+  assert.ok(sent.findIndex(e=>e.method==='session/set_config_option')<sent.findIndex(e=>e.method==='session/prompt'));
+ }
+ assert.equal(first.modelSelection.reasoningEffort,'high');assert.equal(again.modelSelection.modelId,'custom:alibaba-token-plan-cn:qwen4-max');
+});
+
+test('native model or effort mismatch fails before any model prompt instead of silently falling back',async t=>{
+ for(const mode of ['wrong-model','wrong-effort']){
+  const f=await fixture(t,mode),executor=new HermesExecutor({...f.options,model:'qwen4-max',provider:'alibaba-token-plan-cn'});t.after(()=>executor.close());
+  await assert.rejects(executor.run({taskId:'BMISMATCH',cwd:f.cwd,prompt:'这条业务请求不应发出。'}),e=>e.processTreeStopped===true&&e.cause?.message.includes('did not confirm'));
+  await assert.rejects(readFile(join(f.cwd,'prompt-admitted')),e=>e.code==='ENOENT');
+ }
+});
+
 test('cancel sends native session/cancel and waits for the original prompt terminal before returning',async t=>{
  const f=await fixture(t,'wait-cancel'),aborter=new AbortController();
  const run=f.executor.run({taskId:'TCANCEL',cwd:f.cwd,prompt:'wait',},{signal:aborter.signal});
@@ -124,6 +154,7 @@ test('registered skills use native zero-model CLI bootstrap then exact ACP load;
  assert.equal(JSON.parse(result.text).resumed,true);
  const argv=JSON.parse(await readFile(join(f.cwd,'bootstrap-argv.json'),'utf8'));
  assert.equal(argv[argv.indexOf('--skills')+1],'analysis/local-sum');
+ assert.equal(argv[argv.indexOf('--reasoning')+1],'high');
  assert.ok(!argv.includes('--ignore-rules'));assert.ok(!argv.includes('--yolo'));
  const run=(await readdir(f.options.runsPath)).find(x=>x.startsWith('TSKILL-'));
  const receipt=JSON.parse(await readFile(join(f.options.runsPath,run,'skill-bootstrap-receipt.json')));

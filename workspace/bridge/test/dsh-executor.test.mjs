@@ -56,7 +56,7 @@ test('uniform DSH Worker completes in workspace-write and restores the exact nat
   const patches = (await readdir(taskRoot)).filter(name => name.startsWith('model-') && name.endsWith('.patch.yml'));
   const patch = await readFile(join(taskRoot, patches[0]), 'utf8');
   assert.match(patch, /fixture-provider/u); assert.match(patch, /fixture-model/u);
-  assert.match(patch, /reasoningEffort: "max"/u);
+  assert.match(patch, /reasoningEffort: "high"/u);
   await assert.rejects(f.executor.run({ taskId: 'T850001', cwd: f.cwd, prompt: '不得换会话' }), /explicitly resume/u);
   await assert.rejects(f.executor.run({ taskId: 'T850001', cwd: f.cwd, prompt: '不得换会话', sessionId: 'session-other' }), /exact ID/u);
 });

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { isAbsolute } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { replaceOwnedFile } from './file-replace.mjs';
-import { dshMaxReportControls, dshModelSelection } from './dsh-model-selection.mjs';
+import { dshReportControls, dshModelSelection } from './dsh-model-selection.mjs';
 
 export const name = 'teamplay-chery-qa-plugin-direct';
 export const inject = ['tools', 'llm'];
@@ -45,12 +45,12 @@ export function apply(ctx, config) {
     try {
       const signal = outer.signal;
       signal?.throwIfAborted();
-      const call = await llm.prepareCall({ provider: selection.provider, model: selection.model, reasoningEffort: selection.reasoningEffort }, signal, dshMaxReportControls);
+      const call = await llm.prepareCall({ provider: selection.provider, model: selection.model, reasoningEffort: selection.reasoningEffort }, signal, dshReportControls);
       receipt.reasoningEffort = call.config.reasoningEffort ?? null;
       receipt.maxTokens = call.config.maxTokens;
       receipt.maxTokensSource = 'native-model-default';
       if (receipt.reasoningEffort !== selection.reasoningEffort || !Number.isSafeInteger(receipt.maxTokens) || receipt.maxTokens < 1)
-        throw new Error('The native DSH call did not retain max thinking and its output allowance.');
+        throw new Error('The native DSH call did not retain the selected thinking effort and its output allowance.');
       const options = { ...call.config, system: input.system,
         messages: [{ role: 'user', content: [{ type: 'text', text: input.user }], source: { kind: 'chery-qa' } }],
         sessionId: 'chery-qa-analyze-' + Date.now().toString(36), signal };

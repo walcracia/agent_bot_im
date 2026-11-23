@@ -103,3 +103,7 @@ Windows状态文件在实测中出现EPERM原子替换失败，增加有限退�
 ## 2026-11-23 · 中文作为Agent协作语言
 
 用户要求协调者与三个原生Agent用中文传递信息，扩展至开发子Agent并写入AGENTS接续规则。只改变自有交互模板，不翻译机器字段、原始材料或固定skill报告，不重复付费模型制造新历史。
+
+## 2026-11-23 · Qwen4 Max High
+
+用户文字指定High，覆盖旧DeepSeek/max及截图XHigh。执行器品牌与基础模型能力分别记录，不做品牌强弱推断。保留各原生账号，通过支持的模型目录和配置扩展适配Qwen4，不修改安装。High须有原生状态/请求映射证明；Pi恢复旧session后重新明确set_model/set_thinking_level，Hermes使用原生custom provider显式参数，DSH desktop/headless分别登记provider及兼容system角色。

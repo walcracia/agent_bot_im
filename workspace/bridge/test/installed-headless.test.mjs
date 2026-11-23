@@ -78,7 +78,7 @@ function assertFinishedMetadata(metadata, status) {
   assert.ok(Date.parse(metadata.finishedUtc) >= Date.parse(metadata.startedUtc));
 }
 
-installedTest('installed version handshake is zero-model and classifiers default to max with read-only permissions', async t => {
+installedTest('installed version handshake is zero-model and classifiers default to High with read-only permissions', async t => {
   const { executor, options, cwd } = await fixture(t, { permissionMode: 'danger-full-access' });
   const info = await executor.handshake();
   assert.equal(info.cliVersion, 'fake-dsh 0.2.2-test');
@@ -90,7 +90,7 @@ installedTest('installed version handshake is zero-model and classifiers default
   assert.equal(answer.tokenSeen, false);
   const args = JSON.parse(await readFile(join(cwd, 'native-args.json'), 'utf8'));
   const modelPatch = args[args.indexOf('--patch') + 1];
-  assert.equal(await readFile(modelPatch, 'utf8'), '- id: agent-default-model\n  config:\n    reasoningEffort: "max"\n');
+  assert.equal(await readFile(modelPatch, 'utf8'), '- id: agent-default-model\n  config:\n    reasoningEffort: "high"\n');
   await assert.rejects(readFile(options.sessionMapPath), { code: 'ENOENT' });
 });
 

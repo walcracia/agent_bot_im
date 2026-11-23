@@ -86,3 +86,7 @@ Pi原生session-dir通过registerPiSessionDirectory登记到原home/sessions；r
 ## v0.5.2 说明语言
 
 接口结构不变，BusinessRouter的summary/instructions和原生审查的summary/findings.detail等说明文字要求简体中文；JSON字段与枚举保持原值。任务输入/原始引用/固定skill提示及结果不做宿主翻译。
+
+## v0.5.3 原生模型确认
+
+HTTP接口不变。可信DSH modelSelection默认High，原生验证精确effort并沿模型advertised输出容量。Pi/Hermes run结果新增modelSelection，包含实际model/provider或完整原生modelId、reasoningEffort、verified及sessionId；Pi另给脱敏provider请求proof路径/数量，Hermes保存任务级model-selection.json。私有证明不进入普通聊天；完整用量仍在TXT中。旧接口消费者忽略新增元数据。

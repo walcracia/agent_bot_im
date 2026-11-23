@@ -1,5 +1,23 @@
 # 当前接续状态
 
+## 2026-11-23 · v0.5.3真实验收完成，待Git/Release
+
+DSH、Pi、Hermes及同频Router/QA可信配置统一Qwen4 Max、High；原生安装未改。三条独立中文业务经真实AI路由、Agent完成、原聊天单条原结果+TXT及成员认证下载/hash均通过。原生可查记录：DSH“检查切片求和漏算末项”、Pi“同频 · B000004”、Hermes“同频 · B000007”；三原生实际model/High和原历史/桌面可见均已核，具体证据见MODEL-QWEN及VERIFICATION-v0.5.3。
+
+完整最终verify26 Python/9桌面/490桥接/16模拟启动及语法通过；Windows0.5.3真实构建、ASAR/PE/ZIP和实际原生8项通过，ZIP162325625字节、SHA256 a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9。正常重载/最后重复start复用IM0.5.3与listener ready，0活动/0等待，已完成任务无重放。QA本轮未重跑模型，旧DeepSeek/max报告仍为历史，不冒称Qwen4日志已分析。
+
+保留所有真实失败：DSH头两组路由配置/角色被拒；Pi旧key401后原ID明确继续完成；Hermes旧B000005曾401、原ACP failed receipt缺失，按精确native admission终态与自有进程身份安全核对后保留原失败，原ID恢复仍遇native Windows版本查询pipe等待，零模型诊断未改安装。最终在IM明确取消旧测试，独立新B000007正常完成，不冒充原ID恢复成功。该native failed-session恢复问题尚未修复，后续勿自动重做旧cancel任务。实际凭据及备份/原始会话全部忽略。
+
+待本轮明确文件清单commit、新annotated v0.5.3、push及Release ZIP/SHA digest核对；本节是提交前记录，最终上传回执随后追加，不移动旧tag或覆盖已构建包。
+
+## 2026-11-23 · v0.5.3进行中：Qwen4 High与原生中文验证
+
+最新范围见MODEL-QWEN-v0.5.3，文字High覆盖历史DeepSeek/max及截图XHigh。DSH/Pi真实中文业务已完成，Qwen4/High请求及原生桌面可见已实核；Hermes已更新原生认证，但第二次原ID接续停在ACP session/load（模型前），正在诊断，不算完成。当前详情/精确会话及本地证据见忽略的environment/verification/v053/work-state.json；不要重复新建旧任务或模型。
+
+DSH desktop/headless均已补目标provider及兼容system角色；Pi目录登记Qwen4、High；Hermes原生custom provider显式思考参数和官方目录。三套旧用户配置及认证修改前均有忽略备份。Hermes旧401 native admission已精确证明terminal/failed，根仅结束自有ACP viewer、保留共享gateway，经原状态锁对paused旧调用消除uncertain并保留原failure/原ID，没有伪造completed。接续第二次仅load启动超时、prompt未开始，lastRunStopped已由原adapter证明。
+
+完整最终verify26/9/490/16及语法已通过（首轮旧Pi夹具缺型号的失败保留）；Windows0.5.3已构建、ASAR/PE/ZIP及原生8项通过。包和源尚未Git/Release交付，不能预称上传。接续优先完成Hermes原ID正向及原生可见，再核同频单条TXT认证下载、更新报告/state并按新tag及Release交付；不要覆盖已构建0.5.3包或移动历史tag。
+
 ## 2026-11-23 · 模型与Agent能力调查
 
 用户质疑固定品牌分工后要求调查，资料已整理references/RESEARCH-MODELS-AGENTS-2026-11-23.md，并由README链接。覆盖九个当前模型测量、六个Agent执行器、官方型号/模态/许可与版本、英文综合榜及模型+harness口径边界。正文将事实与选型建议区分，不把本机不同业务/不同套件的通过数量当性能排名，也不由品牌推断认知强弱。

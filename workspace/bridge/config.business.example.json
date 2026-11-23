@@ -2,11 +2,11 @@
   "enabled": false,
   "root": "../../environment/data/business",
   "maxWorkers": 2,
-  "routerModel": { "provider": "deepseek-account", "model": "deepseek-flash", "reasoningEffort": "max" },
+  "routerModel": { "provider": "replace-with-qwen-provider", "model": "qwen4-max", "reasoningEffort": "high" },
   "agents": [
-    { "id": "dsh", "backend": "dsh", "label": "代码助理", "description": "原生代码工具、Skill和MCP，可运行代码检查与登记的验证流程。", "capabilities": ["files", "code", "native-skills", "native-mcp"], "available": true, "command": "C:/replace-with-installed-dsh/dsh.cmd", "provider": "deepseek-account", "model": "deepseek-flash", "reasoningEffort": "max" },
-    { "id": "pi", "backend": "pi", "label": "数据助理", "description": "结构化数据核对、文件处理，支持显式Skill和直接声明的MCP工具。", "capabilities": ["files", "data-check", "native-skills", "native-mcp"], "available": true, "command": "C:/replace-with-installed-pi/pi.exe", "dataHome": "C:/replace-with-pi-data" },
-    { "id": "hermes", "backend": "hermes", "label": "文档助理", "description": "原生文档待办Skill和ACP工具会话，保留原文引用及未明确字段。", "capabilities": ["files", "document-skill", "native-mcp"], "available": true, "command": "C:/replace-with-installed-hermes/hermes.exe", "dataHome": "C:/replace-with-hermes-data" }
+    { "id": "dsh", "backend": "dsh", "label": "代码助理", "description": "原生代码工具、Skill和MCP，可运行代码检查与登记的验证流程。", "capabilities": ["files", "code", "native-skills", "native-mcp"], "available": true, "command": "C:/replace-with-installed-dsh/dsh.cmd", "provider": "replace-with-qwen-provider", "model": "qwen4-max", "reasoningEffort": "high" },
+    { "id": "pi", "backend": "pi", "label": "数据助理", "description": "结构化数据核对、文件处理，支持显式Skill和直接声明的MCP工具。", "capabilities": ["files", "data-check", "native-skills", "native-mcp"], "available": true, "command": "C:/replace-with-installed-pi/pi.exe", "dataHome": "C:/replace-with-pi-data", "provider": "replace-with-qwen-provider", "model": "qwen4-max", "reasoningEffort": "high" },
+    { "id": "hermes", "backend": "hermes", "label": "文档助理", "description": "原生文档待办Skill和ACP工具会话，保留原文引用及未明确字段。", "capabilities": ["files", "document-skill", "native-mcp"], "available": true, "command": "C:/replace-with-installed-hermes/hermes.exe", "dataHome": "C:/replace-with-hermes-data", "provider": "custom:replace-with-qwen-provider", "model": "qwen4-max", "reasoningEffort": "high" }
   ],
   "workers": [
     { "id": "code-check", "label": "代码检查", "description": "分析给定代码和回归点，输出可核对建议，在任务独立目录处理。", "allowedAgents": ["dsh"], "requiredCapabilities": ["code"] },

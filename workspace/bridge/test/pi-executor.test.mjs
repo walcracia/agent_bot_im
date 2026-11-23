@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PiExecutor, registerPiSessionDirectory } from '../pi-executor.mjs';
+import { registerPiModelProof } from '../pi-model-proof.mjs';
 
 async function setup(t, settings = {}) {
   const root = await mkdtemp(join(tmpdir(), 'teamplay-pi-'));
@@ -19,8 +20,11 @@ async function setup(t, settings = {}) {
     const get = flag => args[args.indexOf(flag) + 1];
     const sessionId = args.includes('--session-id') ? get('--session-id') : JSON.parse(requireHeader(get('--session'))).id;
     const nativeFile = args.includes('--session') ? get('--session') : join(get('--session-dir'), `native-${sessionId}.jsonl`);
-    const state = { sessionId: settings.wrongSession ? 'wrong-session' : sessionId, sessionFile: nativeFile, isStreaming: false, isCompacting: false, pendingMessageCount: 0 };
+    const state = { sessionId: settings.wrongSession ? 'wrong-session' : sessionId, sessionFile: nativeFile, isStreaming: false, isCompacting: false, pendingMessageCount: 0,
+      model: { provider: 'old-provider', id: 'old-model' }, thinkingLevel: 'off' };
     const invocation = { command, args, options, commands: [], child, nativeFile, taskPrompt: null }; invocations.push(invocation);
+    let providerHook;
+    registerPiModelProof({ on(type, handler) { assert.equal(type, 'before_provider_request'); providerHook = handler; } }, options.env);
     const emit = event => child.stdout.write(JSON.stringify(event) + '\n');
     let tokens = 0;
     const reply = (event, data) => emit({ type: 'response', id: event.id, command: event.type, success: true, data });
@@ -28,6 +32,9 @@ async function setup(t, settings = {}) {
       write(chunk, _encoding, callback) {
         const event = JSON.parse(chunk.toString().trim()); invocation.commands.push(event);
         if (event.type === 'get_state') reply(event, state);
+        else if (event.type === 'set_model') { state.model = { provider: event.provider, id: settings.wrongModel ? 'wrong-model' : event.modelId }; reply(event, state.model); }
+        else if (event.type === 'get_available_thinking_levels') reply(event, { levels: settings.unsupportedHigh ? ['off', 'xhigh'] : ['off', 'low', 'high', 'xhigh'] });
+        else if (event.type === 'set_thinking_level') { state.thinkingLevel = settings.clampThinking ?? event.level; reply(event); }
         else if (event.type === 'get_session_stats') reply(event, { tokens: { input: tokens, output: tokens / 2, total: tokens * 1.5 } });
         else if (event.type === 'clear_queue') reply(event, { steering: [], followUp: [] });
         else if (event.type === 'abort') { state.isStreaming = false; reply(event); emit({ type: 'agent_settled', aborted: true }); }
@@ -36,6 +43,11 @@ async function setup(t, settings = {}) {
           mkdirSync(get('--session-dir'), { recursive: true }); writeFileSync(nativeFile, JSON.stringify({ type: 'session', id: sessionId, cwd: options.cwd }) + '\n');
           reply(event, { disposition: 'started' }); settings.onPrompt?.(invocation);
           if (!settings.hold) {
+            const payload = { model: state.model.id, reasoning_effort: settings.wireEffort ?? state.thinkingLevel, enable_thinking: true, max_completion_tokens: 262144,
+              messages: [{ role: 'user', content: 'private prompt marker' }], headers: { Authorization: 'private-key-marker' }, apiKey: 'private-key-marker' };
+            const before = JSON.stringify(payload);
+            assert.equal(providerHook({ payload }, { model: state.model }), undefined);
+            assert.equal(JSON.stringify(payload), before);
             emit({ type: 'message_start', message: { role: 'assistant', content: [] } });
             emit({ type: 'tool_execution_start', toolName: 'read', toolCallId: 'one' });
             tokens = 20;
@@ -49,7 +61,7 @@ async function setup(t, settings = {}) {
     });
     return child;
   }
-  const executor = new PiExecutor({ command: process.execPath, dataHome, runsPath, spawn });
+  const executor = new PiExecutor({ command: process.execPath, dataHome, runsPath, model: 'qwen4-max', provider: 'qwen-token-plan-individual-cn', reasoningEffort: 'high', spawn });
   return { executor, cwd, dataHome, runsPath, invocations };
 }
 function requireHeader(file) { return readFileSync(file, 'utf8').split('\n')[0]; }
@@ -75,6 +87,33 @@ test('Pi waits for native settled/final text, uses JSON stdin and preserves exac
   assert.equal(second.sessionId, first.sessionId);
   const two = f.invocations[1]; assert.ok(two.args.includes('--session')); assert.ok(!two.args.includes('--continue')); assert.ok(!two.args.includes('--resume'));
   assert.deepEqual(await readdir(join(f.dataHome, 'sessions')), folders);
+  for (const call of [one, two]) {
+    assert.equal(call.args[call.args.indexOf('--thinking') + 1], 'high');
+    const types = call.commands.map(command => command.type);
+    assert.ok(types.indexOf('set_model') < types.indexOf('prompt'));
+    assert.ok(types.indexOf('set_thinking_level') < types.indexOf('prompt'));
+  }
+  assert.equal(first.modelSelection.model, 'qwen4-max'); assert.equal(first.modelSelection.reasoningEffort, 'high');
+  assert.equal(first.modelSelection.providerRequests, 1); assert.equal(first.modelSelection.verified, true);
+  assert.notEqual(first.modelSelection.requestsPath, second.modelSelection.requestsPath);
+  const proof = await readFile(first.modelSelection.requestsPath, 'utf8');
+  assert.ok(!/private prompt marker|private-key-marker|Authorization|messages|headers|apiKey/u.test(proof));
+  assert.equal(JSON.parse(proof.trim()).thinkingEnabled, true);
+});
+
+test('Pi rejects unsupported or clamped High and a different model before business input', async t => {
+  for (const settings of [{ unsupportedHigh: true }, { clampThinking: 'xhigh' }, { wrongModel: true }]) {
+    const f = await setup(t, settings);
+    await assert.rejects(f.executor.run({ taskId: 'BMODEL', cwd: f.cwd, prompt: '工作' }), /High thinking|requested selection/u);
+    assert.ok(!f.invocations[0].commands.some(command => command.type === 'prompt'));
+  }
+});
+
+test('Pi requires actual provider requests to preserve the requested High effort', async t => {
+  const f = await setup(t, { wireEffort: 'xhigh' });
+  await assert.rejects(f.executor.run({ taskId: 'BWIRE', cwd: f.cwd, prompt: '工作' }), /provider requests did not confirm/u);
+  const proof = JSON.parse((await readFile(f.invocations[0].options.env.PI_TEAMPLAY_MODEL_PROOF_PATH, 'utf8')).trim());
+  assert.equal(proof.verified, false); assert.equal(proof.reasoningEffort, 'xhigh');
 });
 
 test('Pi catalog registration refuses a conflicting directory and leaves original sessions untouched', async t => {

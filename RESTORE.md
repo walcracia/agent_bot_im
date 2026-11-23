@@ -1,5 +1,9 @@
 # agent-IM 恢复与接续
 
+## v0.5.3 最新模型覆盖
+
+先读MODEL-QWEN-v0.5.3和最新HANDOFF/state。DSH、Pi、Hermes及同频Router/QA统一Qwen4 Max、High，覆盖下方旧DeepSeek/max与off；文字High优先截图XHigh。核原生配置及实际请求，不仅看界面标签。模型目录在可信用户配置登记；DSH的desktop和headless配置需分别存在同一Qwen provider引用，保留已有认证。Pi和Hermes新建/恢复明确选择并核对model/High。真实会话、配置备份与账号不入Git；旧已完成任务不重做。
+
 ## v0.5.2 中文交互
 
 协调者与DSH/Pi/Hermes及开发子Agent的任务说明、补充、进度和结果说明一律简体中文，具体见AGENTS及AGENT-LANGUAGE-v0.5.2。机器字段/枚举、命令、源码、原始材料及固定skill提示/报告保留原格式；不用额外模型改写历史或skill结论。

@@ -16,6 +16,7 @@ test('registered model choices cannot introduce commands and executable paths st
   t.after(async () => { assert.equal(dirname(root), resolve(tmpdir())); await rm(root, { recursive: true, force: true }); });
   const command = join(root, 'synthetic-pi.exe'); await writeFile(command, 'fixture, never execute');
   const raw = { enabled: true, root: './business', agents: [{ id: 'pi', backend: 'pi', command, dataHome: root,
+    provider: 'fixture-provider', model: 'fixture-model', reasoningEffort: 'high',
     label: '资料助理', description: 'Read supplied material', available: true, capabilities: ['files'] }],
     workers: [{ id: 'material', label: '整理资料', description: 'Organize provided files', allowedAgents: ['pi'], requiredCapabilities: ['files'] }] };
   const options = normalizeBusinessConfig(raw, root);
@@ -24,7 +25,7 @@ test('registered model choices cannot introduce commands and executable paths st
   try {
     assert.equal(runtime.executors.size, 1);
     const patch = await readFile(join(options.root, 'router.patch.yml'), 'utf8');
-    assert.match(patch, /reasoningEffort: "max"/u); assert.doesNotMatch(patch, /maxTokens/u);
+    assert.match(patch, /reasoningEffort: "high"/u); assert.doesNotMatch(patch, /maxTokens/u);
     const snapshot = runtime.registry.snapshot(); assert.deepEqual(snapshot.workers[0].availableAgents, ['pi']);
     assert.equal(JSON.stringify(snapshot).includes(command), false);
     assert.equal(JSON.stringify(snapshot).includes('dataHome'), false);

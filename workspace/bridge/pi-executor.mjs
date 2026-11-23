@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { appendFile, lstat, mkdir, readFile, realpath, symlink, unlink, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { triageModelEnvironment } from './triage-model.mjs';
 
 const inside = (root, path) => { const part = relative(root, path); return part && !isAbsolute(part) && part !== '..' && !part.startsWith('..' + sep); };
@@ -42,11 +43,12 @@ export async function registerPiSessionDirectory({ dataHome, nativeRoot, taskId 
 
 /** A task owns this RPC child and exact native session; no Desktop/private HTTP API. */
 export class PiExecutor {
-  constructor({ command, dataHome, runsPath, model, provider, spawn: spawnProcess = spawn }) {
+  constructor({ command, dataHome, runsPath, model, provider, reasoningEffort = 'high', spawn: spawnProcess = spawn }) {
     this.command = absolute(command); this.dataHome = absolute(dataHome); this.runsPath = absolute(runsPath);
     if (provider !== undefined && !/^[A-Za-z0-9_.-]+$/u.test(provider) || model !== undefined && (typeof model !== 'string' || !model || /[\0\r\n]/u.test(model))) throw new Error('Invalid trusted Pi model selection.');
-    if (provider && !model) throw new Error('Pi provider requires a model.');
-    Object.assign(this, { model, provider, spawnProcess }); this.active = new Map();
+    if (!provider || !model) throw new Error('Pi requires an explicit trusted provider and model.');
+    if (reasoningEffort !== 'high') throw new Error('Pi requires explicit High thinking.');
+    Object.assign(this, { model, provider, reasoningEffort, spawnProcess }); this.active = new Map();
   }
 
   async run({ taskId, cwd, prompt, sessionId, skillPaths = [], mcpServers }, { signal } = {}) {
@@ -74,13 +76,17 @@ export class PiExecutor {
     await registerPiSessionDirectory({ dataHome: this.dataHome, nativeRoot, taskId });
     for (const path of skillPaths) if (!(await lstat(absolute(path))).isFile() && !(await lstat(path)).isDirectory()) throw failure('Pi skill path is missing.');
     const cleanupMcp = await this.prepareMcp(cwd, mcpServers);
+    const proofPath = join(taskRoot, `model-requests-${Date.now()}-${randomUUID()}.jsonl`);
     const args = ['--offline', '--mode', 'rpc', '--session-dir', nativeRoot, '--name', `同频 · ${taskId}`, '--no-extensions', '--no-skills', '--no-context-files', '--no-prompt-templates'];
     args.push(...(restoring ? ['--session', nativeFile] : ['--session-id', sessionId]));
     args.push(...(mcpServers ? ['-e', 'builtin:mcp', '--approve'] : ['--no-mcp', '--no-approve']));
+    args.push('-e', fileURLToPath(new URL('./pi-model-proof.mjs', import.meta.url)), '--thinking', this.reasoningEffort);
     for (const path of skillPaths) args.push('--skill', absolute(path));
     if (this.model) args.push('--model', this.model);
     if (this.provider) args.push('--provider', this.provider);
-    const env = { ...triageModelEnvironment(), PI_CODING_AGENT_DIR: this.dataHome, PI_OFFLINE: '1', PI_TELEMETRY: '0' };
+    const env = { ...triageModelEnvironment(), PI_CODING_AGENT_DIR: this.dataHome, PI_OFFLINE: '1', PI_TELEMETRY: '0',
+      PI_TEAMPLAY_MODEL_PROOF_PATH: proofPath, PI_TEAMPLAY_EXPECTED_MODEL: this.model, PI_TEAMPLAY_EXPECTED_PROVIDER: this.provider,
+      PI_TEAMPLAY_EXPECTED_THINKING: this.reasoningEffort };
     const started = Date.now();
     const eventsPath = join(taskRoot, `events-${Date.now()}-${randomUUID()}.jsonl`);
     let logQueue = Promise.resolve();
@@ -149,6 +155,18 @@ export class PiExecutor {
       nativeFile = nativeState.sessionFile;
       const mapping = { taskId, cwd, sessionId, sessionFile: nativeFile };
       if (!restoring) await writeFile(mapPath, JSON.stringify(mapping, null, 2), { flag: 'wx', mode: 0o600 });
+      // Resume can restore an older model/effort. Select and verify both before
+      // sending business input instead of trusting CLI flags or a display label.
+      if (this.model && this.provider) await request('set_model', { provider: this.provider, modelId: this.model });
+      const available = await request('get_available_thinking_levels');
+      if (!available?.levels?.includes(this.reasoningEffort)) throw failure('Pi selected model does not support High thinking.');
+      await request('set_thinking_level', { level: this.reasoningEffort });
+      nativeState = await request('get_state');
+      const selected = { provider: nativeState?.model?.provider, model: nativeState?.model?.id, reasoningEffort: nativeState?.thinkingLevel };
+      if (!idle(nativeState) || nativeState.sessionId !== sessionId || !selected.provider || !selected.model
+        || this.provider && selected.provider !== this.provider || this.model && selected.model !== this.model
+        || selected.reasoningEffort !== this.reasoningEffort) throw failure('Pi native model or High thinking did not match the requested selection.');
+      const modelSelection = { ...selected, verified: true, sessionId, requestsPath: proofPath };
       const before = await request('get_session_stats');
       signal?.throwIfAborted();
       const accepted = await request('prompt', { message: prompt });
@@ -160,6 +178,13 @@ export class PiExecutor {
       if (!text.trim()) throw failure('Pi final assistant text is empty.');
       nativeState = await request('get_state');
       if (!idle(nativeState) || nativeState.sessionId !== sessionId) throw failure('Pi completion did not confirm the owned session was idle.');
+      if (nativeState.model?.provider !== selected.provider || nativeState.model?.id !== selected.model || nativeState.thinkingLevel !== selected.reasoningEffort)
+        throw failure('Pi native model or High thinking changed during execution.');
+      const requests = (await readFile(proofPath, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+      if (!requests.length || requests.some(item => item.verified !== true || item.provider !== selected.provider || item.modelId !== selected.model
+        || item.reasoningEffort !== selected.reasoningEffort || item.thinkingEnabled !== true || item.hasThinkingBudget !== false))
+        throw failure('Pi provider requests did not confirm the selected model and High thinking.');
+      modelSelection.providerRequests = requests.length;
       const after = await request('get_session_stats');
       child.stdin.end();
       const exit = await elapsed(exited, 30000, 'Pi did not exit after completion.');
@@ -167,7 +192,7 @@ export class PiExecutor {
       stopped = true;
       await logQueue;
       const usage = { elapsedMs: Date.now() - started, modelTurns, toolCalls, tokens: tokenDifference(before, after) };
-      const result = { backend: 'pi', sessionId, text, completed: true, usage };
+      const result = { backend: 'pi', sessionId, text, completed: true, usage, modelSelection };
       await writeFile(join(taskRoot, `receipt-${Date.now()}-${randomUUID()}.json`), JSON.stringify({ ...result, cwd, sessionFile: nativeFile, nativeExitCode: exit.code, agentSettled: true }, null, 2), { mode: 0o600 });
       return result;
     } catch (cause) {

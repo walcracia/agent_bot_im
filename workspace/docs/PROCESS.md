@@ -302,3 +302,21 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 本机三CLI仅--version零模型实查，分别DSH0.2.2-rc.3/Pi1.5.2/Hermes0.23.2；私有配置只读取模型选择、未输出凭据。旧三项业务与不同回归套件不作为强弱横评。本轮产物为选型研究，产品仍0.5.2，既有已验收Windows包/运行配置保持，未升级执行器或新增真实模型分析。后续路由改造需另以同条件业务测试定能力画像，不能把本文推断当新功能已实现。
 
 模型/基准与执行器两位只读复核未见阻断，协调者补充加权时间口径、主指数部分图像题、TB4.0/4.1区别及当前固定准入尚未修改。研究文档按v0.5.2-research.1标签交付，软件与包仍为已发布0.5.2，实际远端以Git查询为准。
+
+# 2026-11-23 · v0.5.3：Qwen4 Max High与三原生中文实测
+
+先读取恢复/接续资料，安全同步至b4bb5e4，冻结MODEL-QWEN设计。三个开发子Agent分别核原生协议与自有适配器，用中文沟通；文字High覆盖截图XHigh及历史DeepSeek/max。官方原生能力确认后仅补模型目录和可信配置，不升级/修改三个Agent安装，不替换认证或重写历史。真实任务将从授权IM发送三条独立中文请求，实际会话及原结果必须在各原生Agent内可查。
+
+DSH原生旧custom目录缺effort；Pi刷新目录仍无目标模型；Hermes内置profile虽ACP显示High，实际请求未携带思考参数。这些均先以零网络原生adapter/build_kwargs及RPC/ACP取证，再在用户配置补足，不能将设置标签当执行证明。一次本地YAML读取错用不存在的模块，随后用native ruamel；首次直接dump路径采用Windows默认GBK遇注释字符导致Hermes配置写中断，立即以原备份和UTF8内存序列化重建并读回，没有丢原配置。全部原失败保留忽略证据。
+
+完整verify首轮发现Pi现在要求可信provider/model，但business-config旧合成夹具未提供，已补夹具并单文件2/2通过，未放宽产品验证。原始全量失败保留；后续实测、验收及交付结果以最新HANDOFF和报告为准。
+
+真实IM第一组在Router模型前失败NO_ADAPTER：DSH desktop登记不代表headless也有同provider。备份headless空patch后只登记Qwen4 provider、官方目录及已有apiKeyEnv引用，没有复制凭据。第二组到接口被400拒绝developer角色；按原生compat.supportsDeveloperRole=false修复，system/user原文保持。第三组Router真实Qwen4/High完成并产生B000004–6；DSH B000006已真实完成中文代码检查（139.9秒、5模型/5工具），原生稳定request/header记录Qwen4/high，不能把5个step虚称5个header。Pi原请求已证High但401拒绝原账号，保留原native错误、已停进程和任务，修复账号后将从原会话接续，不用新会话冒充。Hermes真实任务与原生历史核验继续进行。
+
+修夹具后完整verify一次26 Python/9桌面/490桥接/16模拟启动与语法通过；原首轮夹具失败不删除。Windows0.5.3已实际构建并通过ASAR/PE/ZIP74全hash和原生8项，后台配置/桥接不在客户端包内，不重复覆盖既有产物。
+
+最终三原生中文正向均完成：DSH代码检查B000006、Pi原ID继续B000004、Hermes独立B000007文档Skill。DSH真实窗口打开Qwen4/High与中文结果，Pi/Desktop API和Hermes官方同用户HTTP列表/详情、原生RPC/SQL终态都验证原ID/原文。成员认证下载三报告字节/hash通过。Hermes新任务约94秒/5原生API/6工具；旧B5恢复异常被明确取消后才新建独立验收，不将其记恢复成功。
+
+Hermes原先401已精确证明native admission failed，只有自有viewer身份和native终态同时核对后才结束该viewer树；共享gateway保留。原状态锁事务只消除旧调用unknown并保留失败与attempt，未生成结论。再恢复发生于session/load的Windows版本查询子进程pipe等待，native Git同exe/cwd独立执行很快，未将其误称整体Git慢；没有原生支持跳过机制，不改install stamp/安装或猴补源码。所有零模型诊断和failed/cancel记录独立保留。
+
+最终26/9/490/16、Windows静态/原生及服务重复复用通过，0活动/0等待任务。Git与Release交付按新产品tag/明确文件清单进行；具体源码与资产远端回执以最新HANDOFF/state为准。

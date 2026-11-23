@@ -27,11 +27,11 @@ test('QA is disabled by default and enabled config resolves explicit scope witho
   const result = normalizeTriageConfig(input, tmpdir(), authorization);
   assert.ok(!Object.hasOwn(result, 'totalModelCalls')); assert.ok(!Object.hasOwn(result, 'dailyModelCalls')); assert.equal(result.maxConcurrent, 1);
   assert.equal(result.pollMilliseconds, 60000); assert.equal(result.modelTimeoutMs, 0);
-  assert.deepEqual(result.modelSelection, { reasoningEffort: 'max' });
+  assert.deepEqual(result.modelSelection, { reasoningEffort: 'high' });
   assert.deepEqual(result.bindings, [{ sourceId: 'qa-demo', projectId: '7', projectCode: 'DEMO', conversationId: 'chat-demo' }]);
   for (const field of ['root', 'skillRoot', 'python']) assert.ok(isAbsolute(result[field]));
   assert.equal(input.bindings[0].projectCode, 'demo');
-  input.modelSelection = { provider: 'selected', model: 'model', reasoningEffort: 'max' };
+  input.modelSelection = { provider: 'selected', model: 'model', reasoningEffort: 'high' };
   assert.deepEqual(normalizeTriageConfig(input, tmpdir(), authorization).modelSelection, input.modelSelection);
 });
 
@@ -56,7 +56,7 @@ test('QA configuration rejects unauthorized identities and ambiguous project bin
     value => { value.allowChatProjectBinding = 'true'; },
     value => { value.modelSelection = { provider: 'selected', model: 'model', apiKey: 'not-allowed' }; },
     value => { value.modelSelection = { provider: 'selected\ninjected', model: 'model' }; },
-    value => { value.modelSelection = { provider: 'selected', model: 'model', reasoningEffort: 'off' }; },
+    value => { value.modelSelection = { provider: 'selected', model: 'model', reasoningEffort: 'high\ninjected' }; },
   ]) { const input = configuration(); change(input); assert.throws(() => normalizeTriageConfig(input, tmpdir(), authorization)); }
 });
 

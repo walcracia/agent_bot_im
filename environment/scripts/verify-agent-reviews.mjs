@@ -90,6 +90,7 @@ async function configuredAgents() {
       if (typeof selected[field] !== 'string' || !selected[field] || /[\0\r\n]/u.test(selected[field])) throw Error('Invalid trusted model selection.');
       picked[field] = selected[field];
     }
+    if (selected.reasoningEffort !== undefined) picked.reasoningEffort = selected.reasoningEffort;
     if (backend === 'dsh') {
       const selection = dshModelSelection({ ...raw.harness?.modelSelection,
         ...(picked.provider ? { provider: picked.provider } : {}), ...(picked.model ? { model: picked.model } : {}),

@@ -75,16 +75,17 @@ async function withinTaskEdit(cwd, toolCall) {
  * analysis wall-clock/turn budget or implicit rerun is added here.
  */
 export class HermesExecutor {
-  constructor({ command, dataHome, runsPath, model, provider } = {}) {
+  constructor({ command, dataHome, runsPath, model, provider, reasoningEffort = 'high' } = {}) {
     const commandParts = typeof command === 'string' ? [command] : command;
     if (!Array.isArray(commandParts) || !commandParts.length || commandParts.some(part => typeof part !== 'string' || /[\0\r\n]/u.test(part)))
       throw new Error('Hermes command must be an executable or an argv array.');
     this.command = absolute(commandParts[0], 'command'); this.args = commandParts.slice(1);
     this.dataHome = absolute(dataHome, 'dataHome'); this.runsPath = absolute(runsPath, 'runsPath');
     if (model !== undefined && (typeof model !== 'string' || !model.trim() || /[\0\r\n]/u.test(model))) throw new Error('Invalid Hermes model.');
-    if (provider !== undefined && (typeof provider !== 'string' || !/^[A-Za-z0-9_.-]+$/u.test(provider))) throw new Error('Invalid Hermes provider.');
+    if (provider !== undefined && (typeof provider !== 'string' || !/^(?:custom:)?[A-Za-z0-9_.-]+$/u.test(provider))) throw new Error('Invalid Hermes provider.');
     if (provider && !model) throw new Error('A provider override requires an explicit model.');
-    this.model = model; this.provider = provider; this.active = new Set(); this.closed = false;
+    if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'].includes(reasoningEffort)) throw new Error('Invalid Hermes reasoning effort.');
+    this.model = model; this.provider = provider; this.reasoningEffort = reasoningEffort; this.active = new Set(); this.closed = false;
   }
   async run({ taskId, cwd, prompt, sessionId, skillPaths = [], skillIds = [], mcpServers = [] } = {}, { signal } = {}) {
     if (this.closed) throw new Error('Hermes executor is closed.');
@@ -107,7 +108,8 @@ export class HermesExecutor {
     signal?.throwIfAborted();
     const runDirectory = join(this.runsPath, taskId + '-' + randomUUID()); await mkdir(runDirectory, { mode: 0o700 });
     const eventPath = join(runDirectory, 'protocol.jsonl'); await writeFile(eventPath, '', { flag: 'wx', mode: 0o600 });
-    await writeFile(join(runDirectory, 'request.json'), JSON.stringify({ taskId, cwd: taskCwd, prompt, sessionId, skillPaths, skillIds, mcpServers }), { flag: 'wx', mode: 0o600 });
+    await writeFile(join(runDirectory, 'request.json'), JSON.stringify({ taskId, cwd: taskCwd, prompt, sessionId, skillPaths, skillIds, mcpServers,
+      model: this.model, provider: this.provider, reasoningEffort: this.reasoningEffort }), { flag: 'wx', mode: 0o600 });
     const aborter = new AbortController(), handle = { aborter, done: null }; this.active.add(handle);
     const onExternalAbort = () => aborter.abort(signal.reason); signal?.addEventListener('abort', onExternalAbort, { once: true });
     if (signal?.aborted) aborter.abort(signal.reason);
@@ -122,7 +124,8 @@ export class HermesExecutor {
     const queryFile = join(runDirectory, 'skill-bootstrap-query.txt');
     await writeFile(queryFile, '/version\n', { flag: 'wx', mode: 0o600 });
     const args = [...this.args, 'chat', '--format', 'stream-json', '--query-file', queryFile, '--in', taskCwd, '--source', 'tool',
-      ...skillIds.flatMap(id => ['--skills', id]), ...(this.model ? ['--model', this.model] : []), ...(this.provider ? ['--provider', this.provider] : [])];
+      ...skillIds.flatMap(id => ['--skills', id]), ...(this.model ? ['--model', this.model] : []), ...(this.provider ? ['--provider', this.provider] : []),
+      '--reasoning', this.reasoningEffort];
     const log = join(runDirectory, 'skill-bootstrap.jsonl'); await writeFile(log, '', { flag: 'wx', mode: 0o600 });
     const child = spawn(this.command, args, { cwd: taskCwd, windowsHide: true, shell: false,
       stdio: ['ignore', 'pipe', 'pipe'], env: childEnvironment(this.dataHome) });
@@ -156,7 +159,7 @@ export class HermesExecutor {
   async #invoke({ taskId, taskCwd, prompt, sessionId, sessionsPath, mcpServers, skillIds, runDirectory, eventPath, signal }) {
     let child, nativeSession = sessionId, failure, promptStarted = false, terminalSeen = false, terminalReason, exitResult, cancellationSent = false;
     const started = Date.now(), pending = new Map(), toolIds = new Set(), messages = new Map();
-    let nextId = 0, currentMessage = 0, currentToolBoundary = false, terminalUsage, lastMessage;
+    let nextId = 0, currentMessage = 0, currentToolBoundary = false, terminalUsage, lastMessage, modelSelection;
     const log = (direction, value) => appendFileSync(eventPath, JSON.stringify({ direction, value }) + '\n', { mode: 0o600 });
     const usage = () => ({ elapsedMs: Date.now() - started, toolCalls: toolIds.size,
       ...(terminalUsage?.inputTokens === undefined ? {} : { inputTokens: terminalUsage.inputTokens }),
@@ -254,7 +257,17 @@ export class HermesExecutor {
         await writeFile(join(sessionsPath, hash(nativeSession) + '.json'), JSON.stringify({ sessionId: nativeSession, taskId, cwd: taskCwd,
           dataHome: this.dataHome, command: this.command, args: this.args, skillIds }), { flag: 'wx', mode: 0o600 });
       }
-      if (this.model) await request('session/set_model', { sessionId: nativeSession, modelId: this.provider ? this.provider + ':' + this.model : this.model }, true);
+      const requestedModelId = this.model && (this.provider ? this.provider + ':' + this.model : this.model);
+      if (requestedModelId) await request('session/set_model', { sessionId: nativeSession, modelId: requestedModelId }, true);
+      const configured = await request('session/set_config_option', { sessionId: nativeSession, configId: 'reasoning_effort', value: this.reasoningEffort }, true);
+      const modelId = configured?.configOptions?.find(option => option.id === 'model')?.currentValue;
+      const reasoningEffort = configured?.configOptions?.find(option => option.id === 'reasoning_effort')?.currentValue;
+      const modelMatches = !requestedModelId || modelId === requestedModelId
+        || !this.provider && modelId?.slice(modelId.indexOf(':') + 1) === requestedModelId;
+      if (typeof modelId !== 'string' || !modelId || !modelMatches || reasoningEffort !== this.reasoningEffort)
+        throw new Error('Hermes did not confirm the requested native model and reasoning effort.');
+      modelSelection = { sessionId: nativeSession, requestedModelId, modelId, reasoningEffort, verified: true };
+      await writeFile(join(runDirectory, 'model-selection.json'), JSON.stringify(modelSelection), { flag: 'wx', mode: 0o600 });
       signal.throwIfAborted();
       {
         // Hermes handles /title through its native rename mutation, before the
@@ -278,7 +291,7 @@ export class HermesExecutor {
       await Promise.race([exited, delay(5000)]);
       if (!exitResult) { child.kill(); await exited; }
       if (exitResult.code !== 0) throw new Error('Hermes viewer did not exit normally.');
-      const result = { backend: 'hermes', sessionId: nativeSession, text, completed: true, usage: usage() };
+      const result = { backend: 'hermes', sessionId: nativeSession, text, completed: true, usage: usage(), modelSelection };
       await writeFile(join(runDirectory, 'result.json'), JSON.stringify({ ...result, nativeTerminal: terminalReason, viewerExit: exitResult }), { flag: 'wx', mode: 0o600 });
       return result;
     } catch (cause) {
