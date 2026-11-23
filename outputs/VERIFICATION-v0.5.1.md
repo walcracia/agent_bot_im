@@ -34,3 +34,7 @@ Hermes的5个原会话均存在。默认聊天侧栏排除tool/acp，保留真�
 基础max覆盖旧Router/代码Worker/Watchdog，但未启用这些功能；wrapper原顺序保持，QA提示/直接调用未变，不重复模型追逐参考结论。正常stop/start、重复start及最终补丁后重启均确认服务0.5.1与原绑定监听ready，QA检查点231/ready、完成版本/attempt及三业务任务保留，没有模型重放。未部署腾讯。
 
 私有证据：environment/verification/v051、v051-session-visibility、desktop-artifacts-v0.5.1、desktop-native-v0.5.1。旧失败如实保留；无法由本轮证明的旧代码A1/A2、任意项目自动发布、OpenCode及OS沙箱仍属边界。
+
+## 最终远端回执
+
+产品源码bc156a89647ff8ac8ebaca66e8fa65628cef51f7及annotated v0.5.1对象e505d8abe4b5b11433382e046e4c8506286675c5/peel远端一致。Release已正式发布（isDraft=false），两资产state=uploaded，ZIP及SHA清单size/digest与本地逐一一致。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.1；本回执提交另用handoff标签，产品tag不移动。

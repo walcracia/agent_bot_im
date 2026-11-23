@@ -14,14 +14,16 @@
     "branch": "main",
     "source_version": "0.5.1",
     "release_tag": "v0.5.1",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Local implementation and Windows artifacts verified; final commit/tag/push/Release pending.",
-    "release_url": null,
-    "release_commit": null,
-    "annotated_tag_object": null,
-    "handoff_tag": null,
-    "source_commit": null
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "main/source commit, annotated product tag object and peel remotely confirmed; published Release has two uploaded assets with exact local sizes and SHA256 digests.",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.1",
+    "release_commit": "bc156a89647ff8ac8ebaca66e8fa65628cef51f7",
+    "annotated_tag_object": "e505d8abe4b5b11433382e046e4c8506286675c5",
+    "handoff_tag": "v0.5.1-handoff.1",
+    "source_commit": "bc156a89647ff8ac8ebaca66e8fa65628cef51f7",
+    "windows_zip_sha256": "d79bed49480a8ab7ce083cbd981f9ebbaa7f53793c72e892472acd7e49b31118",
+    "checksum_sha256": "31e6783b8ab6a65748c28bb2ea52e6629d58636b4a80d7699ab703dacaaebc7f"
   },
   "known_failures": [
     "Initial Pi native review lacked a native MCP tool event because default MCP exposure was not directly declared; fixed and purposeful native retest passed",
@@ -31,11 +33,10 @@
     "v0.5.1 final bridge commands initially forgot Node24 child PATH:479pass/7 startup-credential failures; corrected environment file16/16 passed, logs retained; no product changes made to bypass environment checks"
   ],
   "pending": [
-    "Commit explicit files, annotate v0.5.1, push and verify branch/tag and Release asset digests",
-    "Old coding A1/A2, arbitrary project automatic publication, OpenCode and OS sandbox remain outside this iteration"
+    "Future scope: old coding A1/A2, arbitrary project automatic publication, OpenCode and OS sandbox remain outside this completed iteration"
   ],
   "updated_at": "2026-11-23",
-  "stage": "v0.5.1 acceptance complete; commit/tag/push and Release receipt pending",
+  "stage": "v0.5.1 source/tag and Windows Release remotely confirmed",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -98,7 +99,7 @@
     "verification_report": "outputs/VERIFICATION-v0.5.1.md",
     "observation_only": true,
     "default_startup_bound": true,
-    "source_pushed": false,
+    "source_pushed": true,
     "qa_real_provider_requests_total_this_iteration": 1,
     "qa_report_evidence_references": "Full original plugin:79 logs/44 snippets/60 key blocks; real source line verification",
     "qa_user_paused": false,
@@ -117,7 +118,10 @@
       "additional_model_calls": 0
     },
     "windows_zip": "outputs/TeamRelay-v0.5.1-windows-x64.zip",
-    "windows_zip_sha256": "d79bed49480a8ab7ce083cbd981f9ebbaa7f53793c72e892472acd7e49b31118"
+    "windows_zip_sha256": "d79bed49480a8ab7ce083cbd981f9ebbaa7f53793c72e892472acd7e49b31118",
+    "product_release_commit": "bc156a89647ff8ac8ebaca66e8fa65628cef51f7",
+    "product_annotated_tag": "v0.5.1",
+    "product_tag_object": "e505d8abe4b5b11433382e046e4c8506286675c5"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -856,21 +860,20 @@
   "source_work_in_progress": {
     "version": "0.5.1",
     "design": "workspace/docs/DELIVERY-v0.5.1.md",
-    "stage": "verified-awaiting-delivery",
+    "stage": "delivered",
     "qa_user_paused": false,
     "qa_original_recipe_happy_path_verified": true,
     "dsh_max_real_call_verified": true,
     "desktop_built_and_verified": true
   },
   "next_goal": {
-    "status": "in-progress",
+    "status": "complete",
     "design": "workspace/docs/DELIVERY-v0.5.1.md",
     "scope": [
       "package every verified iteration",
       "QA original plugin happy path",
       "native Pi/Hermes history visibility",
       "DSH max effort"
-    ],
-    "remaining": "Git/Release delivery"
+    ]
   }
 }

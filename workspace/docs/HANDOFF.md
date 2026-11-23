@@ -1,5 +1,15 @@
 # 当前接续状态
 
+## 2026-11-23 · v0.5.1 已发布与最终运行回执
+
+产品源码bc156a89647ff8ac8ebaca66e8fa65628cef51f7已推main；新annotated v0.5.1对象e505d8abe4b5b11433382e046e4c8506286675c5及peel已由远端确认。Release正式isDraft=false，两资产uploaded、size/digest逐一与本地核对：Windows ZIP162325628字节，SHA256 d79bed49480a8ab7ce083cbd981f9ebbaa7f53793c72e892472acd7e49b31118；SHA文本99字节，digest31e6783b8ab6a65748c28bb2ea52e6629d58636b4a80d7699ab703dacaaebc7f。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.1；完整便携目录本机outputs/desktop-v0.5.1/TeamRelay-win32-x64。
+
+四项用户目标均已完成：每轮版本化打包入口及真实EXE验收、恢复QA并跑完原插件/max→一条原结论+TXT认证下载、Pi4/Hermes5原生记录可查、DSH所有headless基础/业务/QA路径max。设计/过程/原失败与复验详见DELIVERY和VERIFICATION-v0.5.1。最后仅Node子PATH命令失误对应16/16复验，不能隐去或说首次486全部通过；无代码变更掩盖环境失败，最终所有项覆盖通过。
+
+本机最后正常重启后IM0.5.1、监听ready、QA检查点231/ready、已完成输入版本/attempt和三业务报告保留，无模型重放；后续恢复仍实查，不把快照当永久存活。用户要求的日志暂停已在本轮明确撤销，DSH先前off也由max覆盖；不从下方历史误恢复旧约定。旧边界、真实凭据/日志/会话备份仍在忽略目录。
+
+Git交付回执另用v0.5.1-handoff.1，不移动产品tag；回执提交自身是否已上传以git/远端实查为准。下方“待交付”均为本轮阶段历史。
+
 ## 2026-11-23 · v0.5.1 验收完成，待Git及Release回执
 
 最新范围先读DELIVERY-v0.5.1，覆盖旧QA暂停和DSH首档/off。标准SSO由用户完成，实际授权读取及原检查点扫描成功；同一已选问题通过原插件整包解析及原system/user（逐字匹配）完成新版本，一次真实DSH/max、原生completed/exit0、一条原结论+完整TXT及认证下载/hash通过。79日志/44片段/60关键块/744行，约85.4秒；完整私有收据environment/verification/v051/plugin-live-receipt.json。保持无人工分析/阅读额度，未重复模型追逐截图答案。
