@@ -965,5 +965,20 @@
     ],
     "preserve_machine_fields_and_original_skill_output": true,
     "requested_at": "2026-11-23"
+  },
+  "model_agent_research": {
+    "date": "2026-11-23",
+    "report": "references/RESEARCH-MODELS-AGENTS-2026-11-23.md",
+    "scope": "Official model/runtime sources and primary benchmark snapshots; not a local quality benchmark",
+    "model_api_calls": 0,
+    "native_version_probes_only": {
+      "dsh": "0.2.2-rc.3",
+      "pi": "1.5.2",
+      "hermes": "0.23.2"
+    },
+    "product_version_unchanged": "0.5.2",
+    "routing_configuration_changed": false,
+    "git_delivery": "Independent document tag v0.5.2-research.1; confirm branch/tag with Git remote; product v0.5.2 release unchanged",
+    "review_status": "Model/benchmark and runtime facts independently reviewed; coordinator applied precision corrections"
   }
 }
