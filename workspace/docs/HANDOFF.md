@@ -1,5 +1,13 @@
 # 当前接续状态
 
+## 2026-11-23 · v0.5.3已发布与原生中文结果
+
+产品源码620f8cad6d75000e6730474ba113ce09a3640851、annotated v0.5.3对象4e680683bdbb5b41a52327e03eef68d474ea5933及peel已远端核对。正式Release isDraft=false，两资产uploaded，size/digest与本地逐项一致：ZIP162325625字节，SHA256 a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9；SHA文本99字节，digest c249c6117d839349af31ecbe4eccce056fdcb4af79e1bb8bf031fe27603d5b4b。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3，EXE为outputs/desktop-v0.5.3/TeamRelay-win32-x64/TeamRelay.exe，须保留便携目录。
+
+三Agent均Qwen4 Max/High，真实中文任务、原生终态/桌面可见、原聊天一条结果和TXT认证下载齐全。DSH打开“检查切片求和漏算末项”，Pi“同频 · B000004”，Hermes在全部会话/ Ctrl+K找“同频 · B000007”。Hermes官方RPC进一步核reasoning_effort_wire=high及实际Skill，原生API计数5/工具6。全部常规490桥接/26 Python/9桌面/16模拟启动、实际Windows8项通过；最后正常复用0.5.3/listener ready，0活动/0等待。
+
+已保留旧B000005失败/取消及native恢复问题，独立新验收不冒充原ID恢复。未新增QA模型，不移动既有tag/资产，不把本机账号/会话放Git。详见VERIFICATION-v0.5.3；下方待发布/进行中均是历史阶段。本回执另用v0.5.3-handoff.1，其自身远端状态按Git查询，不为回填自身SHA循环追加提交。
+
 ## 2026-11-23 · v0.5.3真实验收完成，待Git/Release
 
 DSH、Pi、Hermes及同频Router/QA可信配置统一Qwen4 Max、High；原生安装未改。三条独立中文业务经真实AI路由、Agent完成、原聊天单条原结果+TXT及成员认证下载/hash均通过。原生可查记录：DSH“检查切片求和漏算末项”、Pi“同频 · B000004”、Hermes“同频 · B000007”；三原生实际model/High和原历史/桌面可见均已核，具体证据见MODEL-QWEN及VERIFICATION-v0.5.3。

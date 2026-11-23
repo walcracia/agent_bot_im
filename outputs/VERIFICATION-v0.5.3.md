@@ -33,3 +33,5 @@ QA只更新可信模型/High与原生输出容量，原插件材料、system/use
 Windows0.5.3真实构建：ASAR16条目/12源文件逐字节，PE x64/产品名/版本、ZIP74 CRC/全hash通过；隔离原生Electron8项含托盘/任务栏/未读/单实例/报告点击保存通过，0渲染错误。包162325625字节，SHA256 a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9。EXE在outputs/desktop-v0.5.3/TeamRelay-win32-x64；保留整个目录，包不含后台、三Agent、账号或日志。
 
 私有证据：environment/verification/v053、v053-pi、desktop-artifacts-v0.5.3、desktop-native-v0.5.3；常规原始日志environment/logs/verify-v0.5.3{,-final}.log。源/包Git与Release最终回执见最新HANDOFF/state及远端实查，提交前不预称已上传。
+
+最终回执：原生Hermes同一会话官方RPC确认reasoning_effort_wire=high、精确Skill与terminal/completed，Desktop完整列表/详情中文原文一致。源码620f8cad6d75000e6730474ba113ce09a3640851及annotated v0.5.3对象4e680683bdbb5b41a52327e03eef68d474ea5933/peel已远端确认；正式Release两资产uploaded，size/digest与本地相同，https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3。服务/监听最后复用就绪且0活动/0等待。回执另用v0.5.3-handoff.1，不移动产品tag。

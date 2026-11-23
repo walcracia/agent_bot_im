@@ -13,9 +13,16 @@
     "branch": "main",
     "source_version": "0.5.3",
     "release_tag": "v0.5.3",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Verification done; final source/tag and Release asset push pending"
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "Main source and annotated tag object/peel confirmed; published Release both assets uploaded with exact local sizes/digests",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3",
+    "release_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
+    "source_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
+    "annotated_tag_object": "4e680683bdbb5b41a52327e03eef68d474ea5933",
+    "handoff_tag": "v0.5.3-handoff.1",
+    "windows_zip_sha256": "a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9",
+    "checksum_sha256": "c249c6117d839349af31ecbe4eccce056fdcb4af79e1bb8bf031fe27603d5b4b"
   },
   "known_failures": [
     "Initial Pi native review lacked a native MCP tool event because default MCP exposure was not directly declared; fixed and purposeful native retest passed",
@@ -32,8 +39,8 @@
   "pending": [
     "Future scope: old coding A1/A2, arbitrary project automatic publication, OpenCode and OS sandbox remain outside this completed iteration"
   ],
-  "updated_at": "2026-11-23T07:02:23.696077+00:00",
-  "stage": "v0.5.3 real Chinese happy paths and Windows verified; Git/Release pending",
+  "updated_at": "2026-11-23T07:06:29.171050+00:00",
+  "stage": "v0.5.3 real Chinese native flows, source/tag and Windows Release remotely confirmed",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -96,7 +103,7 @@
     "verification_report": "outputs/VERIFICATION-v0.5.3.md",
     "observation_only": true,
     "default_startup_bound": true,
-    "source_pushed": false,
+    "source_pushed": true,
     "qa_real_provider_requests_total_this_iteration": 0,
     "qa_report_evidence_references": "Full original plugin:79 logs/44 snippets/60 key blocks; real source line verification",
     "qa_user_paused": false,
@@ -121,7 +128,10 @@
     "qa_model_selection_updated": true,
     "three_native_business_workflows_verified": true,
     "native_desktop_results_visible": true,
-    "hermes_failed_session_native_resume_issue": "Old failed test explicitly cancelled; independent new happy-path task completed; exact native issue retained in report"
+    "hermes_failed_session_native_resume_issue": "Old failed test explicitly cancelled; independent new happy-path task completed; exact native issue retained in report",
+    "product_release_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
+    "product_annotated_tag": "v0.5.3",
+    "product_tag_object": "4e680683bdbb5b41a52327e03eef68d474ea5933"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -506,10 +516,9 @@
   },
   "display_name": "同频TeamPlay",
   "handoff_maintenance": {
-    "date": "2026-11-20",
-    "tag": "v0.4.1-handoff.1",
-    "source_product_commit": "5cf6b093868e2c197880f1181f8081766a24c65a",
-    "scope": "Published product remote receipt and final passed validation metadata; own commit is queried from Git."
+    "tag": "v0.5.3-handoff.1",
+    "scope": "Final verified delivery receipt; same0.5.3 product and immutable Windows assets",
+    "commit": "Resolve the handoff tag via Git; no self-referential receipt loop"
   },
   "iteration_history": [
     {
@@ -1027,7 +1036,7 @@
   "source_work_in_progress": {
     "version": "0.5.3",
     "design": "workspace/docs/MODEL-QWEN-v0.5.3.md",
-    "stage": "all real native/IM/Windows checks verified; Git/Release pending",
+    "stage": "delivered",
     "real_native_tests_completed": [
       "dsh",
       "pi",
@@ -1035,7 +1044,7 @@
     ]
   },
   "next_goal": {
-    "status": "verification complete; delivery pending",
+    "status": "complete",
     "design": "workspace/docs/MODEL-QWEN-v0.5.3.md",
     "scope": [
       "Three native Chinese results and Qwen4 Max High",
