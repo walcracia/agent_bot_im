@@ -13,9 +13,16 @@
     "branch": "main",
     "source_version": "0.5.4",
     "release_tag": "v0.5.4",
-    "source_pushed": false,
-    "release_published": false,
-    "delivery_status": "Current QA MVP and Windows verified; source/tag and Release assets pending"
+    "source_pushed": true,
+    "release_published": true,
+    "delivery_status": "Main and annotated tag object/peel confirmed; official Release two assets uploaded with exact local sizes/digests",
+    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.4",
+    "release_commit": "53c14b14c817737b6b82a2ac01312bbf7b77bec2",
+    "source_commit": "53c14b14c817737b6b82a2ac01312bbf7b77bec2",
+    "annotated_tag_object": "f1ba60508a15f5cf7d8cf5032e7b3288c29f2131",
+    "handoff_tag": "v0.5.4-handoff.1",
+    "windows_zip_sha256": "a8d51324abab401713a485823a4432e5e1e3484323d0cf851dc18035f9be8146",
+    "checksum_sha256": "0ede0f3121fafb3c7794458a1e5f90c94edc8d35f0c3bc251c54cdc9598daa4b"
   },
   "known_failures": [
     "Initial Pi native review lacked a native MCP tool event because default MCP exposure was not directly declared; fixed and purposeful native retest passed",
@@ -32,8 +39,8 @@
   "pending": [
     "Future scope: old coding A1/A2, arbitrary project automatic publication, OpenCode and OS sandbox remain outside this completed iteration"
   ],
-  "updated_at": "2026-11-24T03:04:51.468235+00:00",
-  "stage": "v0.5.4 QA real happy path and Windows verified; Git/Release pending",
+  "updated_at": "2026-11-24T03:08:53.951103+00:00",
+  "stage": "v0.5.4 QA MVP, source/tag and Windows Release remotely confirmed",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -96,7 +103,7 @@
     "verification_report": "outputs/VERIFICATION-v0.5.4.md",
     "observation_only": true,
     "default_startup_bound": true,
-    "source_pushed": false,
+    "source_pushed": true,
     "qa_real_provider_requests_total_this_iteration": 1,
     "qa_report_evidence_references": "Current original plugin recipe and prompt parity; ZIP+PNG hashes; 759 evidence lines",
     "qa_user_paused": false,
@@ -114,7 +121,10 @@
     "native_desktop_results_visible": true,
     "hermes_failed_session_native_resume_issue": "Old failed test explicitly cancelled; independent new happy-path task completed; exact native issue retained in report",
     "qa_mvp_gate_verified": true,
-    "qa_mvp_source_sha256": "84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1"
+    "qa_mvp_source_sha256": "84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1",
+    "product_release_commit": "53c14b14c817737b6b82a2ac01312bbf7b77bec2",
+    "product_annotated_tag": "v0.5.4",
+    "product_tag_object": "f1ba60508a15f5cf7d8cf5032e7b3288c29f2131"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -499,8 +509,8 @@
   },
   "display_name": "同频TeamPlay",
   "handoff_maintenance": {
-    "tag": "v0.5.3-handoff.1",
-    "scope": "Final verified delivery receipt; same0.5.3 product and immutable Windows assets",
+    "tag": "v0.5.4-handoff.1",
+    "scope": "QA MVP and final Windows/source delivery receipt; product tag/assets immutable",
     "commit": "Resolve the handoff tag via Git; no self-referential receipt loop"
   },
   "iteration_history": [
@@ -1108,11 +1118,11 @@
   "source_work_in_progress": {
     "version": "0.5.4",
     "design": "workspace/docs/QA-MVP-v0.5.4.md",
-    "stage": "verified; Git/Release pending",
+    "stage": "delivered",
     "real_qa_main_flow_completed": true
   },
   "next_goal": {
-    "status": "verification complete; delivery pending",
+    "status": "complete",
     "design": "workspace/docs/QA-MVP-v0.5.4.md",
     "scope": [
       "Fix complete-download waiting and private failure cause persistence",

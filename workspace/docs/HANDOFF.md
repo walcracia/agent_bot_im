@@ -1,5 +1,13 @@
 # 当前接续状态
 
+## 2026-11-24 · v0.5.4已发布，QA逐轮MVP已落实
+
+产品源码53c14b14c817737b6b82a2ac01312bbf7b77bec2、annotated v0.5.4对象f1ba60508a15f5cf7d8cf5032e7b3288c29f2131及peel远端一致。正式Release isDraft=false，两资产uploaded且size/digest与本地相同：ZIP162325626B/SHA256 a8d51324abab401713a485823a4432e5e1e3484323d0cf851dc18035f9be8146，SHA文本99B/digest 0ede0f3121fafb3c7794458a1e5f90c94edc8d35f0c3bc251c54cdc9598daa4b。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.4，本机EXE为outputs/desktop-v0.5.4/TeamRelay-win32-x64/TeamRelay.exe，须保留目录。
+
+本轮真实QA主流程全部通过，原聊天已有原结论和TXT，下载原文/hash16685B已核。每轮软件迭代必过规则写AGENTS/QA-MVP设计并由打包-QaReceipt强制；旧版本、源变化、未完成/模拟不能替代。完整26/9/503/16及实际Windows8项通过，当前源指纹84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1。最后start正常复用0.5.4/listener ready，0活动/0等待，无报告重放。
+
+旧T1具体网络cause因旧记录缺失仍不可完全还原；已隔离复现并修复完整下载等EOF缺陷，补私有cause取证。旧T4/T6不冒称重跑，视频项需补日志。source/业务材料/凭据隔离不变，原插件提示与结论不改，额度不恢复。本回执另用v0.5.4-handoff.1，不移动产品tag/资产；其自身SHA以Git查询，以下待交付为阶段历史。
+
 ## 2026-11-24 · v0.5.4真实QA/Windows已过，待Git交付
 
 每轮QA主流程必过已写AGENTS、QA-MVP-v0.5.4及真实send/check/打包-QaReceipt。已真实完成T1新r4/attempt6、ZIP+PNG哈希、原插件Skill/Qwen4High/1请求、原生completed/exit0、1条原结论+TXT及成员认证下载16685B/SHA；完整源指纹84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1，私有v054/qa-live收据43e6b54bd57ac61a62b0bbca35efe6fa0a2f808bf055988d7f8cd50bfec6353b。不得用历史收据/partial替代，新clone没有私有资料需恢复授权后再跑。

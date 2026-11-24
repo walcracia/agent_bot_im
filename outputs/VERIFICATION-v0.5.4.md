@@ -29,3 +29,5 @@ verify-qa-live.mjs必须显式--live --send，持久clientId去重；--live --ch
 ZIP162325626字节，SHA256 a8d51324abab401713a485823a4432e5e1e3484323d0cf851dc18035f9be8146；SHA文本99字节，自身digest 0ede0f3121fafb3c7794458a1e5f90c94edc8d35f0c3bc251c54cdc9598daa4b。EXE在outputs/desktop-v0.5.4/TeamRelay-win32-x64，保留整个目录；包不含后台、Agent、凭据或业务资料。源/新tag及Release资产实际远端回执见最新HANDOFF/state，不从提交前记录预称上传。
 
 最终冻结源完整verify单次26 Python/9桌面/503桥接/16模拟启动及语法全通过，0跳过；更早500和501通过记录以及最终gate6/6相关复验均保留，不将中途未覆盖的新版测试冒称已通过。打包前后本轮QA receipt重验均passed，源指纹未漂移。
+
+远端最终回执：源码53c14b14c817737b6b82a2ac01312bbf7b77bec2及annotated v0.5.4对象f1ba60508a15f5cf7d8cf5032e7b3288c29f2131/peel已核；正式Release两资产uploaded、size/digest匹配，本机正常复用ready且0活动/0等待。https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.4。回执另用v0.5.4-handoff.1，不移动产品tag。
