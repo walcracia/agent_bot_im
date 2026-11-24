@@ -120,3 +120,9 @@ PR #2通过可信测试自动合并为95a76e0a99690d8cc4d6e1d72d76b8e24cbd0907�
 Windows0.5.3已实际构建，ASAR16/12源字节、PE x64/产品版本、ZIP74全hash及隔离原生8项（含报告保存）通过，见最终VERIFICATION-v0.5.3。三真实中文业务、原生会话可见和High实际证明、同频下载，以及原失败和恢复结果在该最终报告单列；不能用本阶段的部分成功提前声称三者全通过。
 
 最终三真实中文业务/三原生可见均通过，完整TXT一条回传与认证下载/hash通过。Hermes失败会话恢复并未通过或修复；旧测试明确取消，独立新任务正常完成。DSH沙箱工具尝试失败与其正确语义建议区分；完整项目回归独立通过。最终报告outputs/VERIFICATION-v0.5.3.md。
+
+## 2026-11-24 · v0.5.4 QA主流程逐轮验收
+
+worker/super-triage相关70/70，gate从3项补到6项（真实目录/CIM/现代账本/backend查询契约）全部通过。两次send前检查拒绝分别是legacy账本路径和按内部ID筛选返回null，均在IM发送及模型前修复；未冒称登录过期。完整源冻结后的最终verify26 Python/9桌面/503桥接/16模拟启动与语法全通过，无跳过。原500/501及所有修正证据保留。
+
+本轮真实QA：授权读取→IM显式触发→原任务新r4/attempt6→ZIP+PNG双附件bytes/MD5/SHA→原插件Skill/三档模板与当前system-user→1次Qwen4Max/High/native completed exit0→原结论单条+完整TXT→成员认证下载16685B及SHA/原文一致，全部通过。Windows0.5.4只有QA收据gate通过才进入构建，ASAR16/12源字节、PE x64/版本、ZIP74 CRC/hash、实际原生8项及一批四图通过。完整报告outputs/VERIFICATION-v0.5.4.md，私有v054/qa-live与desktop-artifacts/native-v0.5.4。

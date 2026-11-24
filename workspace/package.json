@@ -1,6 +1,6 @@
 {
   "name": "team-relay",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "private": true,
   "description": "同频TeamPlay 小团队私有 IM Windows 客户端",
   "main": "desktop/main.cjs",

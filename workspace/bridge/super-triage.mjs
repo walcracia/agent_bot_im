@@ -15,6 +15,26 @@ const issueKey = t => hash([String(t.sourceId), String(t.projectId), String(t.ex
 const fail = code => Object.assign(new Error(code), { code });
 const busy = new Set(['preparing', 'running', 'analysing', 'validating', 'interrupting']);
 const safeError = cause => /^[A-Z][A-Z0-9_]{2,100}$/u.test(cause?.code ?? '') ? cause.code : 'TRIAGE_FAILED';
+function pausedNotice(task, cause) {
+  const retry = `再发送“继续分析 #${task.id}”。`;
+  let reason;
+  switch (safeError(cause)) {
+    case 'TRIAGE_DOWNLOAD_TIMEOUT':
+    case 'TRIAGE_DOWNLOAD_NETWORK': reason = `附件下载中断，请确认已连接公司网络，${retry}`; break;
+    case 'TRIAGE_DOWNLOAD_HTTP':
+      reason = cause.httpStatus === 401 ? `附件暂时无法访问，请重新登录缺陷系统，${retry}`
+        : cause.httpStatus === 403 ? `附件暂时无法访问，请确认你能在缺陷系统中打开附件，${retry}`
+        : cause.httpStatus === 404 ? `附件已找不到，请在缺陷系统重新上传日志，${retry}`
+        : `附件服务暂时不可用，请稍后${retry}`; break;
+    case 'TRIAGE_DOWNLOAD_INTEGRITY': reason = `附件不完整或内容已变化，请重新上传日志，${retry}`; break;
+    case 'TRIAGE_DOWNLOAD_METADATA': reason = `暂时无法取得附件信息，请确认缺陷系统中的附件能打开，${retry}`; break;
+    case 'TRIAGE_DOWNLOAD_SOURCE': reason = '附件链接暂时不可用，请管理员检查后继续。'; break;
+    case 'TRIAGE_DOWNLOAD_STORAGE': reason = '本机无法保存附件，请管理员检查磁盘空间和文件夹权限后继续。'; break;
+    case 'TRIAGE_DOWNLOAD_FAILED': reason = `附件未下载完成，请确认公司网络及附件能正常打开，${retry}`; break;
+    default: reason = '请由管理员检查后继续。';
+  }
+  return `#${task.id} 分析已暂停，资料和记录已保留。${reason}`;
+}
 const textParts = text => String(text).match(/[\s\S]{1,3000}/gu) ?? [''];
 const normalizeZone = text => /^(?:UTC\+08:00|UTC\+8|GMT\+08:00)$/iu.test(text) ? 'Asia/Shanghai'
   : /^(?:UTC\+00:00|UTC|GMT)$/iu.test(text) ? 'UTC' : text;
@@ -565,6 +585,12 @@ export class SuperTriage {
         task.error = safeError(cause); task.updatedAt = this.now();
         task.failure = { phase: String(cause.phase ?? 'execution').slice(0, 50), kind: String(cause.kind ?? 'failed').slice(0, 80),
           modelStarted: cause.modelStarted === true, processTreeStopped: cause.processTreeStopped === true };
+        if (Number.isInteger(cause.httpStatus) && cause.httpStatus >= 100 && cause.httpStatus <= 599) task.failure.httpStatus = cause.httpStatus;
+        if (typeof this.worker.root === 'string' && typeof cause.failureReceiptPath === 'string' && isAbsolute(cause.failureReceiptPath)) {
+          const path = resolve(cause.failureReceiptPath), part = relative(resolve(this.worker.root), path);
+          if (part && !isAbsolute(part) && part !== '..' && !part.startsWith('..' + sep) && path.endsWith(sep + 'failure.json'))
+            task.failure.receiptPathPrivate = path;
+        }
         this.#storeUsage(data, task, task.attempt, cause.usage ?? cause.execution?.usage);
         const stopped = cause.processTreeStopped === true || !run.modelReserved && !cause.modelStarted;
         task.lastRunStopped = stopped;
@@ -572,7 +598,7 @@ export class SuperTriage {
         else if (task.stopRequested && stopped) { task.status = task.pauseRequested ? 'paused' : 'cancelled'; task.uncertain = false; }
         else { task.status = 'paused'; task.uncertain = !stopped || run.modelReserved || Boolean(cause.modelStarted); }
         this.#taskNode(data, task);
-        if (task.status === 'paused') this.#outbox(data, { key: `triage-paused:${id}:${task.attempt}`, text: `#${id} 分析已暂停，资料和记录已保留。请由管理员检查后继续。`,
+        if (task.status === 'paused') this.#outbox(data, { key: `triage-paused:${id}:${task.attempt}`, text: pausedNotice(task, cause),
           conversationId: task.conversationId, taskId: id, revision: task.inputRevision, category: 'notice' });
       });
     }

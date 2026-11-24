@@ -1,5 +1,21 @@
 # 当前接续状态
 
+## 2026-11-24 · v0.5.4真实QA/Windows已过，待Git交付
+
+每轮QA主流程必过已写AGENTS、QA-MVP-v0.5.4及真实send/check/打包-QaReceipt。已真实完成T1新r4/attempt6、ZIP+PNG哈希、原插件Skill/Qwen4High/1请求、原生completed/exit0、1条原结论+TXT及成员认证下载16685B/SHA；完整源指纹84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1，私有v054/qa-live收据43e6b54bd57ac61a62b0bbca35efe6fa0a2f808bf055988d7f8cd50bfec6353b。不得用历史收据/partial替代，新clone没有私有资料需恢复授权后再跑。
+
+下载完整后等待EOF的缺陷已隔离复现并修复，失败私有cause/阶段/附件证据和普通恢复提示已补；历史当次cause未存，仍不可确证原网络细节。原插件PNG不OCR；旧T6仅视频需补日志，旧T4/T6未重做。最终verify26/9/503/16及语法全过，Windows0.5.4 ASAR16/12源字节、PE/ZIP74及实际原生8项通过。ZIP162325626B/SHA a8d51324abab401713a485823a4432e5e1e3484323d0cf851dc18035f9be8146。
+
+本轮源/新v0.5.4 tag与Release资产待远端确认；本节未预称已上传。源码已冻结，勿再改运行源导致真实QA凭证失效；不要覆盖已构建包或移动旧tag。
+
+## 2026-11-24 · v0.5.4进行中：QA主流程逐轮必过
+
+用户新要求覆盖此前只通通用业务/ping即交付的范围：每轮必须真实跑通QA Bug→附件→原插件Skill/Qwen4High→原结论+TXT→成员认证下载。先读QA-MVP-v0.5.4及environment/verification/v054/work-state.json。基线e37ffc6已安全fetch/ff，无远端差异；当前未提交源0.5.4，不覆盖旧tag/包。
+
+T1旧记录丢底层cause，ZIP完整不等于HTTP EOF，不能确证历史网络根因。当前实际QA授权及两附件下载200/bytes/MD5通过；已隔离复现并修复完整size+MD5到齐仍等待EOF的下载缺陷，补私有失败/下载收据及普通恢复说明，相关70/70通过。原插件三档模板/核心skill已只读核对；PNG原配方保存但不OCR，不能临时扩展流程。
+
+DSH agent改worker/super-triage及tests已冻结；Pi agent实现版本/源指纹绑定的live QA脚本和打包gate，root负责真实重分析T1（其他旧/取消/unknown任务不自动重做）、完整verify、重载、Windows0.5.4与Git/Release。当前真实模型尚未开始，不将预飞或旧v0.5.1报告当本轮通过。缺必要SSO/VPN直接问用户，不以paused/partial算完成。
+
 ## 2026-11-23 · v0.5.3已发布与原生中文结果
 
 产品源码620f8cad6d75000e6730474ba113ce09a3640851、annotated v0.5.3对象4e680683bdbb5b41a52327e03eef68d474ea5933及peel已远端核对。正式Release isDraft=false，两资产uploaded，size/digest与本地逐项一致：ZIP162325625字节，SHA256 a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9；SHA文本99字节，digest c249c6117d839349af31ecbe4eccce056fdcb4af79e1bb8bf031fe27603d5b4b。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3，EXE为outputs/desktop-v0.5.3/TeamRelay-win32-x64/TeamRelay.exe，须保留便携目录。

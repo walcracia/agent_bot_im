@@ -65,6 +65,31 @@ export class TriageWorkerError extends Error {
   }
 }
 
+const diagnosticText = value => redact(String(value ?? '').replace(/\b(?:https?|wss?):\/\/[^\s<>"'`]+/giu, '[地址已隐藏]')).slice(0, 2000);
+const errorCode = value => typeof value === 'string' && /^[A-Z][A-Z0-9_]{1,100}$/u.test(value) ? value : undefined;
+function errorChain(cause) {
+  const seen = new Set(), chain = [];
+  while (cause && !seen.has(cause) && chain.length < 8) {
+    seen.add(cause);
+    chain.push({ name: diagnosticText(cause.name || 'Error'), message: diagnosticText(cause.message ?? cause),
+      ...(errorCode(cause.code) ? { code: cause.code } : {}) });
+    cause = cause.cause;
+  }
+  return chain;
+}
+function downloadCode(cause, attachment) {
+  if (String(cause.code ?? '').startsWith('TRIAGE_DOWNLOAD_')) return cause.code;
+  if (cause.kind === 'download-timeout') return 'TRIAGE_DOWNLOAD_TIMEOUT';
+  const codes = errorChain(cause).map(item => item.code);
+  if (codes.some(code => /^(?:UND_ERR_(?:CONNECT_TIMEOUT|HEADERS_TIMEOUT|BODY_TIMEOUT|SOCKET)|E(?:CONNRESET|CONNREFUSED|TIMEDOUT|HOSTUNREACH|NETUNREACH|NOTFOUND))$/u.test(code ?? '')))
+    return 'TRIAGE_DOWNLOAD_NETWORK';
+  if (codes.some(code => ['EACCES', 'EPERM', 'ENOSPC', 'EROFS'].includes(code))) return 'TRIAGE_DOWNLOAD_STORAGE';
+  return attachment?.stage === 'metadata' ? 'TRIAGE_DOWNLOAD_METADATA' : 'TRIAGE_DOWNLOAD_FAILED';
+}
+function attachmentFailure(code, message, status) {
+  return Object.assign(new Error(message), { code, ...(Number.isInteger(status) ? { httpStatus: status } : {}) });
+}
+
 function limitsFor(input = {}) {
   const limits = { ...DEFAULTS, ...input };
   for (const [key, value] of Object.entries(limits)) if (!(key in DEFAULTS) || !Number.isSafeInteger(value) || value < 0)
@@ -213,7 +238,8 @@ export class LogTriageWorker {
     }));
   }
   async run(snapshot, { signal, beforeModel } = {}) {
-    let phase = 'prepare', modelStarted = false, modelSettled = false;
+    let phase = 'prepare', modelStarted = false, modelSettled = false, directory;
+    const downloads = [];
     const abort = new AbortController();
     const combined = signal ? AbortSignal.any([signal, abort.signal]) : abort.signal;
     const timer = this.limits.runTimeoutMs > 0 ? setTimeout(() => abort.abort(new TriageWorkerError('分析超过总时间预算。', { kind: 'timeout' })), this.limits.runTimeoutMs) : null;
@@ -231,55 +257,87 @@ export class LogTriageWorker {
       const skill = await this.verifySkill(this.skillRoot);
       if ((await lstat(this.root).catch(cause => { if (cause.code === 'ENOENT') return null; throw cause; }))?.isSymbolicLink()) throw new Error('Triage root cannot be a link.');
       await mkdir(this.root, { recursive: true, mode: 0o700 });
-      const directory = join(await realpath(this.root), `${snapshot.id}-r${snapshot.inputRevision}-${randomUUID()}`);
+      directory = join(await realpath(this.root), `${snapshot.id}-r${snapshot.inputRevision}-${randomUUID()}`);
       await mkdir(directory, { mode: 0o700 });
       const inputs = [], attachments = []; let downloaded = 0;
       phase = 'download';
       for (let index = 0; index < input.fileIds.length; index++) {
         combined.throwIfAborted();
+        const download = { attachmentIndex: index + 1, attachmentId: String(input.fileIds[index]), stage: 'metadata', receivedBytes: 0 };
+        downloads.push(download);
         const metadata = await readOnlyCall(this.adapter.getFile(input.fileIds[index]), combined);
+        download.stage = 'validate-metadata';
+        if (Number.isSafeInteger(metadata.size) && metadata.size >= 0) download.expectedBytes = metadata.size;
+        download.md5Provided = typeof metadata.md5 === 'string';
         let url = new URL(metadata.url);
-        if (!this.origins.has(url.origin) || url.username || url.password || url.hash) throw new Error('Attachment URL is outside trusted origins.');
+        if (!this.origins.has(url.origin) || url.username || url.password || url.hash) throw attachmentFailure('TRIAGE_DOWNLOAD_SOURCE', 'Attachment URL is outside trusted origins.');
         const originalOrigin = url.origin;
-        if (Number.isFinite(metadata.size) && metadata.size < 0) throw new Error('Attachment metadata size is invalid.');
+        if (Number.isFinite(metadata.size) && metadata.size < 0) throw attachmentFailure('TRIAGE_DOWNLOAD_METADATA', 'Attachment metadata size is invalid.');
         const name = String(metadata.name || `log-${index + 1}.txt`).replaceAll('\\', '/').split('/').at(-1);
-        if (!name || name.length > 180 || /[\0\r\n:]/.test(name)) throw new Error('Attachment file name is invalid.');
+        if (!name || name.length > 180 || /[\0\r\n:]/.test(name)) throw attachmentFailure('TRIAGE_DOWNLOAD_METADATA', 'Attachment file name is invalid.');
         const file = join(directory, `download-${index + 1}`);
         const requestAbort = new AbortController();
-        const requestTimer = this.limits.downloadTimeoutMs > 0 ? setTimeout(() => requestAbort.abort(new TriageWorkerError('附件下载超时。', { kind: 'download-timeout' })), this.limits.downloadTimeoutMs) : null;
+        const requestTimer = this.limits.downloadTimeoutMs > 0 ? setTimeout(() => requestAbort.abort(new TriageWorkerError('附件下载超时。', { kind: 'download-timeout', phase: 'download' })), this.limits.downloadTimeoutMs) : null;
         requestTimer?.unref?.();
         const requestSignal = AbortSignal.any([combined, requestAbort.signal]);
         let handle;
         try {
           let response;
           for (let redirect = 0; redirect <= 2; redirect++) {
+            download.stage = 'request';
             response = await this.fetch(url, { redirect: 'manual', signal: requestSignal, credentials: 'omit' });
+            download.httpStatus = response.status;
             if (response.status >= 300 && response.status < 400) {
               await response.body?.cancel();
               const location = response.headers.get('location');
-              if (!location || redirect === 2) throw new Error('Attachment redirect is invalid.');
+              if (!location || redirect === 2) throw attachmentFailure('TRIAGE_DOWNLOAD_SOURCE', 'Attachment redirect is invalid.');
               url = new URL(location, url);
-              if (url.origin !== originalOrigin || !this.origins.has(url.origin) || url.username || url.password || url.hash) throw new Error('Cross-origin attachment redirect refused.');
+              if (url.origin !== originalOrigin || !this.origins.has(url.origin) || url.username || url.password || url.hash) throw attachmentFailure('TRIAGE_DOWNLOAD_SOURCE', 'Cross-origin attachment redirect refused.');
             } else break;
           }
-          if (!response.ok || !response.body) { await response.body?.cancel(); throw new Error('Attachment download failed.'); }
+          if (!response.ok || !response.body) { await response.body?.cancel(); throw attachmentFailure('TRIAGE_DOWNLOAD_HTTP', 'Attachment download failed.', response.status); }
           const declared = response.headers.get('content-length');
           if (declared && !/^\d+$/.test(declared)) {
-            await response.body.cancel(); throw new Error('Declared download size exceeds budget.');
+            await response.body.cancel(); throw attachmentFailure('TRIAGE_DOWNLOAD_METADATA', 'Attachment Content-Length is invalid.');
           }
+          download.stage = 'storage';
           handle = await open(file, 'wx', 0o600);
           let bytes = 0; const hash = createHash('sha256'), md5 = createHash('md5');
-          for await (const chunk of response.body) {
-            combined.throwIfAborted(); bytes += chunk.length; downloaded += chunk.length;
-            await handle.write(chunk); hash.update(chunk); md5.update(chunk);
+          const exactSize = Number.isSafeInteger(metadata.size) && metadata.size >= 0;
+          const expectedMd5 = typeof metadata.md5 === 'string' && /^[a-f0-9]{32}$/iu.test(metadata.md5) ? metadata.md5.toLowerCase() : null;
+          let actualMD5, verifiedMetadata = false;
+          download.stage = 'stream';
+          if (exactSize && metadata.size === 0 && expectedMd5) {
+            actualMD5 = md5.digest('hex');
+            if (actualMD5 !== expectedMd5) throw attachmentFailure('TRIAGE_DOWNLOAD_INTEGRITY', 'Attachment MD5 mismatch.');
+            verifiedMetadata = true; await response.body.cancel();
+          } else for await (const chunk of response.body) {
+            combined.throwIfAborted(); bytes += chunk.length; downloaded += chunk.length; download.receivedBytes = bytes;
+            if (exactSize && bytes > metadata.size) throw attachmentFailure('TRIAGE_DOWNLOAD_INTEGRITY', 'Attachment metadata size mismatch.');
+            await handle.writeFile(chunk); hash.update(chunk); md5.update(chunk);
+            // A complete size+MD5-verified file does not depend on a proxy or
+            // server closing its chunked response. Breaking cancels the stream.
+            // Without both metadata fields, the ordinary EOF path still applies.
+            if (exactSize && expectedMd5 && bytes === metadata.size) {
+              actualMD5 = md5.digest('hex');
+              if (actualMD5 !== expectedMd5) throw attachmentFailure('TRIAGE_DOWNLOAD_INTEGRITY', 'Attachment MD5 mismatch.');
+              verifiedMetadata = true; break;
+            }
           }
-          if (Number.isSafeInteger(metadata.size) && metadata.size !== bytes) throw new Error('Attachment metadata size mismatch.');
-          const actualMD5 = md5.digest('hex');
-          if (metadata.md5 && (!/^[a-f0-9]{32}$/i.test(metadata.md5) || actualMD5 !== metadata.md5.toLowerCase())) throw new Error('Attachment MD5 mismatch.');
+          download.stage = 'integrity';
+          if (exactSize && metadata.size !== bytes) throw attachmentFailure('TRIAGE_DOWNLOAD_INTEGRITY', 'Attachment metadata size mismatch.');
+          actualMD5 ??= md5.digest('hex');
+          if (metadata.md5 && (!expectedMd5 || actualMD5 !== expectedMd5)) throw attachmentFailure('TRIAGE_DOWNLOAD_INTEGRITY', 'Attachment MD5 mismatch.');
+          download.stage = 'completed'; download.completion = verifiedMetadata ? 'metadata-size-md5' : 'http-eof';
+          download.md5Verified = Boolean(expectedMd5);
           attachments.push({ id: input.fileIds[index], name: redact(name), bytes, sha256: hash.digest('hex') });
           inputs.push({ path: file, name });
+        } catch (cause) {
+          if (requestAbort.signal.aborted && !combined.aborted) throw requestAbort.signal.reason;
+          throw cause;
         } finally { clearTimeout(requestTimer); await handle?.close(); }
       }
+      await writeFile(join(directory, 'downloads.json'), JSON.stringify({ taskId: snapshot.id, inputRevision: snapshot.inputRevision, downloads }, null, 2), { flag: 'wx', mode: 0o600, flush: true });
       const manifest = { inputRevision: snapshot.inputRevision, skillVersion: '1.3.2', parserBaseline: 'log-analyzer v2.19.0',
         skillArchiveSha256: SKILL_ARCHIVE_SHA256, mode: input.window.mode, window: input.window, attachments, createdAt: this.now() };
       const extracted = join(directory, 'logs');
@@ -392,16 +450,29 @@ export class LogTriageWorker {
       await writeFile(join(directory, 'report.json'), JSON.stringify({ status, text, report, manifest, files, execution }, null, 2), { flag: 'wx', mode: 0o600 });
       return { status, text, report, manifest, files, execution, inputRevision: snapshot.inputRevision, modelCalls: 1 };
     } catch (cause) {
+      let error;
       if (cause instanceof TriageWorkerError) {
         if (cause === combined.reason) cause.phase = phase;
         cause.modelStarted ||= modelStarted;
         if (modelStarted && !modelSettled) cause.processTreeStopped = cause !== combined.reason && cause.kind !== 'model-uncertain' && cause.processTreeStopped === true;
-        throw cause;
+        error = cause;
+      } else {
+        error = new TriageWorkerError('日志分析未完成，已有材料保留供核查。', { kind: combined.aborted ? 'cancelled' : cause?.kind ?? 'failed', phase,
+          modelStarted, processTreeStopped: !modelStarted || modelSettled || cause?.processTreeStopped === true, cause });
+        if (errorCode(cause?.code)) error.code = cause.code;
+        if (cause?.usage) error.usage = validateExecutionUsage(cause.usage);
       }
-      const error = new TriageWorkerError('日志分析未完成，已有材料保留供核查。', { kind: combined.aborted ? 'cancelled' : cause?.kind ?? 'failed', phase,
-        modelStarted, processTreeStopped: !modelStarted || modelSettled || cause?.processTreeStopped === true, cause });
-      if (/^[A-Z][A-Z0-9_]{2,100}$/.test(cause?.code ?? '')) error.code = cause.code;
-      if (cause?.usage) error.usage = validateExecutionUsage(cause.usage);
+      if (phase === 'download' && !combined.aborted) error.code = downloadCode(cause, downloads.at(-1));
+      if (Number.isInteger(cause?.httpStatus)) error.httpStatus = cause.httpStatus;
+      if (directory) {
+        const receiptPath = join(directory, 'failure.json');
+        try {
+          await writeFile(receiptPath, JSON.stringify({ taskId: snapshot.id, attempt: snapshot.attempt ?? null, inputRevision: snapshot.inputRevision,
+            at: this.now(), phase: error.phase, kind: error.kind, code: errorCode(error.code) ?? null, modelStarted: error.modelStarted,
+            processTreeStopped: error.processTreeStopped, downloads, causes: errorChain(error) }, null, 2), { flag: 'wx', mode: 0o600, flush: true });
+          error.failureReceiptPath = receiptPath;
+        } catch { /* Preserve the original failure if local diagnostics cannot be written. */ }
+      }
       throw error;
     } finally { clearTimeout(timer); }
   }

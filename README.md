@@ -2,11 +2,11 @@
 
 小团队私有聊天工具：Windows 客户端，支持私聊、群聊、文字、图片、音频、视频和文件。每个附件严格小于 **100,000,000 字节**。团队可以在授权群里讨论需求，让 DeepSeek Harness（DSH）在指定代码项目中执行、测试，再把结果送回聊天与 GitHub。
 
-当前源码版本 **v0.5.3**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天。QA日志已恢复，DSH、Pi、Hermes统一使用Qwen4 Max、High思考；每轮完成都生成并验证Windows便携包。模型与原生校验见 [v0.5.3设计](workspace/docs/MODEL-QWEN-v0.5.3.md)，交付状态以最新HANDOFF/state为准；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+当前源码版本 **v0.5.4**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天。QA日志已恢复，DSH、Pi、Hermes统一使用Qwen4 Max、High思考；每轮完成都生成并验证Windows便携包。模型与原生校验见 [v0.5.3设计](workspace/docs/MODEL-QWEN-v0.5.3.md)，交付状态以最新HANDOFF/state为准；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
 
 协调者与DSH、Pi、Hermes的任务、进度及结果说明统一简体中文；JSON字段/枚举、命令、代码及原始引用保持原样。约定见[中文交互设计](workspace/docs/AGENT-LANGUAGE-v0.5.2.md)。
 
-Windows包：[v0.5.3 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3)。完整解压后运行`TeamRelay-win32-x64/TeamRelay.exe`；包只含客户端，后台仍用仓库的`environment/scripts/start.ps1`。构建和验收见[v0.5.3报告](outputs/VERIFICATION-v0.5.3.md)。
+Windows包：[v0.5.4 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.4)。完整解压后运行`TeamRelay-win32-x64/TeamRelay.exe`；包只含客户端，后台仍用仓库的`environment/scripts/start.ps1`。构建和验收见[v0.5.4报告](outputs/VERIFICATION-v0.5.4.md)。
 
 ## 产品定位：统一业务入口与任务路由中心
 
@@ -60,7 +60,7 @@ flowchart LR
 
 DSH、Pi、Hermes及DSH业务路由/日志调用/显式回归统一Qwen4 Max、`reasoningEffort=high`。各原生provider标识可不同，模型必须是真实`qwen4-max`；新建与恢复均明确选择并校验，不支持时明确报错，不静默降档。日志原插件取证和system/user保持原样；思考与正文使用原生模型目录的输出容量，旧配方的输出值另留审计。没有恢复分析次数或阅读额度。
 
-Pi会话通过原生共享home的`sessions`登记任务目录，保留原JSONL和会话ID；任务命名为“同频 · 任务ID”。本轮中文实测可查看：DSH“检查切片求和漏算末项”、Pi“同频 · B000004”、Hermes“同频 · B000007”。Pi桌面在“项目”搜索“同频”；Hermes用Ctrl+K搜索“同频”，或在“会话→全部”查找。Hermes默认侧栏隐藏tool/acp，只有tool来源会列入“自动化”，来源不被伪装成人工聊天。原生账号和会话均在本机，不随Git或Windows包分发。
+Pi会话通过原生共享home的`sessions`登记任务目录，保留原JSONL和会话ID；任务命名为“同频 · 任务ID”。v0.5.3中文实测可查看：DSH“检查切片求和漏算末项”、Pi“同频 · B000004”、Hermes“同频 · B000007”。Pi桌面在“项目”搜索“同频”；Hermes用Ctrl+K搜索“同频”，或在“会话→全部”查找。Hermes默认侧栏隐藏tool/acp，只有tool来源会列入“自动化”，来源不被伪装成人工聊天。原生账号和会话均在本机，不随Git或Windows包分发。
 
 ## Windows 托盘与新消息
 
@@ -113,7 +113,13 @@ Trigger身份包含来源、项目、问题、绑定结果群和内容版本。�
 
 累计/每日分析数、模型调用、工具阅读次数、累计字符及人为分析总时长不再作为停止条件，用量仅统计。旧额度账本保留作历史与幂等记录；只自动接续确认模型尚未启动、且仅因旧额度暂停的任务，不自动重做其他失败或已取消任务。模型及操作系统的实际能力仍属于运行条件。
 
-**验收状态单独记录。** 新配方的整包CLI及三档system/user逐字对比已通过；此前四工具Agent会话完成、历史`partial`或传输通过，不能证明分析等价。v0.5.1历史验收：2026-11-23用户允许恢复后已重新完成QA登录及授权读取，沿原检查点恢复已绑定项目监听，原插件整包+DeepSeek/max真实正向验收已完成：一次实际请求、原提示逐字一致、一条原结论及完整TXT认证下载/hash均通过。这不代表本轮Qwen4日志报告已重新分析。历史失败见[v0.4.2报告](outputs/VERIFICATION-v0.4.2.md)，当前结果见[HANDOFF](workspace/docs/HANDOFF.md)。
+**验收状态单独记录。** 新配方的整包CLI及三档system/user逐字对比已通过；此前四工具Agent会话完成、历史`partial`或传输通过，不能证明分析等价。v0.5.1历史验收：2026-11-23用户允许恢复后已重新完成QA登录及授权读取，沿原检查点恢复已绑定项目监听，原插件整包+DeepSeek/max真实正向验收已完成：一次实际请求、原提示逐字一致、一条原结论及完整TXT认证下载/hash均通过。v0.5.4已另外真实完成当前Bug双附件、原插件Qwen4/High报告及认证下载，见[本轮验收](outputs/VERIFICATION-v0.5.4.md)。历史失败见[v0.4.2报告](outputs/VERIFICATION-v0.4.2.md)，当前结果见[HANDOFF](workspace/docs/HANDOFF.md)。
+
+### 每轮迭代的QA主流程验收
+
+QA日志业务是每轮软件迭代的必过项：真实授权读取Bug和附件，经聊天Trigger/Router、原插件Skill与当前Qwen4 Max/High完成分析，再确认聊天仅一条原结论+完整TXT、成员认证下载的原文/大小/SHA正确。单测、连接ping、旧版本收据或paused/partial不算本轮通过。原插件保存PNG但不做OCR，不另加视觉分析流程。
+
+开发者显式运行`environment/scripts/verify-qa-live.mjs --live --send`，提供当前本机config/state/accounts-file、已授权任务ID、忽略output和原安装plugin路径；消息只触发一次。完成后同参`--live --check`只核验不重跑模型，生成与当前产品版本/运行源指纹绑定的`qa-live-receipt.json`。`deliver-windows.ps1 -QaReceipt <该收据>`会重读原生证据、附件/报告hash再允许打包；旧版本、改过源或缺阶段均拒绝。离线`verify.ps1`继续不调用模型。具体范围见[QA-MVP-v0.5.4](workspace/docs/QA-MVP-v0.5.4.md)。
 
 ### 聊天只展示结论，完整报告下载阅读
 

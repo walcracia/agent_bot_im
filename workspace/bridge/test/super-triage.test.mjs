@@ -145,6 +145,30 @@ test('a failed analysis retains observed usage and necessary error information w
   assert.ok(Object.values(f.c.data.outbox).some(item => item.category === 'notice' && /已暂停/u.test(item.text)));
 });
 
+test('download pauses give a safe recovery action and retain the private failure receipt', async () => {
+  const root = resolve(tmpdir(), 'teamplay-download-receipts'), receipt = join(root, 'attempt-owned', 'failure.json');
+  const f = fixture({}, { run: async () => { throw Object.assign(new Error('Never show token=private-secret https://private.example/file'), {
+    code: 'TRIAGE_DOWNLOAD_TIMEOUT', kind: 'download-timeout', phase: 'download', modelStarted: false, processTreeStopped: true, failureReceiptPath: receipt }); } });
+  f.t.worker.root = root;
+  await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
+  const task = f.c.data.tasks.T000001;
+  assert.equal(task.status, 'paused'); assert.equal(task.error, 'TRIAGE_DOWNLOAD_TIMEOUT'); assert.equal(task.uncertain, false);
+  assert.equal(task.failure.receiptPathPrivate, receipt);
+  const notice = Object.values(f.c.data.outbox).find(item => item.category === 'notice' && /分析已暂停/u.test(item.text));
+  assert.match(notice.text, /公司网络/u); assert.match(notice.text, /继续分析 #T000001/u);
+  for (const value of ['private-secret', 'private.example', receipt, 'TRIAGE_DOWNLOAD_TIMEOUT']) assert.ok(!notice.text.includes(value));
+  assert.equal(f.c.data.triage.budget.total, 0);
+});
+
+test('an unavailable attachment explains the required replacement without leaking HTTP internals', async () => {
+  const f = fixture({}, { run: async () => { throw Object.assign(new Error('private provider body'), {
+    code: 'TRIAGE_DOWNLOAD_HTTP', httpStatus: 404, phase: 'download', modelStarted: false, processTreeStopped: true }); } });
+  await f.im(1, '分析 DEMO-1'); await f.t.execute('T000001');
+  assert.equal(f.c.data.tasks.T000001.failure.httpStatus, 404);
+  const notice = Object.values(f.c.data.outbox).find(item => item.category === 'notice' && /分析已暂停/u.test(item.text));
+  assert.match(notice.text, /重新上传日志/u); assert.match(notice.text, /继续分析 #T000001/u); assert.doesNotMatch(notice.text, /404|HTTP|private/u);
+});
+
 test('a new revision during worker execution is retained, old report is saved but not sent, next attempt uses newest input', async () => {
   const start = deferred(), finish = deferred();
   const f = fixture({}, { run: async (snapshot, { beforeModel }) => { await beforeModel(); start.resolve(); await finish.promise;

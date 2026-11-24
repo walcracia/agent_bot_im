@@ -121,3 +121,7 @@ Pi原JSONL保留任务目录，向原生共享home/sessions登记独立目录jun
 ## v0.5.3 模型控制
 
 统一Qwen4 Max与High，具体原生目录、协议及验收见MODEL-QWEN-v0.5.3；覆盖本文件旧DSH/max。只改可信执行控制，原QA材料/skill提示/原报告、权限及会话语义不变。
+
+## v0.5.4 QA主流程MVP
+
+每次软件迭代以真实QA日志链为必过项，具体QA-MVP-v0.5.4。可信size+MD5全匹配后结束下载，缺任一仍按HTTP EOF；不修改原插件Skill/提示或加入OCR。私有failure.json保留可追查阶段与脱敏cause，聊天只发可恢复说明。

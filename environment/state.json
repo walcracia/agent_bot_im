@@ -1,28 +1,21 @@
 {
-  "version": "0.5.3",
+  "version": "0.5.4",
   "verified": [
-    "Full final26 Python/9 desktop/490 bridge/16 mocked startup and syntax passed; original fixture failure retained",
-    "Real Chinese authorized IM tasks completed with DSH/Pi/Hermes Qwen4 Max High, one result+TXT and authenticated downloads",
-    "Native model/request proofs and original histories; desktop visibility independently checked",
-    "Windows0.5.3 ASAR16/12 exact, PE, ZIP74 CRC/hash and actual isolated Electron8 checks passed"
+    "Frozen final complete26 Python/9 desktop/503 bridge/16 mocked startup and syntax all passed",
+    "Current QA authorized IM trigger to ZIP+PNG actual hashes to original plugin Qwen4Max High native completion to one conclusion TXT and member download exact passed",
+    "Current QA source fingerprint and native/download evidence checked by mandatory packaging gate; original context preserved",
+    "Windows0.5.4 ASAR16/12 exact, PE, ZIP74 full hash and actual isolated native8 passed"
   ],
-  "desktop": "outputs/desktop-v0.5.3/TeamRelay-win32-x64",
+  "desktop": "outputs/desktop-v0.5.4/TeamRelay-win32-x64",
   "project": "agent-bot-im",
   "github": {
     "repository": "https://github.com/walcracia/agent_bot_im",
     "branch": "main",
-    "source_version": "0.5.3",
-    "release_tag": "v0.5.3",
-    "source_pushed": true,
-    "release_published": true,
-    "delivery_status": "Main source and annotated tag object/peel confirmed; published Release both assets uploaded with exact local sizes/digests",
-    "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3",
-    "release_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
-    "source_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
-    "annotated_tag_object": "4e680683bdbb5b41a52327e03eef68d474ea5933",
-    "handoff_tag": "v0.5.3-handoff.1",
-    "windows_zip_sha256": "a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9",
-    "checksum_sha256": "c249c6117d839349af31ecbe4eccce056fdcb4af79e1bb8bf031fe27603d5b4b"
+    "source_version": "0.5.4",
+    "release_tag": "v0.5.4",
+    "source_pushed": false,
+    "release_published": false,
+    "delivery_status": "Current QA MVP and Windows verified; source/tag and Release assets pending"
   },
   "known_failures": [
     "Initial Pi native review lacked a native MCP tool event because default MCP exposure was not directly declared; fixed and purposeful native retest passed",
@@ -39,8 +32,8 @@
   "pending": [
     "Future scope: old coding A1/A2, arbitrary project automatic publication, OpenCode and OS sandbox remain outside this completed iteration"
   ],
-  "updated_at": "2026-11-23T07:06:29.171050+00:00",
-  "stage": "v0.5.3 real Chinese native flows, source/tag and Windows Release remotely confirmed",
+  "updated_at": "2026-11-24T03:04:51.468235+00:00",
+  "stage": "v0.5.4 QA real happy path and Windows verified; Git/Release pending",
   "local_url": "http://127.0.0.1:18200",
   "historical_verification": {
     "github": {
@@ -73,8 +66,8 @@
   "current_checkout": {
     "date": "2026-11-23",
     "project_root": "D:\\Work\\codexproj\\agent-IM",
-    "source_base_commit": "b4bb5e4dc18a2887a05d45588ba3a4579042b62a",
-    "source_version": "0.5.3",
+    "source_base_commit": "e37ffc6c0779ccc3c2b6b00a99b7f07ea0c32d9c",
+    "source_version": "0.5.4",
     "python": "3.12.16",
     "node": "24.19.0 project-local",
     "service_started": true,
@@ -86,52 +79,42 @@
     "qa_business_data_queried": true,
     "qa_project_binding": "One user-selected project/chat; exact mapping ignored locally",
     "qa_baseline_issues": 231,
-    "qa_live_result_status": "No new QA analysis in0.5.3; prior result preserved",
+    "qa_live_result_status": "completed",
     "qa_real_completed_model_report": true,
-    "qa_agent_sessions": 0,
-    "qa_real_provider_requests": 0,
+    "qa_agent_sessions": 1,
+    "qa_real_provider_requests": 1,
     "qa_real_task_tool_calls": 0,
-    "qa_evidence_lines_read": 0,
-    "qa_artifacts_sent": 0,
+    "qa_evidence_lines_read": 759,
+    "qa_artifacts_sent": 1,
     "qa_artifacts_authenticated_downloads_verified": true,
     "qa_recovery_extra_model_requests": 0,
     "new_policy_real_model_validated": true,
     "dsh_installation_modified": false,
     "cloud_security_implemented": false,
     "desktop_built": true,
-    "desktop_compatible_version": "0.5.3",
-    "verification_report": "outputs/VERIFICATION-v0.5.3.md",
+    "desktop_compatible_version": "0.5.4",
+    "verification_report": "outputs/VERIFICATION-v0.5.4.md",
     "observation_only": true,
     "default_startup_bound": true,
-    "source_pushed": true,
-    "qa_real_provider_requests_total_this_iteration": 0,
-    "qa_report_evidence_references": "Full original plugin:79 logs/44 snippets/60 key blocks; real source line verification",
+    "source_pushed": false,
+    "qa_real_provider_requests_total_this_iteration": 1,
+    "qa_report_evidence_references": "Current original plugin recipe and prompt parity; ZIP+PNG hashes; 759 evidence lines",
     "qa_user_paused": false,
     "generic_business_enabled": true,
     "real_native_agents_verified": [
-      "dsh",
-      "hermes",
-      "pi"
+      "dsh"
     ],
-    "three_native_regressions_verified": true,
     "assistant_display_name": "同频助手",
     "dsh_reasoning_effort": "high",
-    "windows_zip": "outputs/TeamRelay-v0.5.3-windows-x64.zip",
-    "windows_zip_sha256": "a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9",
+    "windows_zip": "outputs/TeamRelay-v0.5.4-windows-x64.zip",
+    "windows_zip_sha256": "a8d51324abab401713a485823a4432e5e1e3484323d0cf851dc18035f9be8146",
     "all_agents_model": "qwen4-max",
     "all_agents_reasoning_effort": "high",
-    "native_history_new_verified": {
-      "dsh": 1,
-      "pi": 1,
-      "hermes": 1
-    },
     "qa_model_selection_updated": true,
-    "three_native_business_workflows_verified": true,
     "native_desktop_results_visible": true,
     "hermes_failed_session_native_resume_issue": "Old failed test explicitly cancelled; independent new happy-path task completed; exact native issue retained in report",
-    "product_release_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
-    "product_annotated_tag": "v0.5.3",
-    "product_tag_object": "4e680683bdbb5b41a52327e03eef68d474ea5933"
+    "qa_mvp_gate_verified": true,
+    "qa_mvp_source_sha256": "84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1"
   },
   "previous_iteration_0_2_3": {
     "version": "0.2.3",
@@ -1031,23 +1014,109 @@
         "Windows0.5.2 ASAR16/12 source bytes,PE x64/version/name,ZIP74 CRC/all hashes and isolated actual Electron8 checks including report download passed",
         "Normal stop/start/reuse: service0.5.2 and listener ready; no model calls for this language-only iteration"
       ]
+    },
+    {
+      "version": "0.5.3",
+      "current_checkout": {
+        "date": "2026-11-23",
+        "project_root": "D:\\Work\\codexproj\\agent-IM",
+        "source_base_commit": "b4bb5e4dc18a2887a05d45588ba3a4579042b62a",
+        "source_version": "0.5.3",
+        "python": "3.12.16",
+        "node": "24.19.0 project-local",
+        "service_started": true,
+        "local_chat_listener_running": true,
+        "formal_watchdog_started": false,
+        "coding_enabled_in_pilot": false,
+        "qa_trigger_route_implemented": true,
+        "qa_auto_source_enabled": true,
+        "qa_business_data_queried": true,
+        "qa_project_binding": "One user-selected project/chat; exact mapping ignored locally",
+        "qa_baseline_issues": 231,
+        "qa_live_result_status": "No new QA analysis in0.5.3; prior result preserved",
+        "qa_real_completed_model_report": true,
+        "qa_agent_sessions": 0,
+        "qa_real_provider_requests": 0,
+        "qa_real_task_tool_calls": 0,
+        "qa_evidence_lines_read": 0,
+        "qa_artifacts_sent": 0,
+        "qa_artifacts_authenticated_downloads_verified": true,
+        "qa_recovery_extra_model_requests": 0,
+        "new_policy_real_model_validated": true,
+        "dsh_installation_modified": false,
+        "cloud_security_implemented": false,
+        "desktop_built": true,
+        "desktop_compatible_version": "0.5.3",
+        "verification_report": "outputs/VERIFICATION-v0.5.3.md",
+        "observation_only": true,
+        "default_startup_bound": true,
+        "source_pushed": true,
+        "qa_real_provider_requests_total_this_iteration": 0,
+        "qa_report_evidence_references": "Full original plugin:79 logs/44 snippets/60 key blocks; real source line verification",
+        "qa_user_paused": false,
+        "generic_business_enabled": true,
+        "real_native_agents_verified": [
+          "dsh",
+          "hermes",
+          "pi"
+        ],
+        "three_native_regressions_verified": true,
+        "assistant_display_name": "同频助手",
+        "dsh_reasoning_effort": "high",
+        "windows_zip": "outputs/TeamRelay-v0.5.3-windows-x64.zip",
+        "windows_zip_sha256": "a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9",
+        "all_agents_model": "qwen4-max",
+        "all_agents_reasoning_effort": "high",
+        "native_history_new_verified": {
+          "dsh": 1,
+          "pi": 1,
+          "hermes": 1
+        },
+        "qa_model_selection_updated": true,
+        "three_native_business_workflows_verified": true,
+        "native_desktop_results_visible": true,
+        "hermes_failed_session_native_resume_issue": "Old failed test explicitly cancelled; independent new happy-path task completed; exact native issue retained in report",
+        "product_release_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
+        "product_annotated_tag": "v0.5.3",
+        "product_tag_object": "4e680683bdbb5b41a52327e03eef68d474ea5933"
+      },
+      "github": {
+        "repository": "https://github.com/walcracia/agent_bot_im",
+        "branch": "main",
+        "source_version": "0.5.3",
+        "release_tag": "v0.5.3",
+        "source_pushed": true,
+        "release_published": true,
+        "delivery_status": "Main source and annotated tag object/peel confirmed; published Release both assets uploaded with exact local sizes/digests",
+        "release_url": "https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.3",
+        "release_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
+        "source_commit": "620f8cad6d75000e6730474ba113ce09a3640851",
+        "annotated_tag_object": "4e680683bdbb5b41a52327e03eef68d474ea5933",
+        "handoff_tag": "v0.5.3-handoff.1",
+        "windows_zip_sha256": "a090b86c31662c14e1fd1855018834ca05272a662eb0a5e4c1aee2bc1ceb74c9",
+        "checksum_sha256": "c249c6117d839349af31ecbe4eccce056fdcb4af79e1bb8bf031fe27603d5b4b"
+      },
+      "stage": "v0.5.3 real Chinese native flows, source/tag and Windows Release remotely confirmed",
+      "verified": [
+        "Full final26 Python/9 desktop/490 bridge/16 mocked startup and syntax passed; original fixture failure retained",
+        "Real Chinese authorized IM tasks completed with DSH/Pi/Hermes Qwen4 Max High, one result+TXT and authenticated downloads",
+        "Native model/request proofs and original histories; desktop visibility independently checked",
+        "Windows0.5.3 ASAR16/12 exact, PE, ZIP74 CRC/hash and actual isolated Electron8 checks passed"
+      ]
     }
   ],
   "source_work_in_progress": {
-    "version": "0.5.3",
-    "design": "workspace/docs/MODEL-QWEN-v0.5.3.md",
-    "stage": "delivered",
-    "real_native_tests_completed": [
-      "dsh",
-      "pi",
-      "hermes"
-    ]
+    "version": "0.5.4",
+    "design": "workspace/docs/QA-MVP-v0.5.4.md",
+    "stage": "verified; Git/Release pending",
+    "real_qa_main_flow_completed": true
   },
   "next_goal": {
-    "status": "complete",
-    "design": "workspace/docs/MODEL-QWEN-v0.5.3.md",
+    "status": "verification complete; delivery pending",
+    "design": "workspace/docs/QA-MVP-v0.5.4.md",
     "scope": [
-      "Three native Chinese results and Qwen4 Max High",
+      "Fix complete-download waiting and private failure cause persistence",
+      "Enforce per-iteration real QA MVP",
       "Versioned Windows and Git/Release delivery"
     ]
   },
@@ -1076,5 +1145,11 @@
     "routing_configuration_changed": false,
     "git_delivery": "Independent document tag v0.5.2-research.1; confirm branch/tag with Git remote; product v0.5.2 release unchanged",
     "review_status": "Model/benchmark and runtime facts independently reviewed; coordinator applied precision corrections"
+  },
+  "qa_mvp_policy": {
+    "required_each_software_iteration": true,
+    "design": "workspace/docs/QA-MVP-v0.5.4.md",
+    "delivery_argument": "-QaReceipt",
+    "offline_or_prior_version_cannot_substitute": true
   }
 }

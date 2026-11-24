@@ -90,3 +90,7 @@ Pi原生session-dir通过registerPiSessionDirectory登记到原home/sessions；r
 ## v0.5.3 原生模型确认
 
 HTTP接口不变。可信DSH modelSelection默认High，原生验证精确effort并沿模型advertised输出容量。Pi/Hermes run结果新增modelSelection，包含实际model/provider或完整原生modelId、reasoningEffort、verified及sessionId；Pi另给脱敏provider请求proof路径/数量，Hermes保存任务级model-selection.json。私有证明不进入普通聊天；完整用量仍在TXT中。旧接口消费者忽略新增元数据。
+
+## v0.5.4 本机验收与交付
+
+HTTP业务协议不变。Worker私有downloads.json/failure.json新增阶段、附件序号/ID、bytes、httpStatus及安全code/cause链；SuperTriage仅给安全分类及receipt引用。verify-qa-live的send/check为显式本机操作，receipt绑定version/sourceSha/native completion/current trigger+revision及原文下载证据；deliver-windows新增必需-QaReceipt，不增加任何公开未认证接口。

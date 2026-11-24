@@ -107,3 +107,7 @@ Windows状态文件在实测中出现EPERM原子替换失败，增加有限退�
 ## 2026-11-23 · Qwen4 Max High
 
 用户文字指定High，覆盖旧DeepSeek/max及截图XHigh。执行器品牌与基础模型能力分别记录，不做品牌强弱推断。保留各原生账号，通过支持的模型目录和配置扩展适配Qwen4，不修改安装。High须有原生状态/请求映射证明；Pi恢复旧session后重新明确set_model/set_thinking_level，Hermes使用原生custom provider显式参数，DSH desktop/headless分别登记provider及兼容system角色。
+
+## 2026-11-24 · 逐轮QA真实验收
+
+用户明确日志业务为每轮MVP，覆盖此前仅通用三Agent/单测即可交付的做法。预飞和历史成功不能替代当前版本原插件真实报告回群及成员下载。历史底层cause丢失不可猜；修复已隔离复现的HTTP EOF依赖，并持久化实际失败证据。其他旧失败/取消/unknown任务不自动重做，仍不设人工分析额度。

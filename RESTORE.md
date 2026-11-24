@@ -1,5 +1,9 @@
 # agent-IM 恢复与接续
 
+## v0.5.4 QA主流程逐轮必过
+
+先读QA-MVP-v0.5.4、最新HANDOFF/state。每轮软件迭代必须真实完成QA触发/路由、附件下载、原插件Skill/Qwen4High、结论TXT回原聊天和成员认证下载，离线/旧版本/paused不算通过。下载仅可信size+MD5完整验证时提前完成，原配方不加OCR或改写结论。verify-qa-live.mjs显式send/check；deliver-windows.ps1必需本版本-QaReceipt并复核native/文件证据，不复用旧收据。完整账号/资料/收据留忽略目录，克隆后须恢复自己的授权并真实验证。
+
 ## v0.5.3 最新模型覆盖
 
 先读MODEL-QWEN-v0.5.3和最新HANDOFF/state。DSH、Pi、Hermes及同频Router/QA统一Qwen4 Max、High，覆盖下方旧DeepSeek/max与off；文字High优先截图XHigh。核原生配置及实际请求，不仅看界面标签。模型目录在可信用户配置登记；DSH的desktop和headless配置需分别存在同一Qwen provider引用，保留已有认证。Pi和Hermes新建/恢复明确选择并核对model/High。真实会话、配置备份与账号不入Git；旧已完成任务不重做。

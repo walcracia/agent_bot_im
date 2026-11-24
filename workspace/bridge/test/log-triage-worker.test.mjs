@@ -181,6 +181,71 @@ test('streamed download ignores retired size quotas while metadata hashes and or
   redirect = redirected.origin.replace('127.0.0.1', 'localhost') + '/target';
   await assert.rejects(redirected.worker.run(snapshot()), e => !e.modelStarted && e.phase === 'download'); assert.equal(redirected.requests(), 1);
 });
+
+test('verified complete size and MD5 finish a download whose HTTP stream stays open', { timeout: 5000 }, async t => {
+  const f = await fixture(t, { metadata: { size: Buffer.byteLength(LOG), md5: createHash('md5').update(LOG).digest('hex') },
+    response: (_req, res) => { res.writeHead(200, { 'content-type': 'application/octet-stream' }); res.write(LOG); } });
+  const result = await f.worker.run(snapshot({ attempt: 3 }));
+  assert.equal(result.status, 'completed'); assert.equal(f.calls(), 1);
+  assert.equal(result.manifest.attachments[0].bytes, Buffer.byteLength(LOG));
+  assert.equal(result.manifest.attachments[0].sha256, createHash('sha256').update(LOG).digest('hex'));
+  const [directory] = await readdir(f.worker.root);
+  const receipt = JSON.parse(await readFile(join(f.worker.root, directory, 'downloads.json'), 'utf8'));
+  assert.equal(receipt.downloads[0].completion, 'metadata-size-md5'); assert.equal(receipt.downloads[0].md5Verified, true);
+});
+
+test('metadata completion still rejects an oversized chunk or wrong MD5 before a model call', async t => {
+  for (const wrongHash of [false, true]) {
+    const f = await fixture(t, { metadata: { size: Buffer.byteLength(LOG), md5: wrongHash ? '0'.repeat(32) : createHash('md5').update(LOG).digest('hex') } });
+    f.worker.fetch = async () => new Response(wrongHash ? LOG : LOG + 'extra');
+    let failure;
+    await assert.rejects(f.worker.run(snapshot()), error => { failure = error; return error.code === 'TRIAGE_DOWNLOAD_INTEGRITY' && error.phase === 'download' && !error.modelStarted; });
+    assert.equal(f.calls(), 0);
+    const receipt = JSON.parse(await readFile(failure.failureReceiptPath, 'utf8'));
+    assert.equal(receipt.code, 'TRIAGE_DOWNLOAD_INTEGRITY');
+    assert.equal(receipt.downloads[0].attachmentIndex, 1); assert.equal(receipt.downloads[0].attachmentId, '1');
+    assert.equal(receipt.downloads[0].receivedBytes, Buffer.byteLength(wrongHash ? LOG : LOG + 'extra'));
+  }
+});
+
+test('a missing size or MD5 keeps the ordinary EOF requirement', async t => {
+  for (const metadata of [{ size: Buffer.byteLength(LOG) }, { md5: createHash('md5').update(LOG).digest('hex') }]) {
+    const f = await fixture(t, { metadata }); let body;
+    f.worker.fetch = async () => new Response(new ReadableStream({ start(controller) { body = controller; controller.enqueue(Buffer.from(LOG)); } }));
+    const run = f.worker.run(snapshot());
+    for (let count = 0; !body && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 5));
+    assert.ok(body); await new Promise(resolve => setTimeout(resolve, 20)); assert.equal(f.calls(), 0);
+    body.close(); assert.equal((await run).status, 'completed');
+    const [directory] = await readdir(f.worker.root);
+    const receipt = JSON.parse(await readFile(join(f.worker.root, directory, 'downloads.json'), 'utf8'));
+    assert.equal(receipt.downloads[0].completion, 'http-eof');
+  }
+});
+
+test('private failure receipts retain transport causes and attachment stage without URL or secrets', async t => {
+  const f = await fixture(t);
+  const original = Object.assign(new Error('File lookup failed token=secret-top'), { cause: Object.assign(new Error(
+    'GET https://private.example/files?id=123&token=secret-query authorization=secret-header password=secret-password'), { code: 'ECONNRESET' }) });
+  f.worker.adapter.getFile = async () => { throw original; };
+  let failure;
+  await assert.rejects(f.worker.run(snapshot({ attempt: 8 })), error => { failure = error; return error.code === 'TRIAGE_DOWNLOAD_NETWORK' && error.cause === original; });
+  const raw = await readFile(failure.failureReceiptPath, 'utf8'), receipt = JSON.parse(raw);
+  assert.equal(receipt.attempt, 8); assert.equal(receipt.inputRevision, 2); assert.equal(receipt.phase, 'download');
+  assert.equal(receipt.modelStarted, false); assert.equal(receipt.downloads[0].stage, 'metadata');
+  assert.ok(receipt.causes.some(item => item.code === 'ECONNRESET'));
+  for (const secret of ['private.example', 'secret-top', 'secret-query', 'secret-header', 'secret-password']) assert.ok(!raw.includes(secret));
+  assert.equal(f.calls(), 0);
+});
+
+test('download HTTP status and request timeout retain specific recoverable failure information', async t => {
+  const denied = await fixture(t); denied.worker.fetch = async () => new Response('missing', { status: 404 });
+  await assert.rejects(denied.worker.run(snapshot()), error => error.code === 'TRIAGE_DOWNLOAD_HTTP' && error.httpStatus === 404 && !error.modelStarted);
+  const slow = await fixture(t, { limits: { downloadTimeoutMs: 30 }, response: () => {} });
+  let failure;
+  await assert.rejects(slow.worker.run(snapshot()), error => { failure = error; return error.kind === 'download-timeout' && error.code === 'TRIAGE_DOWNLOAD_TIMEOUT' && error.phase === 'download'; });
+  const receipt = JSON.parse(await readFile(failure.failureReceiptPath, 'utf8'));
+  assert.equal(receipt.kind, 'download-timeout'); assert.equal(receipt.downloads[0].stage, 'request'); assert.equal(slow.calls(), 0);
+});
 function zip(entries) {
   return execFileSync(PYTHON, ['-c', "import sys,json,io,zipfile,stat; b=io.BytesIO(); z=zipfile.ZipFile(b,'w',zipfile.ZIP_DEFLATED); entries=json.loads(sys.argv[1]); [(z.writestr(x[0],x[1])) for x in entries]; z.close(); sys.stdout.buffer.write(b.getvalue())", JSON.stringify(entries)], { windowsHide: true });
 }

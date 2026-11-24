@@ -320,3 +320,15 @@ DSH原生旧custom目录缺effort；Pi刷新目录仍无目标模型；Hermes内
 Hermes原先401已精确证明native admission failed，只有自有viewer身份和native终态同时核对后才结束该viewer树；共享gateway保留。原状态锁事务只消除旧调用unknown并保留失败与attempt，未生成结论。再恢复发生于session/load的Windows版本查询子进程pipe等待，native Git同exe/cwd独立执行很快，未将其误称整体Git慢；没有原生支持跳过机制，不改install stamp/安装或猴补源码。所有零模型诊断和failed/cancel记录独立保留。
 
 最终26/9/490/16、Windows静态/原生及服务重复复用通过，0活动/0等待任务。Git与Release交付按新产品tag/明确文件清单进行；具体源码与资产远端回执以最新HANDOFF/state为准。
+
+# 2026-11-24 · v0.5.4 QA主流程MVP
+
+用户确认后台自动触发来源后，明确要求修复失败并将日志业务列为逐轮必通MVP。先读取恢复/接续记录，干净main e37ffc6安全fetch/ff确认同步，冻结QA-MVP设计并写AGENTS永久规则。三个开发子Agent分担worker下载/失败取证、真实验收gate、原插件口径只读审查，统一中文；root负责真实QA、版本/运行/交付。
+
+旧T1由附件变化自动触发，旧attempt只有下载ZIP和泛化failed，底层cause丢失；不能凭5分钟或没有PNG文件断定失败在PNG/授权。当前真实授权读取成功，两附件GET200、bytes/MD5相符（ZIP约2.2秒，PNG约0.1秒）。同时发现流实现即使可信size+MD5已匹配仍等待HTTP EOF，可在未关闭HTTP响应的隔离场景复现；按已验证完整内容终止下载，未知长度/无hash保持原逻辑。失败收据和普通可恢复说明一并补齐，真实原插件主流程待后续本轮验收，不用预飞当完成。
+
+本轮真实触发前，gate胶水的native目录前缀/classifier及真实CIM身份已修；首次send在legacy账本scope检查拒绝，第二次按backend内部ID查询null，均零IM/模型，改为现代superAgent账本与准确no后核id。第三次仅发送一次当前Bug重分析，原任务新r4/attempt6实际完成。ZIP+PNG均以size+MD5完整终结；原插件解析1次/759行，Qwen4MaxHigh约123秒/1请求，1结论+TXT成员认证下载16685B和原文/hash通过。没有用旧成功回填或增加第二个改写报告模型。
+
+旧T6进一步只读发现仅MP4、native目录空，无request/session/exit证据；modelStarted是预执行入场标记，不是provider已开始证明。旧T4 r3下载cause也丢失，其r2报告不作为r3成功。保持旧记录不自动重做，视频项需用户补日志，不宣称已分析视频。
+
+最终源完整26/9/503/16与语法全过；Windows0.5.4通过新QA gate后构建与原生8项均过，源指纹/本轮收据打包后再核相同。源码/新tag和ZIP/SHA的远端交付回执随后写HANDOFF/state。

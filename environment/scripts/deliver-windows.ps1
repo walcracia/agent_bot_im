@@ -3,6 +3,7 @@ param(
   [string]$NodePath,
   [string]$PythonPath,
   [string]$ToolchainWorkspace,
+  [string]$QaReceipt,
   [switch]$VerifyOnly
 )
 # Build and verify a client-only Windows release. Existing versioned artifacts are never overwritten.
@@ -17,6 +18,11 @@ if (!$PythonPath) { $PythonPath = Join-Path $projectRoot 'environment/venv/Scrip
 $NodePath = (Resolve-Path -LiteralPath $NodePath).Path
 $PythonPath = (Resolve-Path -LiteralPath $PythonPath).Path
 if ($ToolchainWorkspace) { $ToolchainWorkspace = (Resolve-Path -LiteralPath $ToolchainWorkspace).Path }
+if (!$QaReceipt) { throw '正式交付需要 -QaReceipt <当前版本真实QA验收收据>；请先运行 verify-qa-live.mjs，旧版本或离线测试不能替代。' }
+$QaReceipt = (Resolve-Path -LiteralPath $QaReceipt).Path
+$qaGateJson = & $NodePath (Join-Path $PSScriptRoot 'qa-live-proof.mjs') --receipt $QaReceipt
+if ($LASTEXITCODE) { throw '当前版本真实QA正向流程未通过，不能交付为完成。' }
+$qaAcceptance = $qaGateJson | ConvertFrom-Json
 $destination = Join-Path $projectRoot ('outputs/desktop-v' + $version)
 $executable = Join-Path $destination 'TeamRelay-win32-x64/TeamRelay.exe'
 $archive = Join-Path $projectRoot ('outputs/TeamRelay-v' + $version + '-windows-x64.zip')
@@ -72,7 +78,8 @@ $receipt = [ordered]@{
   executable = $executable; archive = $archive; checksum = $checksum
   bytes = (Get-Item -LiteralPath $archive).Length
   sha256 = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-  checks = @('ASAR exact allowlist and source bytes', 'PE x64 and product metadata', 'ZIP CRC, full manifest and every file hash', 'Packaged Electron against isolated IM, native tray, messaging and report download')
+  checks = @('Current-version real QA Trigger/Router/download/original plugin/Qwen4 High and authenticated report download', 'ASAR exact allowlist and source bytes', 'PE x64 and product metadata', 'ZIP CRC, full manifest and every file hash', 'Packaged Electron against isolated IM, native tray, messaging and report download')
+  qaAcceptance = $qaAcceptance
   nativeChecks = $nativeReport.checks.Count
 }
 [IO.File]::WriteAllText((Join-Path $verification 'delivery-report.json'), ($receipt | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))

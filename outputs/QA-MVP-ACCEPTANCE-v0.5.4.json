@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "qa-live-acceptance",
+  "status": "passed",
+  "version": "0.5.4",
+  "sourceSha256": "84675b019eda111f5e1a22c55045547b052eb57a6f74b61d467959c0d4df82c1",
+  "model": "qwen4-max",
+  "reasoningEffort": "high",
+  "providerRequests": 1,
+  "downloadBytes": 16685,
+  "downloadSha256": "813b5d40801ed187e08be1d7d88f63d01b55dd6edad4bba1d57fa6343ca8a528",
+  "checks": {
+    "currentListenerLoaded": true,
+    "authorizedQaRead": true,
+    "realTriggerRouted": true,
+    "freshRevision": true,
+    "downloadHashes": true,
+    "originalPluginPrompt": true,
+    "nativeCompleted": true,
+    "qwen4High": true,
+    "oneConclusionAndTxt": true,
+    "memberAuthenticatedDownload": true,
+    "originalReportPreserved": true
+  },
+  "scope": "One user-authorized QA happy path; raw business data and native records remain local"
+}
