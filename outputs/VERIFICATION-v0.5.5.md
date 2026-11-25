@@ -21,6 +21,6 @@
 
 v0.5.5实际构建并通过ASAR16项白名单/12源文件字节、PE x64和产品名版本、ZIP74文件CRC/逐文件hash及隔离实际Electron8项：登录、聊天、托盘、通知、报告下载。构建强制核对本版真实QA收据，打包后再核产品源未变。
 
-ZIP 162325625B，SHA256 `c25853aa994f72fc30eeb9935265ad2ec28b874dd2ca4c191459fb4553abdca4`。本机`outputs/desktop-v0.5.5/TeamRelay-win32-x64/TeamRelay.exe`，必须保留整个便携目录；包不含后台、三Agent或任何账号。源码/tag与Release资产远端交付回执待后续实查，不能由本阶段文档推定已上传。
+ZIP 162325625B，SHA256 `c25853aa994f72fc30eeb9935265ad2ec28b874dd2ca4c191459fb4553abdca4`。本机`outputs/desktop-v0.5.5/TeamRelay-win32-x64/TeamRelay.exe`，必须保留整个便携目录；包不含后台、三Agent或任何账号。源码9b2aa31a484a4147feb014f3cde65942c66b6db8及新annotated v0.5.5远端已核对。正式Release ID457601539、draft=false，两资产uploaded，size和digest与本地逐一相符；下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.5。最终重复start实查复用0.5.5服务和真实监听ready，无任务重放。
 
 旧A1/A2编码任务、Hermes旧failed-session原生恢复等边界继续保留；本轮不自动重做旧取消/未知终态任务。最近N天查询与已有精确控制可用，未支持日历范围会追问天数；未启用绑定的项目不会扩权查询。

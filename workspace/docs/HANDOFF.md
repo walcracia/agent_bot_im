@@ -1,5 +1,13 @@
 # 当前接续状态
 
+## 2026-11-25 · v0.5.5已发布与最终接续
+
+源码9b2aa31a484a4147feb014f3cde65942c66b6db8与annotated v0.5.5对象38ab77aff9b8574302178e3bcc512760b069410b/peel已远端核对。正式Release ID457601539、draft=false，两资产uploaded且大小/digest等于本地：ZIP162325625B/SHA c25853aa994f72fc30eeb9935265ad2ec28b874dd2ca4c191459fb4553abdca4，SHA文本99B/digest8e3a7c28bcc8bcb17ea4d1220fb2ff1378dd216de80b3a5cbf30e457d2915dc5。下载https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.5；本机EXE为outputs/desktop-v0.5.5/TeamRelay-win32-x64/TeamRelay.exe。
+
+自然QA问句、真实原插件QA主流程及Windows包全部完成；查询不启动分析，原用户漏收消息已回一次，Qwen4/High原生分类也已核。最终26 Python/9桌面/540串行桥接（0跳过）/16模拟启动与语法通过，Windows原生8项通过。失败、精确重跑和串行复验如VERIFICATION-v0.5.5；不删失败日志、不将系统OOM归为已证实的账本泄漏。真实QA本轮r5/attempt7，源指纹25cfac9447e137f65d90f0dc701735d0844ea2092307cede317be2127085e576，私有收据2b3cb5bf9fef6db959837399f80b8134cf3b7cc00427359fb7e9cf8821e27dd1，不重复模型。
+
+最后正常start复用服务0.5.5和真实listener ready，0活动/0等待；运行观察不代表永久存活。此回执按新v0.5.5-handoff.1交付，不移动产品tag；回执自身commit以Git查询为准。旧取消/未知任务、Hermes历史恢复和A1/A2边界保留。下方待上传条目均为阶段历史。
+
 ## 2026-11-25 · v0.5.5验证完成，待Git交付
 
 先读TRIGGER-INTENT-v0.5.5。原用户消息147因昨日系统OOM后listener退出未消费，新监听已沿游标接收并回真实QA近况；口语149实证原生Qwen4Max/High只读分类、150进度查询，均单条回复且无新分析。当前源真实QA153已完成T1 r5/attempt7、原插件提示/Skill1.3.2、Qwen4High/1请求、原结论+TXT及认证下载14802B/SHA。收据与源指纹见v055私有目录和VERIFICATION-v0.5.5，不能重发模型或重做旧失败任务。
