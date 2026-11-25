@@ -1,3 +1,7 @@
+# v0.5.5 自然 QA 问句
+
+先读TRIGGER-INTENT-v0.5.5与最新HANDOFF/state。自然近况/进度查询不启动或重做分析，明确编号的分析仍走原插件Worker。当前版本已完成真实QA和Windows验证，最终Git/Release回执以HANDOFF/state和远端实查为准；旧0.5.4为历史，不复用旧QA收据。
+
 # agent-IM 恢复与接续
 
 ## v0.5.4 QA主流程逐轮必过

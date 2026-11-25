@@ -75,7 +75,7 @@ export class SuperCoordinator {
   async ingestIm(events, conversations) {
     this.conversations = structuredClone(conversations);
     const fast = [];
-    await this.transaction((data, state) => {
+    if (events.some(event => Number.isSafeInteger(event.id) && event.id > this.state.cursor)) await this.transaction((data, state) => {
       for (const event of events) {
         if (!Number.isSafeInteger(event.id) || event.id <= state.cursor) continue;
         if (this.authorized(event, conversations)) {
@@ -555,7 +555,16 @@ export class SuperCoordinator {
     return { accepted: true, duplicate: repeated, restart: action.action === 'restart_controller' ? 'external-owner-required' : undefined };
   }
   async heartbeat(source, status = 'ready', error) {
-    await this.transaction(data => { data.heartbeat = this.now(); if (source) data.sources[source] = { status, at: this.now(), ...(error ? { error: String(error).slice(0, 800) } : {}) }; });
+    // Liveness never mutates task/history trees. Keep it in the same write queue,
+    // without cloning every retained report during an otherwise idle poll.
+    const work = this.writes.then(async () => {
+      const at = this.now(), data = { ...this.data, heartbeat: at };
+      if (source) data.sources = { ...data.sources, [source]: { status, at, ...(error ? { error: String(error).slice(0, 800) } : {}) } };
+      const next = { ...this.state, superAgent: data };
+      await this.store.write(next); this.state = next;
+    });
+    this.writes = work.catch(() => {});
+    await work;
   }
   async inspectActive() {
     if (this.inspecting || this.stopping || typeof this.pool.inspect !== 'function') return;

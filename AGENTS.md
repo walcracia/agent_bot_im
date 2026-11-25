@@ -1,10 +1,12 @@
 # agent-IM 工作约定（必须先读）
 
-当前产品显示名为“同频TeamPlay”，源码版本v0.5.4。更名兼容原则见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.2.md`，托盘/前台已读见 `workspace/docs/DESKTOP-TRAY-v0.3.3.md`；最新设计/业务流程及Super-agent符合程度见根README。TeamRelay.exe、配置键和旧Electron用户目录为兼容标识，历史报告不全局改名。QA新Bug按Trigger→Router→日志分析Worker→skill执行适配服务→本机Agent→Worker→Outbox实施，当前规范先读 `workspace/docs/QA-IMPLEMENTATION-v0.4.0.md`（覆盖原QA-TRIGGER-ROUTE阶段与时间门禁）；v0.4.1以QA-ACCEPTANCE-v0.4.1覆盖取证与输出：直接回传skill结论，默认不附加QA描述，缺时间不强制降级，partial不算完成。业务平台具体是日志Worker；故障时间可选、缺失仍初排，不能猜时区/因果。首适配器DSH，其他后端只有真实注册点；已有A1/A2代码任务缺口未修复。运行/试点/交付状态以最新HANDOFF/state和实查为准。
+当前产品显示名为“同频TeamPlay”，源码版本v0.5.5。更名兼容原则见 `workspace/docs/REVIEW-TEAMPLAY-v0.3.2.md`，托盘/前台已读见 `workspace/docs/DESKTOP-TRAY-v0.3.3.md`；最新设计/业务流程及Super-agent符合程度见根README。TeamRelay.exe、配置键和旧Electron用户目录为兼容标识，历史报告不全局改名。QA新Bug按Trigger→Router→日志分析Worker→skill执行适配服务→本机Agent→Worker→Outbox实施，当前规范先读 `workspace/docs/QA-IMPLEMENTATION-v0.4.0.md`（覆盖原QA-TRIGGER-ROUTE阶段与时间门禁）；v0.4.1以QA-ACCEPTANCE-v0.4.1覆盖取证与输出：直接回传skill结论，默认不附加QA描述，缺时间不强制降级，partial不算完成。业务平台具体是日志Worker；故障时间可选、缺失仍初排，不能猜时区/因果。首适配器DSH，其他后端只有真实注册点；已有A1/A2代码任务缺口未修复。运行/试点/交付状态以最新HANDOFF/state和实查为准。
 
 每次新会话、重启、恢复或上下文压缩后，先阅读本文件、`RESTORE.md`、`environment/state.json`、`workspace/docs/HANDOFF.md`，再阅读设计与最新过程记录。不要仅凭聊天摘要继续。
 
 ## 主流程MVP逐轮验收
+
+v0.5.5自然QA问句先读TRIGGER-INTENT-v0.5.5：精确控制优先，其余在当前聊天可信项目绑定内识别查询/进度/明确分析。只读查询不下载/分析/重做旧任务，失败不能答零；自然分析仍走原Typed Worker。心跳只复制活性元数据、单flight，空IM页不重复写历史但仍检查撤权。系统OOM证据不等于账本泄漏，不修改其他服务来解决本项目。
 
 2026-11-24用户明确：每次迭代都必须真实跑通QA日志主流程（Trigger/Router→获取Bug与附件→原插件Skill分析→原结论+完整TXT回聊天→成员认证下载），单测、通用Agent ping或历史成功均不能替代。先读QA-MVP-v0.5.4和最新HANDOFF/state；缺SSO/VPN等直接向用户要，不以暂停或partial当完成，不自动重做无关旧任务。
 

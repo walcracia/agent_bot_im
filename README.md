@@ -2,11 +2,22 @@
 
 小团队私有聊天工具：Windows 客户端，支持私聊、群聊、文字、图片、音频、视频和文件。每个附件严格小于 **100,000,000 字节**。团队可以在授权群里讨论需求，让 DeepSeek Harness（DSH）在指定代码项目中执行、测试，再把结果送回聊天与 GitHub。
 
-当前源码版本 **v0.5.4**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天。QA日志已恢复，DSH、Pi、Hermes统一使用Qwen4 Max、High思考；每轮完成都生成并验证Windows便携包。模型与原生校验见 [v0.5.3设计](workspace/docs/MODEL-QWEN-v0.5.3.md)，交付状态以最新HANDOFF/state为准；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
+当前源码版本 **v0.5.5**。授权聊天的自然语言请求可由AI选择已登记Worker及DSH/Hermes/Pi执行器，结果和完整报告回原聊天。QA支持自然问句查近况和进度，查询与日志分析分别处理。DSH、Pi、Hermes统一使用Qwen4 Max、High思考；每轮完成都生成并验证Windows便携包。模型与原生校验见 [v0.5.3设计](workspace/docs/MODEL-QWEN-v0.5.3.md)，交付状态以最新HANDOFF/state为准；开发运行见 [workspace/README](workspace/README.md)，重启或换机器先读 [RESTORE](RESTORE.md)。
 
 协调者与DSH、Pi、Hermes的任务、进度及结果说明统一简体中文；JSON字段/枚举、命令、代码及原始引用保持原样。约定见[中文交互设计](workspace/docs/AGENT-LANGUAGE-v0.5.2.md)。
 
-Windows包：[v0.5.4 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.4)。完整解压后运行`TeamRelay-win32-x64/TeamRelay.exe`；包只含客户端，后台仍用仓库的`environment/scripts/start.ps1`。构建和验收见[v0.5.4报告](outputs/VERIFICATION-v0.5.4.md)。
+Windows包：[v0.5.5 Release](https://github.com/walcracia/agent_bot_im/releases/tag/v0.5.5)。完整解压后运行`TeamRelay-win32-x64/TeamRelay.exe`；包只含客户端，后台仍用仓库的`environment/scripts/start.ps1`。构建和验收见[v0.5.5报告](outputs/VERIFICATION-v0.5.5.md)。
+
+在已跟踪项目的聊天里，可以直接说：
+
+| 你说 | 同频会做什么 |
+| --- | --- |
+| T13JVP最近没有bug么 | 查询近7天新增、当前未关闭数量及最近编号。 |
+| 查一下T13JVP近3天的缺陷 | 查询指定天数，不启动日志分析。 |
+| 日志分析到哪一步了 | 显示这个聊天已有分析的进度。 |
+| 能帮我分析一下T13JVP-229吗 | 读取该编号和附件，走原插件Skill分析，回原结论和完整报告。 |
+
+明确问句直接查业务数据；其他QA表达由只读AI识别意图，再在当前聊天已授权项目内执行。不清楚项目或缺分析编号时会追问。查询不会重做旧失败任务，失败也不会答成“没有Bug”。支持的时间范围是最近N天，省略时为7天；尚不支持的日历范围会请你说明天数。设计和验收见[自然问句分流](workspace/docs/TRIGGER-INTENT-v0.5.5.md)。
 
 ## 产品定位：统一业务入口与任务路由中心
 
@@ -38,7 +49,7 @@ flowchart LR
   Result --> Chat[原聊天]
 ```
 
-**当前实现范围。** 新业务入口通过只读AI和可信能力注册表动态选择Worker与可用Agent，使用独立B编号、任务目录及原生会话。DSH、Hermes、Pi已真实接通，QA仍使用专用typed规则和完整原插件流程；OpenCode未实现。管理员登记用途、输入输出、可选Agent和Skill/MCP资源，模型不能自行安装插件、增加执行器、拼接宿主命令或扩大权限。
+**当前实现范围。** 新业务入口通过只读AI和可信能力注册表动态选择Worker与可用Agent，使用独立B编号、任务目录及原生会话。DSH、Hermes、Pi已真实接通，QA先识别自然查询或分析意图，再使用专用typed规则和完整原插件流程；OpenCode未实现。管理员登记用途、输入输出、可选Agent和Skill/MCP资源，模型不能自行安装插件、增加执行器、拼接宿主命令或扩大权限。
 
 插件化和多Agent是扩展方式；持续接收补充、保存任务身份、恢复执行和把结果可靠送回团队，仍是这里落实Super-agent思想的一部分。以下QA流程说明当前如何触发、归属和执行，后文的编码流程与审计保留其实际能力边界。
 

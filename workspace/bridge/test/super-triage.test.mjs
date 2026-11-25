@@ -28,7 +28,7 @@ function fixture(options = {}, extras = {}) {
     listFiles: async item => structuredClone(rows.find(row => row.id === item.id)?.attachments ?? item.attachments ?? []) };
   const worker = { run: extras.run ?? (async (snapshot, { beforeModel }) => { calls.push(structuredClone(snapshot)); await beforeModel();
     return { status: 'completed', text: '初步分析完成；仍需复核。', report: { conclusion: '待验证' }, manifest: { files: [] }, modelCalls: 1, inputRevision: snapshot.inputRevision }; }) };
-  const t = new SuperTriage({ coordinator: c, adapter, worker, options: { enabled: true, sourceId: 'qa', pollMilliseconds: 1,
+  const t = new SuperTriage({ coordinator: c, adapter, worker, intentClassify: extras.intentClassify, options: { enabled: true, sourceId: 'qa', pollMilliseconds: 1,
     totalModelCalls: 5, dailyModelCalls: 5, bindings: [{ sourceId: 'qa', projectId: '42', projectCode: 'DEMO', conversationId: 'chat' }], ...options } });
   t.initialize(c.data);
   async function im(id, text, sender = human, conversation_id = 'chat') {
@@ -39,6 +39,44 @@ function fixture(options = {}, extras = {}) {
   }
   return { c, t, adapter, worker, calls, saved, replies, im, advance: () => { clock += 2000; }, setRows: value => { rows = value; } };
 }
+
+test('natural recent-bug question reads fresh QA once, replies once, and never creates analysis', async () => {
+  const f = fixture({}, { rows: [issue('1', { openedAt: '2026-11-19 12:00:00' })], intentClassify: () => assert.fail('Clear query needs no model') });
+  await f.im(147, 'DEMO最近没有bug么');
+  assert.equal(f.c.data.inbox['im:147'].decision.kind, 'recent_issues');
+  assert.equal(Object.keys(f.c.data.tasks).length, 0); assert.equal(f.calls.length, 0);
+  const [reply] = Object.values(f.c.data.outbox);
+  assert.equal(Object.keys(f.c.data.outbox).length, 1); assert.match(reply.text, /新增1个/u);
+  assert.equal(f.t.beforeSend(reply, chats), 'send');
+  assert.equal(f.t.beforeSend(reply, [{ id: 'chat', members: [bot] }]), 'pause');
+  await f.t.routePending(); assert.equal(Object.keys(f.c.data.outbox).length, 1);
+});
+
+test('natural progress query summarizes the same chat without QA downloads or new task', async () => {
+  const f = fixture(); await f.im(1, '分析 DEMO-1');
+  const before = structuredClone(f.c.data.tasks);
+  f.adapter.listIssues = () => assert.fail('Status is local');
+  await f.im(2, 'DEMO 的分析进度怎么样了？');
+  assert.deepEqual(f.c.data.tasks, before); assert.equal(f.c.data.inbox['im:2'].decision.kind, 'analysis_status');
+  assert.match(Object.values(f.c.data.outbox).at(-1).text, /DEMO/u);
+});
+
+test('QA query failure reports unavailable data, never reports zero or starts a worker', async () => {
+  const f = fixture(); f.adapter.listIssues = async () => { throw Object.assign(new Error('private token'), { code: 'QA_AUTH_REQUIRED' }); };
+  await f.im(1, 'DEMO最近没有bug么');
+  const [reply] = Object.values(f.c.data.outbox);
+  assert.match(reply.text, /暂时无法查询/u); assert.doesNotMatch(reply.text, /private|token|新增0/u);
+  assert.equal(f.c.data.inbox['im:1'].status, 'failed'); assert.equal(Object.keys(f.c.data.tasks).length, 0);
+});
+
+test('natural explicit analysis uses the existing typed log worker route and exact binding', async () => {
+  const f = fixture(); await f.im(1, '请帮我分析一下 DEMO-1');
+  assert.equal(f.c.data.tasks.T000001.kind, 'log-triage');
+  assert.equal(f.c.data.inbox['im:1'].trigger.issueNo, 'DEMO-1');
+  assert.equal(f.c.data.inbox['im:1'].qaDecision.kind, 'analyse_issue');
+  await f.im(2, '不要分析 DEMO-1，只看分析进度');
+  assert.equal(Object.keys(f.c.data.tasks).length, 1); assert.equal(f.c.data.tasks.T000001.inputRevision, 1);
+});
 
 test('QA baseline is silent; new issue becomes one typed task with shared task number and bidirectional recall', async () => {
   const f = fixture(); f.c.data.tasks.T000001 = { id: 'T000001', status: 'paused' }; f.c.data.nextTask = 2;

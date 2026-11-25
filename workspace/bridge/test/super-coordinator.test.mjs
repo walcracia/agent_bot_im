@@ -29,6 +29,26 @@ async function fixture(t, extras = {}) {
   t.after(() => c.close()); return { c, runs, replies, saved, starts };
 }
 
+test('idle intake avoids whole-history writes while heartbeat serializes immutable liveness metadata', async t => {
+  const f = await fixture(t);
+  const previous = f.c.state, history = f.c.data.tasks, sources = f.c.data.sources, saved = f.saved.length;
+  await f.c.ingestIm([], conversations);
+  assert.equal(f.saved.length, saved); assert.equal(f.c.state, previous);
+  await f.c.heartbeat('im', 'ready');
+  assert.equal(f.c.data.tasks, history); assert.equal(previous.superAgent.sources, sources);
+  assert.equal(sources.im, undefined); assert.equal(f.c.data.sources.im.status, 'ready');
+  await f.c.transaction(data => { data.tasks.example = { status: 'queued' }; });
+  assert.equal(history.example, undefined);
+});
+
+test('idle intake still revokes a task when chat membership disappears', async t => {
+  const f = await fixture(t);
+  await f.c.transaction(data => { data.tasks.T000099 = { id: 'T000099', status: 'queued', event: event(0, 'old request') }; });
+  await f.c.ingestIm([], [{ id: 'chat', members: [bot] }]);
+  assert.equal(f.c.data.tasks.T000099.status, 'paused');
+  assert.match(f.c.data.tasks.T000099.error, /授权已失效/u);
+});
+
 test('two workers run concurrently, third queues, and intake handles stop while workers are unresolved', async t => {
   const f = await fixture(t);
   await f.c.ingestIm([event(1, 'Fix first'), event(2, 'Fix second'), event(3, 'Fix third')], conversations);

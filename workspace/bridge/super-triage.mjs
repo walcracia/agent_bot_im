@@ -6,6 +6,8 @@ import { reference, putNode } from './super-context.mjs';
 import { QaSource } from './qa-source.mjs';
 import { routeTriageTriggers } from './triage-route.mjs';
 import { validateExecutionProof } from './skill-execution.mjs';
+import { QaIntentRouter, isQaCandidate } from './qa-intent.mjs';
+import { executeQaQuery } from './qa-query.mjs';
 
 const kind = task => task?.kind === 'log-triage';
 const same = (a, b) => String(a) === String(b);
@@ -95,8 +97,9 @@ export function triageWindow(text = '') {
 
 /** Coordination only: no Git operations, shell, model calls or Desktop private HTTP routes. */
 export class SuperTriage {
-  constructor({ coordinator, adapter, sourceFactory, worker, options = {} }) {
+  constructor({ coordinator, adapter, sourceFactory, worker, intentClassify, options = {} }) {
     this.c = coordinator; this.adapter = adapter; this.worker = worker;
+    this.intentRouter = new QaIntentRouter({ classify: intentClassify });
     this.options = { enabled: true, sourceId: 'qa', bindings: [], adminSenderIds: [], maxWorkers: 1,
       pollMilliseconds: 60000, ...options };
     delete this.options.totalModelCalls; delete this.options.dailyModelCalls;
@@ -172,10 +175,11 @@ export class SuperTriage {
     const follow = /^#(T\d{6,})(?=\s|$)([\s\S]*)$/iu.exec(value);
     const selected = (control?.[2] ?? follow?.[1])?.toUpperCase();
     const own = selected && data.tasks[selected];
-    if (!bind && !request && (!kind(own) || !same(own.conversationId, event.conversation_id))) return false;
+    const semantic = !bind && !request && (!kind(own) || !same(own.conversationId, event.conversation_id));
+    if (semantic && !isQaCandidate(event, { bindings: this.#bindings(data), tasks: Object.values(data.tasks) })) return false;
     const entry = data.inbox[`im:${event.id}`];
     if (!entry) throw fail('TRIAGE_MISSING_INTAKE');
-    const action = bind ? (bind[1] === '跟踪项目' ? 'bind' : 'unbind') : control
+    const action = semantic ? 'semantic' : bind ? (bind[1] === '跟踪项目' ? 'bind' : 'unbind') : control
       ? /详情/u.test(control[1]) ? 'details' : /状态/u.test(control[1]) ? 'status' : /取消|停止|暂停/u.test(control[1]) ? 'stop' : 'resume'
       : request ? /重新|重分析/u.test(request[1]) ? 'reanalyse' : 'request' : 'followup';
     entry.trigger = { triggerId: `im:${event.id}`, sourceKind: 'im', eventKind: 'analysis.requested', request: action,
@@ -263,7 +267,9 @@ export class SuperTriage {
       for (const original of batch) {
         await this.c.transaction(data => { if (data.inbox[original.key]?.status === 'pending') data.inbox[original.key].status = 'routing'; });
         try {
-          const trigger = await this.#resolve(original.trigger);
+          const candidate = original.trigger.request === 'semantic' ? await this.#semantic(original) : original.trigger;
+          if (!candidate) continue;
+          const trigger = await this.#resolve(candidate);
           if (['bind', 'unbind'].includes(trigger.request)) { await this.#changeBinding(original.key, trigger); continue; }
           const decisions = await (this.c.router.routeTriggers?.([trigger], { tasks: Object.values(this.data.tasks), context: [] })
             ?? routeTriageTriggers([trigger], { tasks: Object.values(this.data.tasks) }));
@@ -273,12 +279,58 @@ export class SuperTriage {
           await this.c.transaction(data => {
             const item = data.inbox[original.key]; if (!item || item.status === 'routed') return;
             item.status = 'failed'; item.error = safeError(cause); item.attempts++;
-            if (item.trigger.sourceKind === 'im') this.#notice(data, item.trigger, '暂时无法读取该问题，记录已保留，请稍后重新请求。', `triage-route-failed:${item.key}`);
+            if (item.trigger.sourceKind === 'im') this.#notice(data, item.trigger, item.trigger.request === 'semantic'
+              ? '暂时无法查询最新情况，请确认公司网络和缺陷系统登录后再问一次。'
+              : '暂时无法读取该问题，记录已保留，请稍后重新请求。', `triage-route-failed:${item.key}`);
           });
         }
       }
       this.c.kick();
     } finally { this.routing = false; }
+  }
+  async #semantic(original) {
+    const event = original.event, trigger = original.trigger;
+    const bindings = this.#bindings().filter(binding => same(binding.conversationId, trigger.conversationId));
+    if (!this.#humanAllowed(trigger.requesterId, trigger.conversationId, this.c.conversations)) throw fail('TRIAGE_AUTH_REVOKED');
+    const [decision] = await this.intentRouter.route([event], { bindings, tasks: Object.values(this.data.tasks) });
+    if (decision?.kind === 'not_qa') {
+      await this.c.transaction(data => {
+        const item = data.inbox[original.key]; delete item.trigger; item.status = 'pending'; item.qaDecision = decision;
+        if (!this.c.business?.captureIm(data, event, item.reference, item.threadReference) && this.c.config.codeEnabled === false) {
+          item.status = 'routed'; item.decision = { action: 'ignore', reason: 'not_qa' };
+        }
+      });
+      return null;
+    }
+    const matches = bindings.filter(binding => !decision?.projectCode || same(String(binding.projectCode).toUpperCase(), String(decision.projectCode).toUpperCase()));
+    const binding = matches.length === 1 ? matches[0] : null;
+    if (!decision || decision.kind === 'clarify' || !binding) {
+      await this.c.transaction(data => {
+        data.inbox[original.key].status = 'routed'; data.inbox[original.key].decision = decision ?? { kind: 'clarify' };
+        this.#notice(data, trigger, !binding ? '想查哪个已跟踪项目？请带上项目代号。' : decision.question || '你想查最近的缺陷、分析进度，还是分析某个编号？', `triage-query:${original.key}`);
+      });
+      return null;
+    }
+    if (decision.kind === 'analyse_issue') {
+      const resolved = { ...trigger, request: /重新|重分析|再.*分析/u.test(trigger.text) ? 'reanalyse' : 'request', issueNo: decision.issueNo };
+      await this.c.transaction(data => {
+        if (!this.#humanAllowed(trigger.requesterId, trigger.conversationId, this.c.conversations)
+          || !this.#binding({ ...binding, kind: 'log-triage' }, data)) throw fail('TRIAGE_AUTH_REVOKED');
+        Object.assign(data.inbox[original.key], { trigger: resolved, qaDecision: decision });
+      });
+      return resolved;
+    }
+    if (!['recent_issues', 'analysis_status'].includes(decision.kind)) throw fail('TRIAGE_INVALID_INTENT');
+    const request = Object.fromEntries(Object.entries(decision).filter(([, value]) => value !== null));
+    const result = await executeQaQuery({ adapter: this.adapter, binding, request,
+      tasks: Object.values(this.data.tasks), pollRecord: this.data.triage.qa[bindingKey(binding)], now: () => new Date(this.now()) });
+    await this.c.transaction(data => {
+      if (!this.#humanAllowed(trigger.requesterId, trigger.conversationId, this.c.conversations)
+        || !this.#binding({ ...binding, kind: 'log-triage' }, data)) throw fail('TRIAGE_AUTH_REVOKED');
+      data.inbox[original.key].status = 'routed'; data.inbox[original.key].decision = decision;
+      this.#notice(data, trigger, result.text, `triage-query:${original.key}`);
+    });
+    return null;
   }
   #notice(data, trigger, text, key) {
     this.#outbox(data, { key, text, conversationId: trigger.conversationId, requesterId: trigger.requesterId, controlAck: true });
